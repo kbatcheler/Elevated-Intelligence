@@ -12,6 +12,9 @@ import { HEROES } from "./heroes";
 import TimeTravel from "./TimeTravel";
 import CommitButton from "./CommitButton";
 import WhatIfLevers from "./WhatIfLevers";
+import NextSteps from "./NextSteps";
+import PipelineDetail from "./PipelineDetail";
+import DemandLink from "./DemandLink";
 import { useApp } from "../context/AppContext";
 import { EVIDENCE } from "../data/signals";
 import { TIMELINES } from "../data/timetravel";
@@ -65,6 +68,9 @@ export default function Layer({ layer, highlight }: { layer: LayerData; highligh
             <div className="flex items-center gap-1.5"><span>Confidence</span><ConfidenceBand value={displayConf} /></div>
             <span className="opacity-40">·</span>
             <span>{layer.sources} sources</span>
+          </div>
+          <div className="mt-3">
+            <DemandLink layerKey={layer.key} />
           </div>
         </div>
         <button onClick={() => setOpen(true)} className="btn-ghost mt-2">
@@ -165,6 +171,9 @@ export default function Layer({ layer, highlight }: { layer: LayerData; highligh
             </ol>
           </div>
 
+          {/* Deep pipeline detail — only for the four operationally-deep layers */}
+          <PipelineDetail layerKey={layer.key} />
+
           {/* Data feeds — the big new card */}
           <DataFeedsCard layerKey={layer.key} />
         </div>
@@ -224,6 +233,9 @@ export default function Layer({ layer, highlight }: { layer: LayerData; highligh
           </div>
         </div>
       </div>
+
+      {/* Prescriptive next steps — every layer, full-width below the two-column grid */}
+      <NextSteps layerKey={layer.key} layerTitle={layer.title} />
 
       {open && <ChallengeModal layer={layer} onClose={() => setOpen(false)} />}
     </div>

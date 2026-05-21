@@ -17,6 +17,7 @@ import EvidencePanel from "./components/EvidencePanel";
 import CommittedTray from "./components/CommittedTray";
 import DependencyGraph from "./dependency/DependencyGraph";
 import MorningBrief from "./brief/MorningBrief";
+import ChatAssistant from "./components/ChatAssistant";
 import { useApp } from "./context/AppContext";
 
 type NavItem = { key: string; label: string; group: string; icon: any; status: "good" | "warn" | "bad" };
@@ -223,6 +224,7 @@ export default function App() {
       <AnomalyInbox onNavigate={handleNavigate} />
       <EvidencePanel />
       {briefOpen && <MorningBrief />}
+      <ChatAssistant onNavigate={handleNavigate} />
     </div>
   );
 }
