@@ -8,6 +8,7 @@ import DataFeedsCard from "./DataFeedsCard";
 import AnimatedNumber from "./AnimatedNumber";
 import Sparkline, { makeSeries } from "./Sparkline";
 import { EXTRAS } from "./extras";
+import { HEROES } from "./heroes";
 
 const toneColor = (t: Tone) =>
   t === "bad"  ? "var(--red)"
@@ -54,27 +55,29 @@ export default function Layer({ layer, highlight }: { layer: LayerData; highligh
         </button>
       </div>
 
-      {/* Metric strip with sparklines */}
-      <div className="grid grid-cols-4 gap-4">
-        {layer.metrics.map((m, i) => (
-          <div key={i} className={"card " + (isHi(`metric:${i}`) ? "pulse-coral" : "")}>
-            <div className="flex items-start justify-between">
-              <div className="eyebrow text-[var(--slate-light)]">{m.label}</div>
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold" style={{ color: toneColor(m.tone) }}>
-                <TrendIcon t={m.tone} />
-              </span>
+      {/* Hero: custom per-layer treatment, or default metric strip */}
+      {HEROES[layer.key] ? (() => { const H = HEROES[layer.key]; return <H layer={layer} />; })() : (
+        <div className="grid grid-cols-4 gap-4">
+          {layer.metrics.map((m, i) => (
+            <div key={i} className={"card " + (isHi(`metric:${i}`) ? "pulse-coral" : "")}>
+              <div className="flex items-start justify-between">
+                <div className="eyebrow text-[var(--slate-light)]">{m.label}</div>
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold" style={{ color: toneColor(m.tone) }}>
+                  <TrendIcon t={m.tone} />
+                </span>
+              </div>
+              <div className="font-sans font-semibold mt-2 tabular-nums" style={{ fontSize: 36, lineHeight: 1.05, color: toneColor(m.tone) }}>
+                <AnimatedNumber value={m.value} />
+              </div>
+              <div className="flex items-end justify-between mt-2 gap-3">
+                <div className="font-sans italic text-[11px] text-[var(--slate-light)]">{m.sub}</div>
+                <Sparkline data={makeSeries(seedBase + i * 17, 14, m.tone === "bad" ? -0.6 : m.tone === "good" ? 0.4 : 0)}
+                           color={toneColor(m.tone)} />
+              </div>
             </div>
-            <div className="font-sans font-semibold mt-2 tabular-nums" style={{ fontSize: 36, lineHeight: 1.05, color: toneColor(m.tone) }}>
-              <AnimatedNumber value={m.value} />
-            </div>
-            <div className="flex items-end justify-between mt-2 gap-3">
-              <div className="font-sans italic text-[11px] text-[var(--slate-light)]">{m.sub}</div>
-              <Sparkline data={makeSeries(seedBase + i * 17, 14, m.tone === "bad" ? -0.6 : m.tone === "good" ? 0.4 : 0)}
-                         color={toneColor(m.tone)} />
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Domain-specific extras (unique per layer) */}
       {EXTRAS[layer.key] ? (() => { const E = EXTRAS[layer.key]; return <E />; })() : null}
