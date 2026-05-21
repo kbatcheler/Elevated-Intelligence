@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   BarChart3, TrendingUp, Crosshair, Users, Megaphone,
-  Truck, Tag, GitBranch, Target, UserCog, Cpu, ChevronDown,
+  Truck, Tag, GitBranch, Target, UserCog, Cpu, ChevronDown, Briefcase,
 } from "lucide-react";
 import { LAYERS } from "./data/layers";
 import Layer from "./components/Layer";
 import Narrator from "./narrator/Narrator";
 import Architecture from "./architecture/Architecture";
+import SystemHeartbeat from "./components/SystemHeartbeat";
+import EngagementPipeline from "./pipeline/EngagementPipeline";
 
 type NavItem = { key: string; label: string; group: string; icon: any; status: "good" | "warn" | "bad" };
 
@@ -21,7 +23,8 @@ const NAV: NavItem[] = [
   { key: "sales-pipeline",           label: "Sales pipeline",           group: "Operational",    icon: GitBranch,  status: "bad"  },
   { key: "marketing-performance",    label: "Marketing performance",    group: "Operational",    icon: Target,     status: "warn" },
   { key: "people-operations",        label: "People and operations",    group: "Operational",    icon: UserCog,    status: "bad"  },
-  { key: "intelligence-architecture",label: "Intelligence architecture", group: "System",        icon: Cpu,        status: "good" },
+  { key: "intelligence-architecture",label: "Intelligence architecture",group: "System",         icon: Cpu,        status: "good" },
+  { key: "engagement-pipeline",      label: "Engagement pipeline",      group: "System",         icon: Briefcase,  status: "warn" },
 ];
 
 const GROUPS = ["Executive", "Market-facing", "Operational", "System"] as const;
@@ -35,7 +38,6 @@ export default function App() {
 
   const layer = useMemo(() => LAYERS.find(l => l.key === active), [active]);
 
-  // Clear highlight after the pulse animation completes
   useEffect(() => {
     if (!highlight) return;
     const t = setTimeout(() => setHighlight(undefined), 2500);
@@ -74,6 +76,8 @@ export default function App() {
                 style={{ background: "var(--gold)", color: "var(--navy-deep)" }}>KB</span>
         </div>
       </header>
+
+      <SystemHeartbeat onNavigate={handleNavigate} />
 
       <div className="flex flex-1 min-h-0">
         {/* Left nav */}
@@ -122,15 +126,15 @@ export default function App() {
 
         {/* Canvas */}
         <main className="flex-1 overflow-y-auto scroll-area" style={{ background: "var(--cream)" }}>
-          <div className="px-8 py-8 max-w-[1100px] mx-auto">
-            {active === "intelligence-architecture"
-              ? <Architecture />
+          <div className="px-8 py-8 max-w-[1200px] mx-auto">
+            {active === "intelligence-architecture" ? <Architecture />
+              : active === "engagement-pipeline"     ? <EngagementPipeline onNavigate={handleNavigate} />
               : layer && <Layer layer={layer} highlight={highlight} key={active} />}
           </div>
         </main>
 
         {/* Narrator */}
-        <Narrator layerKey={active} onNavigate={handleNavigate} />
+        <Narrator layerKey={active === "engagement-pipeline" ? "intelligence-architecture" : active} onNavigate={handleNavigate} />
       </div>
     </div>
   );

@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { ArrowRight, FileSearch } from "lucide-react";
+import { ArrowRight, FileSearch, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import type { LayerData, Tone } from "../data/layers";
 import Chart from "./Chart";
 import ConfidenceBand from "./ConfidenceBand";
 import ChallengeModal from "./ChallengeModal";
+import DataFeedsCard from "./DataFeedsCard";
+import AnimatedNumber from "./AnimatedNumber";
+import Sparkline, { makeSeries } from "./Sparkline";
 
 const toneColor = (t: Tone) =>
   t === "bad"  ? "var(--red)"
@@ -11,11 +14,17 @@ const toneColor = (t: Tone) =>
   : t === "good" ? "var(--teal)"
                  : "var(--navy)";
 
+const TrendIcon = ({ t }: { t: Tone }) =>
+  t === "bad" ? <TrendingDown size={12} strokeWidth={2} />
+  : t === "good" ? <TrendingUp size={12} strokeWidth={2} />
+                 : <Minus size={12} strokeWidth={2} />;
+
 const tagClass = (c: string) => "tag tag-" + c.toLowerCase();
 
 export default function Layer({ layer, highlight }: { layer: LayerData; highlight?: string }) {
   const [open, setOpen] = useState(false);
   const isHi = (field: string) => highlight === field;
+  const seedBase = layer.key.charCodeAt(0) + layer.key.charCodeAt(layer.key.length - 1);
 
   return (
     <div className="space-y-6 pb-12">
@@ -23,10 +32,16 @@ export default function Layer({ layer, highlight }: { layer: LayerData; highligh
       <div className={"flex items-start justify-between gap-6 " + (highlight === "header" ? "gold-underline" : "")}>
         <div>
           <div className="eyebrow text-[var(--coral)] mb-2">Intelligence layer · {layer.group}</div>
-          <h1 className="font-serif text-[32px] leading-tight text-[var(--navy)]">{layer.title}</h1>
-          <p className="font-serif italic text-[18px] text-[var(--slate-light)] mt-1">{layer.question}</p>
-          <div className="mt-3 flex items-center gap-4 text-[12px] text-[var(--slate-light)]">
-            <span>Diagnosed {layer.diagnosedAt}</span>
+          <h1 className="font-serif text-[40px] leading-[1.05] text-[var(--navy)] font-semibold">{layer.title}</h1>
+          <p className="font-serif italic text-[20px] text-[var(--slate-light)] mt-1.5">{layer.question}</p>
+          <div className="mt-4 flex items-center gap-4 text-[12px] text-[var(--slate-light)]">
+            <span className="flex items-center gap-1.5">
+              <span className="relative inline-flex">
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--teal)" }} />
+                <span className="absolute inset-0 h-1.5 w-1.5 rounded-full animate-ping" style={{ background: "var(--teal)", opacity: 0.4 }} />
+              </span>
+              Diagnosed {layer.diagnosedAt}
+            </span>
             <span className="opacity-40">·</span>
             <div className="flex items-center gap-1.5"><span>Confidence</span><ConfidenceBand value={layer.confidence} /></div>
             <span className="opacity-40">·</span>
@@ -38,15 +53,24 @@ export default function Layer({ layer, highlight }: { layer: LayerData; highligh
         </button>
       </div>
 
-      {/* Metric strip */}
+      {/* Metric strip with sparklines */}
       <div className="grid grid-cols-4 gap-4">
         {layer.metrics.map((m, i) => (
           <div key={i} className={"card " + (isHi(`metric:${i}`) ? "pulse-coral" : "")}>
-            <div className="eyebrow text-[var(--slate-light)]">{m.label}</div>
-            <div className="font-sans font-semibold mt-2" style={{ fontSize: 32, lineHeight: 1.1, color: toneColor(m.tone) }}>
-              {m.value}
+            <div className="flex items-start justify-between">
+              <div className="eyebrow text-[var(--slate-light)]">{m.label}</div>
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold" style={{ color: toneColor(m.tone) }}>
+                <TrendIcon t={m.tone} />
+              </span>
             </div>
-            <div className="font-sans italic text-[11px] text-[var(--slate-light)] mt-1">{m.sub}</div>
+            <div className="font-sans font-semibold mt-2 tabular-nums" style={{ fontSize: 36, lineHeight: 1.05, color: toneColor(m.tone) }}>
+              <AnimatedNumber value={m.value} />
+            </div>
+            <div className="flex items-end justify-between mt-2 gap-3">
+              <div className="font-sans italic text-[11px] text-[var(--slate-light)]">{m.sub}</div>
+              <Sparkline data={makeSeries(seedBase + i * 17, 14, m.tone === "bad" ? -0.6 : m.tone === "good" ? 0.4 : 0)}
+                         color={toneColor(m.tone)} />
+            </div>
           </div>
         ))}
       </div>
@@ -56,7 +80,7 @@ export default function Layer({ layer, highlight }: { layer: LayerData; highligh
         <div className="col-span-2 space-y-6">
           <div className="card card-hero card-accent-coral">
             <div className="eyebrow text-[var(--coral)] mb-3">Executive narrative</div>
-            <p className="font-serif text-[18px] leading-[1.55] text-[var(--ink)]">{layer.narrative}</p>
+            <p className="font-serif text-[19px] leading-[1.55] text-[var(--ink)]">{layer.narrative}</p>
           </div>
 
           <div className="card card-accent-navy">
@@ -74,17 +98,20 @@ export default function Layer({ layer, highlight }: { layer: LayerData; highligh
             </div>
             <ol className="space-y-4">
               {layer.causes.map((c, i) => (
-                <li key={i} className={"pl-6 relative " + (isHi(`cause:${i}`) ? "pulse-coral !rounded-sm" : "")}>
-                  <span className="absolute left-0 top-0 font-sans font-semibold text-[13px] text-[var(--navy-soft)]">{i + 1}.</span>
+                <li key={i} className={"pl-7 relative " + (isHi(`cause:${i}`) ? "pulse-coral !rounded-sm" : "")}>
+                  <span className="absolute left-0 top-0 font-serif font-semibold text-[18px] text-[var(--gold)] leading-none">{i + 1}.</span>
                   <div className="flex items-baseline justify-between gap-3">
-                    <div className="font-sans font-semibold text-[13px] text-[var(--navy)]">{c.title}</div>
-                    <div className="font-sans text-[12px] font-semibold text-[var(--coral)] whitespace-nowrap">{c.impact}</div>
+                    <div className="font-sans font-semibold text-[14px] text-[var(--navy)]">{c.title}</div>
+                    <div className="font-sans text-[12px] font-bold text-[var(--coral)] whitespace-nowrap tabular-nums">{c.impact}</div>
                   </div>
                   <div className="font-sans italic text-[12px] text-[var(--slate)] leading-snug mt-1">{c.detail}</div>
                 </li>
               ))}
             </ol>
           </div>
+
+          {/* Data feeds — the big new card */}
+          <DataFeedsCard layerKey={layer.key} />
         </div>
 
         {/* Right column: actions + gaps */}
@@ -101,7 +128,7 @@ export default function Layer({ layer, highlight }: { layer: LayerData; highligh
                   <div className="flex-1">
                     <div className="flex items-baseline justify-between gap-3">
                       <div className="font-sans font-semibold text-[13px] text-[var(--navy)] leading-snug">{a.title}</div>
-                      <div className="font-sans text-[14px] font-bold text-[var(--teal)] whitespace-nowrap">{a.impact}</div>
+                      <div className="font-sans text-[14px] font-bold text-[var(--teal)] whitespace-nowrap tabular-nums">{a.impact}</div>
                     </div>
                     <div className="font-sans italic text-[11px] text-[var(--slate-light)] leading-snug mt-0.5">{a.detail}</div>
                   </div>
