@@ -1,14 +1,38 @@
 import { X, Printer } from "lucide-react";
 import { LAYERS } from "../data/layers";
 import { TRACK_RECORD, summary } from "../data/trackRecord";
+import { useCompany } from "../context/CompanyContext";
 
 // Eight-page board pack. Each section is a "page" with print-friendly CSS.
 // Order: Cover · Headline scorecard · Three root causes · Three recovery
 // levers · Track record · Decisions log · Layer findings · Appendix.
 
 export default function BoardPack({ onClose }: { onClose: () => void }) {
-  const meta = "Mercer Group · Q3 2026 close-out · 14 October 2026";
+  const { profile, resolve } = useCompany();
+  const meta = `${profile.name} · ${profile.period} close-out · 14 October 2026`;
   const s = summary();
+  const h = profile.headlines;
+  const rootCauses = profile.rootCauses ?? [
+    { title: "Competitor promotional intensity", impact: "−$6.2M",
+      body: "Home Depot ran a sustained 1.8× baseline promo depth across five SE markets for the last 14 days of Q3. Numerator panel confirms the depth; Mercer's match-not-beat policy locked us into matching every move. The cohort that hurt most: the 24 top cordless-tools SKUs where elasticity is highest." },
+    { title: "Compound supply disruption", impact: "−$3.1M",
+      body: "Supplier B's production delay coincided with a Dallas + Phoenix DC labour shortfall. Top-5 SKUs accumulated 41 OOS days in weeks 30–34. Inventory did not partially offset the demand softness — it amplified it. Two simultaneous constraints, not one." },
+    { title: "Margin defence via promotional matching", impact: "−$1.8M",
+      body: "Margin compressed 240bps as the match policy was applied reflexively. Volume held; margin paid for it. This is the most reversible of the three causes — a single policy change closes the gap in two trading weeks." },
+  ];
+  const recoveryLevers = profile.recoveryLevers ?? [
+    { title: "Cap the cordless-tools promo match at 22%",
+      horizon: "This week", recovery: "$1.2M annualised", owner: "Head of Pricing",
+      body: "Currently matching Home Depot exactly (28% depth). A 22% cap restores 4pp gross margin on the 24 SKUs driving the slip. Reversible inside 5 trading days." },
+    { title: "Fill the 11 unfilled Phoenix DC shifts",
+      horizon: "This week", recovery: "$0.9M variance", owner: "DC Operations",
+      body: "Use the existing Kelly Services MSA. 11 shifts × $42/hr fully loaded ≈ $18.5K weekly cost vs ≈$120K weekly throughput risk. Net-positive on day one." },
+    { title: "Launch the SE-only DIY counter-promo",
+      horizon: "Monday, 14 days", recovery: "$1.45M Q4", owner: "Trade Marketing",
+      body: "Targeted to Dallas/Phoenix/Atlanta where Home Depot is overweighted. Bounded to the 24 share-loss SKUs. Hard exit at day 14. Dependent on Pricing layer's margin floor sign-off (≥18% gross)." },
+  ];
+  const combinedRecovery = profile.combinedRecovery ?? "$5.6M Q4";
+  const recoveryConfidence = profile.recoveryConfidence ?? "Confidence 87% on the first $3M, 64% on the rest.";
   const layerByKey = Object.fromEntries(LAYERS.map(l => [l.key, l]));
   const recentClosed = TRACK_RECORD.filter(t => t.status !== "in-flight").slice(-5).reverse();
 
@@ -39,18 +63,19 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
               <div className="eyebrow text-[var(--gold)] mb-3">Different Day · Elevated Intelligence</div>
               <div className="font-serif text-[14px] italic text-[var(--slate)] mb-12">Board pack · {meta}</div>
               <div className="flex-1 flex flex-col justify-center">
-                <h1 className="font-serif font-semibold text-[64px] leading-[1] text-[var(--navy)] mb-6">
-                  Mercer Group
+                <h1 className="font-serif font-semibold text-[64px] leading-[1] text-[var(--navy)] mb-6 flex items-baseline gap-4">
+                  {profile.logoEmoji && <span className="text-[56px]" aria-hidden="true">{profile.logoEmoji}</span>}
+                  {profile.name}
                 </h1>
                 <div className="font-serif text-[28px] italic text-[var(--slate)] leading-tight mb-12">
-                  Quarter three, two thousand and twenty-six
+                  {profile.sector} · Quarter three, two thousand and twenty-six
                 </div>
                 <div className="font-serif text-[18px] text-[var(--ink)] leading-snug max-w-[600px]">
                   Eight pages. The numbers, the diagnosis, the three reversible levers, and the system's track record holding itself accountable.
                 </div>
               </div>
               <div className="font-sans italic text-[12px] text-[var(--slate)] mt-8 pt-6 border-t border-[var(--cream-dark)]">
-                Prepared for the Mercer Group board · Distribution restricted to named recipients
+                Prepared for the {profile.name} board · Distribution restricted to named recipients
               </div>
             </div>
           </Page>
@@ -59,15 +84,17 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
           <Page>
             <PageHeader number={2} title="Headline scorecard" eyebrow="Q3 2026 · against plan" />
             <div className="grid grid-cols-2 gap-6">
-              <Card label="Revenue"           value="$127M"  delta="−8% vs plan"        tone="bad"  detail="$11M behind plan; gap concentrated in DIY and Home Improvement categories." />
-              <Card label="Operating margin"  value="11.2%"  delta="−380bps vs target"  tone="bad"  detail="Match-and-bleed pricing on top-50 cordless SKUs drove most of the slip." />
-              <Card label="Cash position"     value="$41M"   delta="+11% vs plan"       tone="good" detail="Held only because working capital tightened — not because trading performed." />
-              <Card label="Customer NPS"      value="38"     delta="−3 vs prior quarter"tone="warn" detail="Detractor cluster localised to Phoenix metro, tied to service-call spike." />
+              <Card label="Revenue"           value={h.revenueActual}  delta={`${h.revenueVarPct} vs plan`}        tone="bad"  detail={resolve(`${h.revenueVarDollars} behind plan; gap concentrated in DIY and Home Improvement categories.`)} />
+              <Card label="Operating margin"  value={h.marginActual}   delta={`${h.marginVarBps} vs target`}       tone="bad"  detail={resolve("Match-and-bleed pricing on top-50 cordless SKUs drove most of the slip.")} />
+              <Card label="Cash position"     value={h.cashActual}     delta={h.cashVar}                            tone={h.cashTone} detail="Held only because working capital tightened — not because trading performed." />
+              <Card label="Customer NPS"      value={String(h.npsActual)} delta={h.npsDelta}                        tone="warn" detail={resolve("Detractor cluster localised to Phoenix metro, tied to service-call spike.")} />
             </div>
             <div className="mt-8 p-5 rounded-sm" style={{ background: "var(--cream-light)", border: "1px solid var(--cream-dark)" }}>
               <div className="eyebrow text-[var(--slate-light)] mb-2">Executive read</div>
               <p className="font-serif text-[16px] leading-snug text-[var(--ink)]">
-                Q3 closed <strong>8% behind plan</strong> and <strong>380bps behind margin target</strong>. The variance is not diffuse — three layers (Demand, Pricing, Supply) account for almost the entire gap. The fastest reversible lever this quarter is in pricing, not demand or supply.
+                {profile.executiveRead
+                  ? profile.executiveRead
+                  : <>Q3 closed <strong>8% behind plan</strong> and <strong>380bps behind margin target</strong>. The variance is not diffuse — three layers (Demand, Pricing, Supply) account for almost the entire gap. The fastest reversible lever this quarter is in pricing, not demand or supply.</>}
               </p>
             </div>
           </Page>
@@ -76,12 +103,9 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
           <Page>
             <PageHeader number={3} title="Three root causes" eyebrow="What actually happened" />
             <div className="space-y-5">
-              <RootCause n={1} title="Competitor promotional intensity" impact="−$6.2M"
-                body="Home Depot ran a sustained 1.8× baseline promo depth across five SE markets for the last 14 days of Q3. Numerator panel confirms the depth; Mercer's match-not-beat policy locked us into matching every move. The cohort that hurt most: the 24 top cordless-tools SKUs where elasticity is highest." />
-              <RootCause n={2} title="Compound supply disruption" impact="−$3.1M"
-                body="Supplier B's production delay coincided with a Dallas + Phoenix DC labour shortfall. Top-5 SKUs accumulated 41 OOS days in weeks 30–34. Inventory did not partially offset the demand softness — it amplified it. Two simultaneous constraints, not one." />
-              <RootCause n={3} title="Margin defence via promotional matching" impact="−$1.8M"
-                body="Margin compressed 240bps as the match policy was applied reflexively. Volume held; margin paid for it. This is the most reversible of the three causes — a single policy change closes the gap in two trading weeks." />
+              {rootCauses.map((rc, i) => (
+                <RootCause key={i} n={i + 1} title={resolve(rc.title)} impact={rc.impact} body={resolve(rc.body)} />
+              ))}
             </div>
           </Page>
 
@@ -89,20 +113,15 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
           <Page>
             <PageHeader number={4} title="Three recovery levers" eyebrow="What we propose to do" />
             <div className="space-y-5">
-              <Lever n={1} title="Cap the cordless-tools promo match at 22%"
-                horizon="This week" recovery="$1.2M annualised" owner="Head of Pricing"
-                body="Currently matching Home Depot exactly (28% depth). A 22% cap restores 4pp gross margin on the 24 SKUs driving the slip. Reversible inside 5 trading days." />
-              <Lever n={2} title="Fill the 11 unfilled Phoenix DC shifts"
-                horizon="This week" recovery="$0.9M variance" owner="DC Operations"
-                body="Use the existing Kelly Services MSA. 11 shifts × $42/hr fully loaded ≈ $18.5K weekly cost vs ≈$120K weekly throughput risk. Net-positive on day one." />
-              <Lever n={3} title="Launch the SE-only DIY counter-promo"
-                horizon="Monday, 14 days" recovery="$1.45M Q4" owner="Trade Marketing"
-                body="Targeted to Dallas/Phoenix/Atlanta where Home Depot is overweighted. Bounded to the 24 share-loss SKUs. Hard exit at day 14. Dependent on Pricing layer's margin floor sign-off (≥18% gross)." />
+              {recoveryLevers.map((l, i) => (
+                <Lever key={i} n={i + 1} title={resolve(l.title)} horizon={l.horizon} recovery={l.recovery}
+                       owner={resolve(l.owner)} body={resolve(l.body)} />
+              ))}
             </div>
             <div className="mt-8 p-5 rounded-sm" style={{ background: "var(--gold-faint)", border: "1px solid var(--gold)" }}>
               <div className="eyebrow text-[var(--gold)] mb-2">Combined modelled recovery</div>
-              <div className="font-serif font-semibold text-[32px] text-[var(--navy)] tabular-nums">$5.6M Q4</div>
-              <div className="font-serif italic text-[14px] text-[var(--slate)] mt-1">Confidence 87% on the first $3M, 64% on the rest.</div>
+              <div className="font-serif font-semibold text-[32px] text-[var(--navy)] tabular-nums">{combinedRecovery}</div>
+              <div className="font-serif italic text-[14px] text-[var(--slate)] mt-1">{recoveryConfidence}</div>
             </div>
           </Page>
 
@@ -136,16 +155,16 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
             <PageHeader number={6} title="Decisions for the board" eyebrow="What we need from this meeting" />
             <ol className="space-y-4">
               <Decision n={1} ask="Endorse the three reversible levers in priority order"
-                what="Pricing match-cap, Phoenix DC shifts, SE counter-promo. Each layer has a named owner standing by."
+                what={resolve("Pricing match-cap, Phoenix DC shifts, SE counter-promo. Each layer has a named owner standing by.")}
                 forfor="Decision required" />
               <Decision n={2} ask="Approve emergency 5% comp adjustment for DC Operations"
                 what="Annualised cost ~$1.2M; modelled retention lift 7–9pp; payback inside one quarter at current attrition cost."
                 forfor="Decision required" />
               <Decision n={3} ask="Note: FY27 share target re-baseline (16.5% → 15.0%)"
-                what="Two-channel concentration (HD + Lowe's) is now structural. Growth narrative shifts to category-share-of-wallet within active accounts."
+                what={resolve("Two-channel concentration (Home Depot + Lowe's) is now structural. Growth narrative shifts to category-share-of-wallet within active accounts.")}
                 forfor="For information" />
               <Decision n={4} ask="Note: Pricing policy reset proposed for Q4 close"
-                what="Replace 'match Home Depot' with margin-floor + elasticity rule. CFO and Pricing committee to sign off in November."
+                what={resolve("Replace 'match Home Depot' with margin-floor + elasticity rule. CFO and Pricing committee to sign off in November.")}
                 forfor="For information" />
             </ol>
           </Page>
@@ -169,7 +188,7 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
             <PageHeader number={8} title="Appendix" eyebrow="Methodology and sources" />
             <div className="space-y-5 font-serif text-[14px] leading-snug text-[var(--ink)]">
               <p>
-                <strong>Diagnostic framework.</strong> Mercer's business is decomposed into 13 intelligence layers grouped into four bands: executive, market-facing, operational, system. Each layer carries a confidence band, a primary diagnostic question, and a recommended-actions stack.
+                <strong>Diagnostic framework.</strong> {profile.name}'s business is decomposed into 13 intelligence layers grouped into four bands: executive, market-facing, operational, system. Each layer carries a confidence band, a primary diagnostic question, and a recommended-actions stack.
               </p>
               <p>
                 <strong>Powered by Demand by Different Day.</strong> The operational depth in Demand, Supply, Pricing and Sales is hydrated from the Different Day demand-planning platform. The framework you are reading lifts those diagnoses into an executive view and stitches them across layers.
@@ -178,10 +197,10 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
                 <strong>Confidence calculation.</strong> Each metric carries a combined confidence band weighted by source completeness and recency, with a floor set by the lowest-confidence contributor on the critical path.
               </p>
               <p>
-                <strong>Sources.</strong> SAP S/4HANA, NetSuite, Salesforce, Adaptive Planning, Manhattan WMS, Blue Yonder, Numerator panel, Brandwatch, Five9, Kronos, Workday, Adobe Analytics, Google Ads, NOAA weather feed, competitive pricing scraper. 14 systems · 312 feeds.
+                <strong>Sources.</strong> {resolve("SAP S/4HANA, NetSuite, Salesforce, Adaptive Planning, Manhattan WMS, Blue Yonder, Numerator panel, Brandwatch, Five9, Kronos, Workday, Adobe Analytics, Google Ads, NOAA weather feed, competitive pricing scraper.")} {profile.sourceSystems}.
               </p>
               <p>
-                <strong>Peer set.</strong> Home Depot, Lowe's, Ace Hardware, Tractor Supply. Sourced from Numerator panel and quarterly 10-Q filings.
+                <strong>Peer set.</strong> {resolve("Home Depot, Lowe's, Ace Hardware, Tractor Supply. Sourced from Numerator panel and quarterly 10-Q filings.")}
               </p>
             </div>
           </Page>

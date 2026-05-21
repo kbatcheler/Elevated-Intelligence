@@ -1,0 +1,268 @@
+import { Router, type IRouter } from "express";
+
+const router: IRouter = Router();
+
+const SYSTEM_PROMPT = `You are an analyst seeding a demo for a sales tool called Different Day. The user provides a real company name + homepage; you produce a JSON profile that lets a 13-layer business-intelligence portal re-skin its narrative to that company.
+
+Return STRICT JSON only — no prose, no code fences. Conform exactly to this TypeScript shape:
+
+{
+  "id": string,                        // lowercase slug
+  "name": string,                      // canonical brand name
+  "url": string,                       // homepage without protocol
+  "logoMonogram": string,              // 1-2 letter monogram
+  "logoEmoji": string,                 // single sector cue emoji
+  "sector": string,                    // e.g. "Specialty music retail"
+  "hqCity": string,
+  "hqState": string,                   // 2-letter US state OR country
+  "revenueBand": string,               // e.g. "$2.1B FY25" — research-grounded estimate
+  "ownership": string,                 // e.g. "Public · NYSE: X" or "Private · PE-owned"
+  "founded": number,
+  "period": "Q3 2026",
+  "channelLabel": string,              // their channel mix in 3-5 words
+  "tagline": string,                   // one-line elevator pitch
+  "vocab": {                           // case-aware substring swaps applied across the portal's hardcoded Mercer narrative. Keys are Mercer entities; values are the prospect's equivalents. Be generous — 20+ entries.
+    "Mercer Group": string,
+    "Mercer": string,
+    "hardware & garden retail": string,
+    "US retail": string,
+    "Home Depot": string,              // their primary competitor
+    "Lowe's": string,                  // their secondary competitor
+    "Ace Hardware": string,
+    "Tractor Supply": string,
+    "cordless tools": string,          // their headline problem category
+    "cordless drills": string,         // a specific SKU class
+    "DIY": string,
+    "Home Improvement": string,
+    "Phoenix DC": string,              // their named distribution centre
+    "Phoenix metro": string,           // their troubled metro
+    "Phoenix": string,
+    "Dallas": string,                  // their secondary metro
+    "Supplier B": string,              // their bottleneck supplier (real name + relationship)
+    "Supplier C": string,              // their alt supplier
+    "Garden": string,                  // seasonal category
+    "garden": string,
+    "Kelly Services": string,          // temp/staffing agency they'd use
+    "Head of Pricing": string,         // their pricing leadership title
+    "trade accounts": string,          // their B2B segment label
+    "trade segment": string,
+    "Numerator": string,               // data provider relevant to their sector
+    "Circana": string
+  },
+  "headlines": {
+    "revenueActual": string,           // e.g. "$498M" — scaled to their revenue band (a Q3 estimate)
+    "revenuePlan": string,             // higher than actual
+    "revenueVarPct": "−8%",            // keep this for narrative consistency
+    "revenueVarDollars": string,       // the dollar gap implied
+    "marginActual": string,            // e.g. "8.4%"
+    "marginTarget": string,            // 350-400bps higher
+    "marginVarBps": "−380bps",
+    "cashActual": string,              // estimate of cash position
+    "cashVar": string,                 // e.g. "+11% vs plan" or "−6% vs plan"
+    "cashTone": "good" | "warn" | "bad",
+    "npsActual": number,               // realistic for their sector (10-60)
+    "npsDelta": string                 // e.g. "−3 vs prior quarter"
+  },
+  "executiveRead": string,             // 3-4 sentences — the executive summary in the company's voice. Reference the actual competitor, supplier, and metro.
+  "pullQuote": string,                 // one quotable line for the morning brief
+  "sourceSystems": string,             // e.g. "14 systems · 312 feeds"
+  "analyst": "Katherine Boyd · Lead analyst",
+  "isGenerated": true,
+  "generatedAt": string                // ISO timestamp
+}
+
+Critical rules:
+- The vocab map is the most important field. Every value must be a real, sector-appropriate entity for THIS company — research-grounded if you know it, plausibly invented if not.
+- All Mercer-shaped operational scaffolding (a troubled DC, a stockout category, a bottleneck supplier, an overspending marketing channel) must map to something that makes sense for this company's actual operating model.
+- Numbers should reflect the company's actual revenue band scaled down to a single quarter.
+- Tone: editorial, precise. No marketing fluff. Specific over generic.
+- Output JSON ONLY. No \`\`\` fences. No commentary.`;
+
+router.post("/companies/seed", async (req, res) => {
+  const { name, url, sector } = (req.body ?? {}) as { name?: string; url?: string; sector?: string };
+  if (!name || typeof name !== "string" || name.trim().length === 0) {
+    res.status(400).json({ error: "Company name is required." });
+    return;
+  }
+
+  const baseUrl = process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL;
+  const apiKey = process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY;
+  if (!baseUrl || !apiKey) {
+    req.log.error("Anthropic AI integration env vars missing");
+    res.status(503).json({ error: "AI integration is not configured on this server." });
+    return;
+  }
+
+  const userPrompt =
+    `Company name: ${name.trim()}\n` +
+    (url?.trim() ? `Homepage: ${url.trim()}\n` : "") +
+    (sector?.trim() ? `Sector hint: ${sector.trim()}\n` : "") +
+    `\nReturn the JSON profile now.`;
+
+  try {
+    const apiRes = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/messages`, {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 8192,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: "user", content: userPrompt }],
+      }),
+    });
+
+    if (!apiRes.ok) {
+      const errBody = await apiRes.text();
+      req.log.error({ status: apiRes.status, body: errBody.slice(0, 500) }, "Anthropic API error");
+      res.status(502).json({ error: `Upstream AI error (HTTP ${apiRes.status}).` });
+      return;
+    }
+
+    const payload = (await apiRes.json()) as { content?: Array<{ type: string; text?: string }> };
+    const textBlock = payload.content?.find(b => b.type === "text");
+    const text = textBlock?.text ?? "";
+    if (!text) {
+      res.status(502).json({ error: "AI returned no text content." });
+      return;
+    }
+
+    // Strip code fences if the model added them despite instructions.
+    const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+    let profile: Record<string, unknown>;
+    try {
+      profile = JSON.parse(cleaned);
+    } catch (e) {
+      req.log.error({ snippet: cleaned.slice(0, 300) }, "Failed to parse AI JSON");
+      res.status(502).json({ error: "AI returned invalid JSON. Try again." });
+      return;
+    }
+
+    // Strict shape-validate-and-normalise. The client trusts this payload
+    // and renders it directly; malformed AI output must not crash the UI.
+    const normalised = normaliseProfile(profile, name.trim());
+    if (!normalised.ok) {
+      req.log.error({ reason: normalised.reason }, "AI profile failed validation");
+      res.status(502).json({ error: `AI profile invalid: ${normalised.reason}` });
+      return;
+    }
+
+    res.json(normalised.value);
+  } catch (e) {
+    req.log.error({ err: String(e) }, "Seed-company route failed");
+    res.status(500).json({ error: "Seeding failed unexpectedly." });
+  }
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// Profile validator/normaliser. Coerces an untrusted AI JSON blob into a
+// strict CompanyProfile-shaped object the client can safely render.
+// Strings are clamped to sane lengths; numbers are bounded; vocab entries
+// must all be string→string. Anything malformed → "ok: false".
+// ───────────────────────────────────────────────────────────────────────────
+type NormResult = { ok: true; value: Record<string, unknown> } | { ok: false; reason: string };
+
+function asString(v: unknown, max = 200, fallback?: string): string | null {
+  if (typeof v === "string") return v.slice(0, max);
+  if (fallback !== undefined) return fallback;
+  return null;
+}
+function asNumber(v: unknown, min: number, max: number, fallback?: number): number | null {
+  if (typeof v === "number" && Number.isFinite(v) && v >= min && v <= max) return v;
+  if (typeof v === "string" && /^-?\d+(\.\d+)?$/.test(v.trim())) {
+    const n = Number(v); if (n >= min && n <= max) return n;
+  }
+  return fallback ?? null;
+}
+
+function normaliseProfile(raw: Record<string, unknown>, inputName: string): NormResult {
+  const name = asString(raw.name, 80, inputName);
+  if (!name) return { ok: false, reason: "missing name" };
+
+  // Safe slug for id
+  const rawId = asString(raw.id, 64) ?? name;
+  const slug = rawId.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+  const vocabIn = raw.vocab;
+  if (!vocabIn || typeof vocabIn !== "object" || Array.isArray(vocabIn)) {
+    return { ok: false, reason: "vocab missing or not an object" };
+  }
+  const vocab: Record<string, string> = {};
+  for (const [k, v] of Object.entries(vocabIn as Record<string, unknown>)) {
+    if (typeof k !== "string" || k.length === 0 || k.length > 120) continue;
+    if (typeof v !== "string" || v.length === 0 || v.length > 240) continue;
+    vocab[k] = v;
+  }
+  if (Object.keys(vocab).length < 4) {
+    return { ok: false, reason: "vocab too sparse (need ≥4 entries)" };
+  }
+
+  const hIn = raw.headlines;
+  if (!hIn || typeof hIn !== "object" || Array.isArray(hIn)) {
+    return { ok: false, reason: "headlines missing or not an object" };
+  }
+  const h = hIn as Record<string, unknown>;
+  const cashTone = (typeof h.cashTone === "string" && ["good", "warn", "bad"].includes(h.cashTone))
+    ? h.cashTone : "warn";
+  const headlines = {
+    revenueActual:    asString(h.revenueActual,    24, "—") ?? "—",
+    revenuePlan:      asString(h.revenuePlan,      24, "—") ?? "—",
+    revenueVarPct:    asString(h.revenueVarPct,    16, "−8%") ?? "−8%",
+    revenueVarDollars:asString(h.revenueVarDollars,24, "—") ?? "—",
+    marginActual:     asString(h.marginActual,     16, "—") ?? "—",
+    marginTarget:     asString(h.marginTarget,     16, "—") ?? "—",
+    marginVarBps:     asString(h.marginVarBps,     16, "−380bps") ?? "−380bps",
+    cashActual:       asString(h.cashActual,       24, "—") ?? "—",
+    cashVar:          asString(h.cashVar,          32, "—") ?? "—",
+    cashTone,
+    npsActual:        asNumber(h.npsActual, 0, 100, 30) ?? 30,
+    npsDelta:         asString(h.npsDelta,         48, "—") ?? "—",
+  };
+
+  // Optional top-findings — string→{finding,impact,lever?} map, sanitised
+  let topFindings: Record<string, { finding: string; impact: string; lever?: string }> | undefined;
+  if (raw.topFindings && typeof raw.topFindings === "object" && !Array.isArray(raw.topFindings)) {
+    topFindings = {};
+    for (const [k, v] of Object.entries(raw.topFindings as Record<string, unknown>)) {
+      if (typeof k !== "string" || !v || typeof v !== "object") continue;
+      const vv = v as Record<string, unknown>;
+      const finding = asString(vv.finding, 400); const impact = asString(vv.impact, 120);
+      if (finding && impact) {
+        const lever = asString(vv.lever, 240) ?? undefined;
+        topFindings[k.slice(0, 64)] = { finding, impact, ...(lever ? { lever } : {}) };
+      }
+    }
+  }
+
+  const profile: Record<string, unknown> = {
+    id: slug || `seed-${Date.now()}`,
+    name,
+    url:           asString(raw.url, 120, "") ?? "",
+    logoMonogram:  asString(raw.logoMonogram, 4, name.slice(0, 2).toUpperCase()) ?? name.slice(0, 2).toUpperCase(),
+    logoEmoji:     asString(raw.logoEmoji, 8) ?? undefined,
+    sector:        asString(raw.sector, 120, "—") ?? "—",
+    hqCity:        asString(raw.hqCity, 80, "—") ?? "—",
+    hqState:       asString(raw.hqState, 40) ?? undefined,
+    revenueBand:   asString(raw.revenueBand, 40, "—") ?? "—",
+    ownership:     asString(raw.ownership, 120, "—") ?? "—",
+    founded:       asNumber(raw.founded, 1700, 2100) ?? undefined,
+    period:        "Q3 2026",
+    channelLabel:  asString(raw.channelLabel, 80, "All channels") ?? "All channels",
+    tagline:       asString(raw.tagline, 200, "") ?? "",
+    vocab,
+    headlines,
+    executiveRead: asString(raw.executiveRead, 1200) ?? undefined,
+    pullQuote:     asString(raw.pullQuote, 400) ?? undefined,
+    topFindings,
+    sourceSystems: asString(raw.sourceSystems, 80, "14 systems · 312 feeds") ?? "14 systems · 312 feeds",
+    analyst:       "Katherine Boyd · Lead analyst",
+    isGenerated:   true,
+    generatedAt:   new Date().toISOString(),
+  };
+  return { ok: true, value: profile };
+}
+
+export default router;

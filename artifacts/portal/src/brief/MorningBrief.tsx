@@ -1,6 +1,7 @@
 import { X, Printer } from "lucide-react";
 import { LAYERS } from "../data/layers";
 import { useApp } from "../context/AppContext";
+import { useCompany } from "../context/CompanyContext";
 
 // Composed top-finding-per-layer brief. Hard-coded copy because this is a
 // curated editorial product, not an auto-summary of the layer data.
@@ -30,8 +31,11 @@ const TOP_FINDINGS: BriefItem[] = [
 
 export default function MorningBrief() {
   const { closeBrief } = useApp();
+  const { profile, resolve } = useCompany();
   const today = "Tuesday, 14 October 2026 · 06:42 CT";
   const layerByKey = Object.fromEntries(LAYERS.map(l => [l.key, l]));
+  // Merge: profile overrides take precedence, falling back to the default Mercer copy.
+  const mergedFindings = TOP_FINDINGS.map(f => ({ ...f, ...(profile.topFindings?.[f.layer] ?? {}) }));
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "rgba(15,26,51,0.55)" }} onClick={closeBrief}>
@@ -69,21 +73,21 @@ export default function MorningBrief() {
               </div>
               <h1 className="font-serif text-[44px] leading-[1.02] text-[var(--navy)] font-semibold mt-5">The morning brief</h1>
               <p className="font-serif italic text-[18px] text-[var(--slate)] mt-1">
-                Mercer Group · Q3 2026 close-out · the one page the executive committee needs before 7am.
+                {profile.name} · {profile.period} close-out · the one page the executive committee needs before 7am.
               </p>
             </header>
 
             {/* Lede */}
             <section className="mb-7">
               <p className="font-serif text-[20px] leading-[1.55] text-[var(--ink)] first-letter:font-serif first-letter:text-[64px] first-letter:font-semibold first-letter:float-left first-letter:leading-[0.85] first-letter:mr-2 first-letter:mt-1 first-letter:text-[var(--coral)]">
-                Q3 closed eight percent behind plan and three hundred and eighty basis points behind margin target. The variance is not diffuse: three layers — Demand, Pricing, and Supply — account for almost the entire gap. Cash held only because working capital tightened. Of the three, Pricing is the fastest reversible lever this quarter.
+                {profile.executiveRead ?? resolve("Q3 closed eight percent behind plan and three hundred and eighty basis points behind margin target. The variance is not diffuse: three layers — Demand, Pricing, and Supply — account for almost the entire gap. Cash held only because working capital tightened. Of the three, Pricing is the fastest reversible lever this quarter.")}
               </p>
             </section>
 
             {/* Pull-quote */}
             <section className="my-7 py-5 border-y border-[var(--cream-dark)]">
               <blockquote className="font-serif italic text-[24px] leading-[1.35] text-[var(--navy)] text-center">
-                "Sixty percent of the revenue gap traces to Demand, sixty-five percent of the EBITDA gap traces to Pricing, and the system is ninety-seven percent confident those are the right two levers."
+                "{profile.pullQuote ?? "Sixty percent of the revenue gap traces to Demand, sixty-five percent of the EBITDA gap traces to Pricing, and the system is ninety-seven percent confident those are the right two levers."}"
               </blockquote>
             </section>
 
@@ -91,7 +95,7 @@ export default function MorningBrief() {
             <section>
               <div className="eyebrow text-[var(--coral)] mb-3">Layer-by-layer findings</div>
               <div className="space-y-5">
-                {TOP_FINDINGS.map((f, i) => {
+                {mergedFindings.map((f, i) => {
                   const l = layerByKey[f.layer];
                   if (!l) return null;
                   return (
@@ -104,14 +108,14 @@ export default function MorningBrief() {
                       <div className="col-span-7">
                         <div className="eyebrow text-[var(--slate-light)] mb-0.5">{l.group}</div>
                         <div className="font-serif text-[16px] font-semibold text-[var(--navy)] leading-tight mb-1">{l.title}</div>
-                        <p className="font-serif text-[14px] leading-[1.55] text-[var(--ink)]">{f.finding}</p>
+                        <p className="font-serif text-[14px] leading-[1.55] text-[var(--ink)]">{resolve(f.finding)}</p>
                         {f.lever && (
-                          <p className="font-serif italic text-[13px] text-[var(--coral)] mt-1">{f.lever}</p>
+                          <p className="font-serif italic text-[13px] text-[var(--coral)] mt-1">{resolve(f.lever)}</p>
                         )}
                       </div>
                       <div className="col-span-4 pl-3 border-l border-[var(--cream-dark)]">
                         <div className="eyebrow text-[var(--slate-light)] mb-1">Impact</div>
-                        <div className="font-sans font-bold text-[13px] text-[var(--coral)] tabular-nums leading-snug">{f.impact}</div>
+                        <div className="font-sans font-bold text-[13px] text-[var(--coral)] tabular-nums leading-snug">{resolve(f.impact)}</div>
                         <div className="eyebrow text-[var(--slate-light)] mt-3 mb-1">Confidence</div>
                         <div className="font-sans font-bold text-[15px] text-[var(--navy)] tabular-nums">{l.confidence}%</div>
                       </div>
@@ -126,7 +130,7 @@ export default function MorningBrief() {
               <div>
                 <div className="eyebrow text-[var(--slate-light)] mb-1">Issued by</div>
                 <div className="font-sans text-[13px] text-[var(--navy)] font-semibold">Different Day · Intelligence stack</div>
-                <div className="font-sans italic text-[11px] text-[var(--slate)] mt-0.5">14 systems · 312 feeds · 84% combined confidence</div>
+                <div className="font-sans italic text-[11px] text-[var(--slate)] mt-0.5">{profile.sourceSystems} · 84% combined confidence</div>
               </div>
               <div className="text-right">
                 <div className="eyebrow text-[var(--slate-light)] mb-1">Next brief</div>

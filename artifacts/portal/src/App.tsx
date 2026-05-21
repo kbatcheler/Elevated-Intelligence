@@ -3,7 +3,7 @@ import {
   BarChart3, TrendingUp, Crosshair, Users, Megaphone,
   Truck, Tag, GitBranch, Target, UserCog, Cpu, ChevronDown, Briefcase,
   Banknote, Receipt, UserPlus, Network, Newspaper, CheckSquare, Lock,
-  Sliders, Award, FileText,
+  Sliders, Award, FileText, Sparkles,
 } from "lucide-react";
 import { LAYERS } from "./data/layers";
 import Layer from "./components/Layer";
@@ -23,7 +23,11 @@ import ChatAssistant from "./components/ChatAssistant";
 import WarRoom from "./scenario/WarRoom";
 import TrackRecord from "./components/TrackRecord";
 import Tour from "./tour/Tour";
+import CompanyPicker from "./components/CompanyPicker";
+import CompanyBootSplash from "./components/CompanyBootSplash";
 import { useApp } from "./context/AppContext";
+import { useCompany } from "./context/CompanyContext";
+import { DEFAULT_PROFILE_ID } from "./data/companies";
 
 type NavItem = { key: string; label: string; group: string; icon: any; status: "good" | "warn" | "bad" };
 
@@ -62,6 +66,8 @@ export default function App() {
   const {
     setActiveLayer, openInbox, openBrief, briefOpen, committed,
   } = useApp();
+  const { profile, setPickerOpen, resetToDefault } = useCompany();
+  const isCustomProfile = profile.id !== DEFAULT_PROFILE_ID;
 
   const layer = useMemo(() => LAYERS.find(l => l.key === active), [active]);
 
@@ -100,11 +106,14 @@ export default function App() {
             className="flex items-center gap-3 px-4 py-1.5 rounded-sm hover:bg-white/10 transition-colors"
             style={{ background: "rgba(255,255,255,0.05)" }}
           >
-            <span className="font-sans text-[12px] text-[var(--cream)]">Q3 2026</span>
+            <span className="font-sans text-[12px] text-[var(--cream)]">{profile.period}</span>
             <span className="opacity-30 text-[var(--cream)]">·</span>
-            <span className="font-sans text-[12px] text-[var(--cream)]">Mercer Group</span>
+            <span className="font-sans font-semibold text-[12px] text-[var(--cream)] flex items-center gap-1.5">
+              {profile.logoEmoji && <span aria-hidden="true">{profile.logoEmoji}</span>}
+              {profile.name}
+            </span>
             <span className="opacity-30 text-[var(--cream)]">·</span>
-            <span className="font-sans text-[12px] text-[var(--cream)]">All channels</span>
+            <span className="font-sans text-[12px] text-[var(--cream)]">{profile.channelLabel}</span>
             <ChevronDown size={14} strokeWidth={1.5} className="text-[var(--gold-light)] ml-1" />
           </button>
           {clientOpen && (
@@ -116,21 +125,30 @@ export default function App() {
                 <button className="w-full text-left px-4 py-2.5 flex items-center justify-between border-b border-[var(--cream-dark)]"
                         onClick={() => setClientOpen(false)}>
                   <div>
-                    <div className="font-sans font-semibold text-[13px] text-[var(--navy)]">Mercer Group</div>
-                    <div className="font-sans italic text-[11px] text-[var(--slate)]">US retail · Q3 2026 close-out</div>
+                    <div className="font-sans font-semibold text-[13px] text-[var(--navy)] flex items-center gap-2">
+                      {profile.logoEmoji && <span aria-hidden="true">{profile.logoEmoji}</span>}
+                      {profile.name}
+                    </div>
+                    <div className="font-sans italic text-[11px] text-[var(--slate)]">{profile.sector} · {profile.period} close-out</div>
                   </div>
                   <span className="pill pill-teal">Live</span>
                 </button>
-                <div className="px-4 py-2 eyebrow text-[var(--slate-light)]" style={{ background: "var(--cream-light)" }}>Diagnosis pending</div>
-                <button disabled className="w-full text-left px-4 py-2.5 flex items-center justify-between opacity-60 cursor-not-allowed">
+                <button onClick={() => { setClientOpen(false); setPickerOpen(true); }}
+                        className="w-full text-left px-4 py-2.5 flex items-center justify-between hover:bg-[var(--cream-light)] border-b border-[var(--cream-dark)]">
                   <div>
-                    <div className="font-sans font-semibold text-[13px] text-[var(--slate)] flex items-center gap-1.5">
-                      <Lock size={11} strokeWidth={1.8} /> Nordic Outdoor
+                    <div className="font-sans font-semibold text-[13px] text-[var(--coral)] flex items-center gap-1.5">
+                      <Sparkles size={11} strokeWidth={1.8} /> Switch company / seed a prospect
                     </div>
-                    <div className="font-sans italic text-[11px] text-[var(--slate-light)]">EU outdoor retail · onboarding</div>
+                    <div className="font-sans italic text-[11px] text-[var(--slate-light)]">Pick from the library or type a name + URL</div>
                   </div>
-                  <span className="pill" style={{ background: "var(--cream-dark)", color: "var(--slate)" }}>Onboarding</span>
+                  <ChevronDown size={11} className="text-[var(--slate-light)] -rotate-90" />
                 </button>
+                {isCustomProfile && (
+                  <button onClick={() => { setClientOpen(false); resetToDefault(); }}
+                          className="w-full text-left px-4 py-2.5 flex items-center justify-between hover:bg-[var(--cream-light)]">
+                    <div className="font-sans text-[12px] text-[var(--slate)] italic">Reset to Mercer Group (default demo)</div>
+                  </button>
+                )}
               </div>
             </>
           )}
@@ -149,7 +167,14 @@ export default function App() {
             <FileText size={14} strokeWidth={1.5} className="text-[var(--gold-light)]" />
             Board pack
           </button>
-          <span className="font-sans text-[12px] text-[var(--cream)] opacity-70">Katherine Boyd · Lead analyst</span>
+          <button onClick={() => setPickerOpen(true)}
+                  title="Switch company / seed a prospect"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm font-sans text-[11px] uppercase tracking-wider text-[var(--cream)] hover:bg-white/10 transition-colors"
+                  style={{ border: "1px solid rgba(212,175,55,0.4)" }}>
+            <Sparkles size={12} strokeWidth={1.8} className="text-[var(--gold-light)]" />
+            Switch
+          </button>
+          <span className="font-sans text-[12px] text-[var(--cream)] opacity-70">{profile.analyst}</span>
           <span className="h-8 w-8 rounded-full flex items-center justify-center font-sans font-semibold text-[12px]"
                 style={{ background: "var(--gold)", color: "var(--navy-deep)" }}>KB</span>
         </div>
@@ -245,6 +270,8 @@ export default function App() {
       {boardPackOpen && <BoardPack onClose={() => setBoardPackOpen(false)} />}
       <ChatAssistant onNavigate={handleNavigate} />
       <Tour />
+      <CompanyPicker />
+      <CompanyBootSplash />
     </div>
   );
 }
