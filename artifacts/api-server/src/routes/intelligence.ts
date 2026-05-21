@@ -297,4 +297,22 @@ function normaliseBrief(raw: unknown): NormResult<NormalisedBrief> {
   return { ok: true, value: { company, leaders, financials, aiOpportunities, narrative } };
 }
 
+// Invalidate the cached brief for a given company identity. Called by the
+// client when a saved profile is deleted so the next user who seeds the
+// same company doesn't get a stale, deleted brief served from cache.
+// Body shape matches POST /intelligence/brief exactly so the same cacheKey
+// derivation is reused.
+router.post("/intelligence/brief/invalidate", async (req, res) => {
+  const r = (req.body ?? {}) as Record<string, unknown>;
+  const key = cacheKey([
+    clamp(r.name, 200),  clamp(r.url, 200),
+    clamp(r.sector, 200), clamp(r.hqCity, 100), clamp(r.hqState, 80),
+    clamp(r.revenueBand, 80), clamp(r.ownership, 80),
+    typeof r.founded === "number" ? r.founded : undefined,
+    clamp(r.tagline, 240),
+  ]);
+  const existed = briefCache.delete(key);
+  res.json({ ok: true, evicted: existed });
+});
+
 export default router;

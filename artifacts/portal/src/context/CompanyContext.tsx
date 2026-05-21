@@ -136,20 +136,54 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     setPickerOpen(false);
   }, []);
 
-  // Purge a saved custom profile. If the deleted profile is the active one,
-  // snap back to the default so the report doesn't render a missing profile.
+  // Purge a saved custom profile AND every trace of its cached intelligence
+  // (client localStorage brief + server in-memory cache). Without this the
+  // next re-seed of the same company would silently serve a stale brief
+  // from before the delete, which defeats the point of deleting.
+  // Order matters: capture the profile object before we mutate state so we
+  // can read the identity fields needed for the server invalidate call.
   const removeCustomProfile = useCallback((id: string) => {
+    const victim = customProfiles.find(p => p.id === id);
+
+    // 1. Client-side brief cache (keyed by profile id).
+    try { window.localStorage.removeItem("differentday.intelligenceBrief.v1." + id); } catch { /* ignore */ }
+
+    // 2. Server-side brief cache (keyed by company-identity tuple). Fire-and-
+    //    forget — invalidation failure shouldn't block the delete from the UI.
+    if (victim) {
+      const base = import.meta.env.BASE_URL;
+      void fetch(`${base}api/intelligence/brief/invalidate`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name:        victim.name,
+          url:         victim.url,
+          sector:      victim.sector,
+          hqCity:      victim.hqCity,
+          hqState:     victim.hqState,
+          revenueBand: victim.revenueBand,
+          ownership:   victim.ownership,
+          founded:     victim.founded,
+          tagline:     victim.tagline,
+        }),
+      }).catch(() => { /* ignore — best-effort */ });
+    }
+
+    // 3. Remove the profile itself from saved list and storage.
     setCustomProfiles(prev => {
       const next = prev.filter(p => p.id !== id);
       try { window.localStorage.setItem(STORAGE_KEY_CUSTOM, JSON.stringify(next)); } catch { /* ignore */ }
       return next;
     });
+
+    // 4. If the deleted profile was active, snap back to the default so the
+    //    report doesn't render against a missing profile.
     setActiveId(curr => {
       if (curr !== id) return curr;
       try { window.localStorage.setItem(STORAGE_KEY_ACTIVE, DEFAULT_PROFILE_ID); } catch { /* ignore */ }
       return DEFAULT_PROFILE_ID;
     });
-  }, []);
+  }, [customProfiles]);
 
   const resetToDefault = useCallback(() => {
     setActiveId(DEFAULT_PROFILE_ID);
