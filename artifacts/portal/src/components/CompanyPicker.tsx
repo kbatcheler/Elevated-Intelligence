@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Globe, Sparkles, RotateCcw, ChevronRight, Loader2, AlertCircle, ArrowLeft, Check, Trash2 } from "lucide-react";
 import { useCompany } from "../context/CompanyContext";
 import { DEFAULT_PROFILE_ID, type CompanyProfile } from "../data/companies";
@@ -27,6 +27,21 @@ export default function CompanyPicker() {
   const [stage, setStage] = useState<Stage>("input");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // Live elapsed-seconds counter for the in-flight LLM call. Real (not fake)
+  // — it ticks every 100ms against the wall clock so the user can see the
+  // round-trip is actually taking N seconds of network + model time.
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const startRef = useRef<number | null>(null);
+  useEffect(() => {
+    const busy = stage === "identifying" || stage === "seeding";
+    if (!busy) { startRef.current = null; setElapsedMs(0); return undefined; }
+    startRef.current = Date.now();
+    const id = window.setInterval(() => {
+      if (startRef.current !== null) setElapsedMs(Date.now() - startRef.current);
+    }, 100);
+    return () => window.clearInterval(id);
+  }, [stage]);
 
   if (!pickerOpen) return null;
 
@@ -203,6 +218,7 @@ export default function CompanyPicker() {
               error={error}
               stage={stage}
               onSubmit={identify}
+              elapsedMs={elapsedMs}
             />
           )}
         </div>
@@ -212,7 +228,7 @@ export default function CompanyPicker() {
 }
 
 function SeedInputView({
-  name, setName, url, setUrl, sector, setSector, error, stage, onSubmit,
+  name, setName, url, setUrl, sector, setSector, error, stage, onSubmit, elapsedMs,
 }: {
   name: string; setName: (v: string) => void;
   url: string; setUrl: (v: string) => void;
@@ -220,8 +236,10 @@ function SeedInputView({
   error: string | null;
   stage: Stage;
   onSubmit: () => void;
+  elapsedMs: number;
 }) {
   const busy = stage === "identifying" || stage === "seeding";
+  const elapsedLabel = `${(elapsedMs / 1000).toFixed(1)}s`;
   return (
     <div className="max-w-[560px] mx-auto pt-4">
       <div className="text-center mb-7">
@@ -269,9 +287,17 @@ function SeedInputView({
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-sm font-sans font-semibold text-[12px] uppercase tracking-wider disabled:opacity-50"
                 style={{ background: "var(--navy)", color: "var(--cream)", border: "1px solid var(--gold)" }}>
           {stage === "identifying" ? (
-            <><Loader2 size={14} strokeWidth={1.8} className="animate-spin" /> Identifying company…</>
+            <>
+              <Loader2 size={14} strokeWidth={1.8} className="animate-spin" />
+              <span>Identifying via Anthropic Claude…</span>
+              <span className="font-mono text-[11px] opacity-80 ml-1">{elapsedLabel}</span>
+            </>
           ) : stage === "seeding" ? (
-            <><Loader2 size={14} strokeWidth={1.8} className="animate-spin" /> Seeding all thirteen layers…</>
+            <>
+              <Loader2 size={14} strokeWidth={1.8} className="animate-spin" />
+              <span>Seeding 13 intelligence layers via Anthropic Claude…</span>
+              <span className="font-mono text-[11px] opacity-80 ml-1">{elapsedLabel}</span>
+            </>
           ) : (
             <><Sparkles size={14} strokeWidth={1.8} /> Identify &amp; seed</>
           )}

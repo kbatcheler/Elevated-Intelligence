@@ -38,10 +38,23 @@ export interface CompanyRecoveryLever {
   body: string;
 }
 
+// Provenance metadata stamped onto generated profiles by the seed endpoint.
+// Surfaced in the boot splash so the rep can prove the LLM call really happened.
+export interface CompanyProfileMeta {
+  model: string;
+  durationMs: number;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  bytesReturned: number;
+  vocabCount: number;
+  headlinesCount: number;
+}
+
 export interface CompanyProfile {
   id: string;
   name: string;
   url: string;
+  _meta?: CompanyProfileMeta;
   logoMonogram: string;        // 1-2 char monogram for the topbar avatar
   logoEmoji?: string;          // optional emoji glyph (sector cue)
   sector: string;

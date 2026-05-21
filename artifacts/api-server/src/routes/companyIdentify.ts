@@ -71,6 +71,7 @@ router.post("/companies/identify", identifyRateLimit, async (req, res) => {
     (sector ? `User-supplied sector hint: ${sector}\n` : "") +
     `\nIdentify the company at ${urlBare}, confirm it correlates with the typed name "${name}", and return the JSON now.`;
 
+  const tStart = Date.now();
   try {
     const apiRes = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/messages`, {
       method: "POST",
@@ -94,7 +95,11 @@ router.post("/companies/identify", identifyRateLimit, async (req, res) => {
       return;
     }
 
-    const payload = (await apiRes.json()) as { content?: Array<{ type: string; text?: string }> };
+    const payload = (await apiRes.json()) as {
+      content?: Array<{ type: string; text?: string }>;
+      usage?: { input_tokens?: number; output_tokens?: number };
+      model?: string;
+    };
     const text = payload.content?.find(b => b.type === "text")?.text ?? "";
     if (!text) {
       res.status(502).json({ error: "AI returned no content." });
@@ -150,7 +155,15 @@ router.post("/companies/identify", identifyRateLimit, async (req, res) => {
         ? verdictRaw
         : (candidates.length === 1 ? (candidates[0].confidence >= 0.85 ? "unambiguous" : "unknown") : "ambiguous");
 
-    res.json({ candidates, verdict });
+    // Real provenance — surfaces to the UI so users can verify the LLM call really happened.
+    const meta = {
+      model:        payload.model ?? "claude-sonnet-4-6",
+      durationMs:   Date.now() - tStart,
+      inputTokens:  payload.usage?.input_tokens  ?? null,
+      outputTokens: payload.usage?.output_tokens ?? null,
+      bytesReturned: Buffer.byteLength(text, "utf8"),
+    };
+    res.json({ candidates, verdict, _meta: meta });
   } catch (e) {
     req.log.error({ err: String(e) }, "Identify route failed");
     res.status(500).json({ error: "Company identification failed unexpectedly." });

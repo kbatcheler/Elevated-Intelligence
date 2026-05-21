@@ -53,7 +53,7 @@ interface CompanyContextValue {
   resetToDefault: () => void;
   resolve: (text: string) => string;
   narrative: NarrativeBundle;
-  bootSplash: { open: boolean; profileName: string } | null;
+  bootSplash: { open: boolean; profileName: string; meta?: CompanyProfile["_meta"] } | null;
   triggerBootSplash: (profileName: string) => void;
   pickerOpen: boolean;
   setPickerOpen: (open: boolean) => void;
@@ -77,7 +77,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     } catch { return DEFAULT_PROFILE_ID; }
   });
 
-  const [bootSplash, setBootSplash] = useState<{ open: boolean; profileName: string } | null>(null);
+  const [bootSplash, setBootSplash] = useState<{ open: boolean; profileName: string; meta?: CompanyProfile["_meta"] } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const allProfiles = useMemo(() => [...LIBRARY, ...customProfiles], [customProfiles]);
@@ -118,7 +118,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     setActiveId(id);
     try { window.localStorage.setItem(STORAGE_KEY_ACTIVE, id); } catch { /* ignore */ }
     if (id !== DEFAULT_PROFILE_ID) {
-      setBootSplash({ open: true, profileName: next.name });
+      setBootSplash({ open: true, profileName: next.name, meta: next._meta });
     }
     setPickerOpen(false);
   }, [customProfiles]);
@@ -131,7 +131,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     });
     setActiveId(p.id);
     try { window.localStorage.setItem(STORAGE_KEY_ACTIVE, p.id); } catch { /* ignore */ }
-    setBootSplash({ open: true, profileName: p.name });
+    // Pass the fresh _meta so the boot splash shows real timings/tokens just now.
+    setBootSplash({ open: true, profileName: p.name, meta: p._meta });
     setPickerOpen(false);
   }, []);
 
@@ -160,10 +161,11 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     setBootSplash({ open: true, profileName });
   }, []);
 
-  // Auto-dismiss the boot splash
+  // Auto-dismiss the boot splash. Splash linger is longer when we have real
+  // receipts to show (~4.6s) — short enough not to drag, long enough to read.
   useEffect(() => {
     if (!bootSplash?.open) return undefined;
-    const t = setTimeout(() => setBootSplash(null), 2800);
+    const t = setTimeout(() => setBootSplash(null), bootSplash.meta ? 4600 : 2800);
     return () => clearTimeout(t);
   }, [bootSplash]);
 

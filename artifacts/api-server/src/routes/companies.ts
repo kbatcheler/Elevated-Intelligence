@@ -155,6 +155,7 @@ router.post("/companies/seed", seedRateLimit, async (req, res) => {
       `\nCRITICAL: The profile you generate MUST describe the company whose homepage is ${urlBare}. The name "${name}" is a HINT; the URL is the truth. If the typed name resembles a more famous same-named company, IGNORE that and describe the actual entity at ${urlBare}. Set the "url" field to ${urlBare}.\n` +
       `\nReturn the JSON profile now.`;
 
+  const tStart = Date.now();
   try {
     const apiRes = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/messages`, {
       method: "POST",
@@ -178,7 +179,11 @@ router.post("/companies/seed", seedRateLimit, async (req, res) => {
       return;
     }
 
-    const payload = (await apiRes.json()) as { content?: Array<{ type: string; text?: string }> };
+    const payload = (await apiRes.json()) as {
+      content?: Array<{ type: string; text?: string }>;
+      usage?: { input_tokens?: number; output_tokens?: number };
+      model?: string;
+    };
     const textBlock = payload.content?.find(b => b.type === "text");
     const text = textBlock?.text ?? "";
     if (!text) {
@@ -206,7 +211,23 @@ router.post("/companies/seed", seedRateLimit, async (req, res) => {
       return;
     }
 
-    res.json(normalised.value);
+    // Real provenance stamped onto the saved profile — the UI surfaces these
+    // numbers so users can see the LLM call really happened and how big it was.
+    const vocabCount = Object.keys((normalised.value.vocab as Record<string, string>) ?? {}).length;
+    const headlinesCount = Object.keys((normalised.value.headlines as Record<string, unknown>) ?? {}).length;
+    const profileWithMeta = {
+      ...normalised.value,
+      _meta: {
+        model:         payload.model ?? "claude-sonnet-4-6",
+        durationMs:    Date.now() - tStart,
+        inputTokens:   payload.usage?.input_tokens  ?? null,
+        outputTokens:  payload.usage?.output_tokens ?? null,
+        bytesReturned: Buffer.byteLength(text, "utf8"),
+        vocabCount,
+        headlinesCount,
+      },
+    };
+    res.json(profileWithMeta);
   } catch (e) {
     req.log.error({ err: String(e) }, "Seed-company route failed");
     res.status(500).json({ error: "Seeding failed unexpectedly." });
