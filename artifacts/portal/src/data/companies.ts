@@ -456,6 +456,25 @@ export function makeResolver(profile: CompanyProfile): (text: string) => string 
   };
 }
 
+// deepResolveWith — recursively walks any value, applying a resolver to every
+// string it finds. Arrays and plain objects are cloned; primitives pass through.
+// Functions and class instances pass through unchanged (we never deep-swap those).
+export function deepResolveWith<T>(value: T, resolve: (s: string) => string): T {
+  if (value == null) return value;
+  if (typeof value === "string") return resolve(value) as unknown as T;
+  if (Array.isArray(value)) return value.map(v => deepResolveWith(v, resolve)) as unknown as T;
+  if (typeof value === "object") {
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Object.prototype && proto !== null) return value; // skip class instances
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = deepResolveWith(v, resolve);
+    }
+    return out as T;
+  }
+  return value;
+}
+
 // Preserve the casing of the matched span (Title, UPPER, lower).
 function matchCase(matched: string, replacement: string): string {
   if (matched === matched.toUpperCase() && matched.length > 1) return replacement.toUpperCase();

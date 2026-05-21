@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, X, Sparkles } from "lucide-react";
+import { useSwap } from "../context/CompanyContext";
 
 // Six-step welcome walkthrough. Editorial cards in the centre — no spotlight,
 // no DOM-anchoring fragility. Each step has a one-line synopsis and a longer
@@ -12,7 +13,7 @@ interface Step {
   hint?: string;
 }
 
-const STEPS: Step[] = [
+const STEPS_RAW: Step[] = [
   {
     eyebrow: "Welcome",
     title: "This is the framework, not the report.",
@@ -81,6 +82,7 @@ export default function Tour() {
     setOpen(false);
   };
 
+  const STEPS = useSwap(STEPS_RAW);
   const next = () => { if (i < STEPS.length - 1) setI(i + 1); else finish(); };
 
   if (!open) return null;

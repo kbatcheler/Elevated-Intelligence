@@ -1,5 +1,6 @@
 import { ChevronRight, Link as LinkIcon, AlertTriangle, TrendingDown } from "lucide-react";
-import { NARRATOR, type CrossInsight } from "../data/narrator";
+import { type CrossInsight } from "../data/narrator";
+import { useNarrative } from "../context/CompanyContext";
 
 const Icon = ({ kind }: { kind: CrossInsight["icon"] }) =>
   kind === "alert" ? <AlertTriangle size={14} strokeWidth={1.5} className="text-[var(--coral)]" />
@@ -13,6 +14,7 @@ export default function Narrator({
   layerKey: string;
   onNavigate: (key: string, field?: string) => void;
 }) {
+  const { NARRATOR } = useNarrative();
   const content = NARRATOR[layerKey];
   if (!content) return null;
   return (

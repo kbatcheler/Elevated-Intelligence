@@ -1,9 +1,11 @@
 import { Clock, RotateCcw } from "lucide-react";
 import { useApp } from "../context/AppContext";
-import { TIMELINES, type Timeline } from "../data/timetravel";
+import { TIMELINES as TIMELINES_RAW, type Timeline } from "../data/timetravel";
+import { useSwap } from "../context/CompanyContext";
 
 export default function TimeTravel({ layerKey }: { layerKey: string }) {
   const { timeOffsetByLayer, setTimeOffset } = useApp();
+  const TIMELINES = useSwap(TIMELINES_RAW);
   const timeline: Timeline | undefined = TIMELINES[layerKey];
   if (!timeline) return null;
   const offset = timeOffsetByLayer[layerKey] ?? 0;

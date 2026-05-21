@@ -1,5 +1,6 @@
 import { Radio, Clock, AlertTriangle, XCircle, FileText, ArrowRight } from "lucide-react";
-import { FEEDS, type DataFeed, type FeedStatus } from "../data/feeds";
+import { type DataFeed, type FeedStatus } from "../data/feeds";
+import { useNarrative } from "../context/CompanyContext";
 
 const STATUS_META: Record<FeedStatus, { label: string; color: string; bg: string; icon: any }> = {
   live:    { label: "LIVE",    color: "var(--teal)",  bg: "var(--teal-faint)",  icon: Radio },
@@ -35,6 +36,7 @@ function CompletenessBar({ value, status }: { value: number; status: FeedStatus 
 }
 
 export default function DataFeedsCard({ layerKey }: { layerKey: string }) {
+  const { FEEDS } = useNarrative();
   const feeds: DataFeed[] = FEEDS[layerKey] || [];
   const live = feeds.filter(f => f.status === "live").length;
   const issues = feeds.filter(f => f.status !== "live" && f.status !== "manual");

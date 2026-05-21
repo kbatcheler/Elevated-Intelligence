@@ -5,13 +5,12 @@ import {
   Banknote, Receipt, UserPlus, Network, Newspaper, CheckSquare, Lock,
   Sliders, Award, FileText, Sparkles,
 } from "lucide-react";
-import { LAYERS } from "./data/layers";
+import { useNarrative } from "./context/CompanyContext";
 import Layer from "./components/Layer";
 import Narrator from "./narrator/Narrator";
 import Architecture from "./architecture/Architecture";
 import SystemHeartbeat from "./components/SystemHeartbeat";
 import EngagementPipeline from "./pipeline/EngagementPipeline";
-import { ANOMALIES } from "./data/signals";
 import SignalTicker from "./components/SignalTicker";
 import AnomalyInbox from "./components/AnomalyInbox";
 import EvidencePanel from "./components/EvidencePanel";
@@ -27,6 +26,7 @@ import CompanyPicker from "./components/CompanyPicker";
 import CompanyBootSplash from "./components/CompanyBootSplash";
 import { useApp } from "./context/AppContext";
 import { useCompany } from "./context/CompanyContext";
+import { MERCER } from "./data/companies";
 import { DEFAULT_PROFILE_ID } from "./data/companies";
 
 type NavItem = { key: string; label: string; group: string; icon: any; status: "good" | "warn" | "bad" };
@@ -67,9 +67,10 @@ export default function App() {
     setActiveLayer, openInbox, openBrief, briefOpen, committed,
   } = useApp();
   const { profile, setPickerOpen, resetToDefault } = useCompany();
+  const { LAYERS, ANOMALIES } = useNarrative();
   const isCustomProfile = profile.id !== DEFAULT_PROFILE_ID;
 
-  const layer = useMemo(() => LAYERS.find(l => l.key === active), [active]);
+  const layer = useMemo(() => LAYERS.find(l => l.key === active), [active, LAYERS]);
 
   useEffect(() => {
     setActiveLayer(active);
@@ -146,7 +147,7 @@ export default function App() {
                 {isCustomProfile && (
                   <button onClick={() => { setClientOpen(false); resetToDefault(); }}
                           className="w-full text-left px-4 py-2.5 flex items-center justify-between hover:bg-[var(--cream-light)]">
-                    <div className="font-sans text-[12px] text-[var(--slate)] italic">Reset to Mercer Group (default demo)</div>
+                    <div className="font-sans text-[12px] text-[var(--slate)] italic">Reset to {MERCER.name} (default demo)</div>
                   </button>
                 )}
               </div>
@@ -231,7 +232,7 @@ export default function App() {
             <div className="eyebrow text-[var(--slate-light)] mb-1">Period</div>
             <div className="font-sans text-[12px] text-[var(--slate)]">1 Jul – 30 Sep 2026</div>
             <div className="eyebrow text-[var(--slate-light)] mt-3 mb-1">Sources</div>
-            <div className="font-sans text-[12px] text-[var(--slate)]">14 systems · 312 feeds</div>
+            <div className="font-sans text-[12px] text-[var(--slate)]">{profile.sourceSystems}</div>
             <button onClick={openInbox}
                     className="mt-4 w-full flex items-center justify-between px-3 py-2 rounded-sm border border-[var(--cream-dark)] hover:border-[var(--coral)] hover:bg-[var(--coral-faint)] transition-colors group">
               <span className="eyebrow text-[var(--slate-light)] group-hover:text-[var(--coral)]">Anomaly inbox</span>

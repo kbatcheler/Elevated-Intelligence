@@ -1,27 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Radio, Clock, XCircle, Zap, AlertTriangle } from "lucide-react";
-import { FEEDS, ACTIVITY_STREAM } from "../data/feeds";
-import { LAYERS } from "../data/layers";
-import { ANOMALIES } from "../data/signals";
 import { useApp } from "../context/AppContext";
-
-function aggregate() {
-  let live = 0, stale = 0, partial = 0, missing = 0, manual = 0;
-  Object.values(FEEDS).forEach(arr => {
-    arr.forEach(f => {
-      if (f.status === "live") live++;
-      else if (f.status === "stale") stale++;
-      else if (f.status === "partial") partial++;
-      else if (f.status === "missing") missing++;
-      else if (f.status === "manual") manual++;
-    });
-  });
-  const totalAnomalies = LAYERS.reduce((s, l) => s + l.causes.length + l.gaps.length, 0);
-  return { live, stale, partial, missing, manual, anomalies: totalAnomalies, total: live + stale + partial + missing + manual };
-}
+import { useNarrative } from "../context/CompanyContext";
 
 export default function SystemHeartbeat({ onNavigate }: { onNavigate: (key: string) => void }) {
-  const stats = aggregate();
+  const { FEEDS, ACTIVITY_STREAM, LAYERS, ANOMALIES } = useNarrative();
+  const stats = useMemo(() => {
+    let live = 0, stale = 0, partial = 0, missing = 0, manual = 0;
+    Object.values(FEEDS).forEach(arr => {
+      arr.forEach(f => {
+        if (f.status === "live") live++;
+        else if (f.status === "stale") stale++;
+        else if (f.status === "partial") partial++;
+        else if (f.status === "missing") missing++;
+        else if (f.status === "manual") manual++;
+      });
+    });
+    const totalAnomalies = LAYERS.reduce((s, l) => s + l.causes.length + l.gaps.length, 0);
+    return { live, stale, partial, missing, manual, anomalies: totalAnomalies, total: live + stale + partial + missing + manual };
+  }, [FEEDS, LAYERS]);
   const { openInbox } = useApp();
   const [idx, setIdx] = useState(0);
   const [tick, setTick] = useState(0);
@@ -29,13 +26,13 @@ export default function SystemHeartbeat({ onNavigate }: { onNavigate: (key: stri
   useEffect(() => {
     const id = setInterval(() => setIdx(i => (i + 1) % ACTIVITY_STREAM.length), 3200);
     return () => clearInterval(id);
-  }, []);
+  }, [ACTIVITY_STREAM.length]);
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(id);
   }, []);
 
-  const ev = ACTIVITY_STREAM[idx];
+  const ev = ACTIVITY_STREAM[idx % ACTIVITY_STREAM.length];
   const evColor =
     ev.tone === "alert" ? "var(--coral)" :
     ev.tone === "warn"  ? "var(--amber)" :

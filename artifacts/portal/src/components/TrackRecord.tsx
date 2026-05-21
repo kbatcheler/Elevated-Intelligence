@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Award, TrendingUp, TrendingDown, Clock, MinusCircle } from "lucide-react";
-import { TRACK_RECORD, summary, type TrackRecordEntry, type OutcomeStatus } from "../data/trackRecord";
-import { LAYERS } from "../data/layers";
+import { summary, type TrackRecordEntry, type OutcomeStatus } from "../data/trackRecord";
+import { useNarrative } from "../context/CompanyContext";
 
 const STATUS_META: Record<OutcomeStatus, { label: string; color: string; icon: any }> = {
   beat:        { label: "Beat predicted",  color: "var(--teal)",  icon: TrendingUp },
@@ -12,9 +12,10 @@ const STATUS_META: Record<OutcomeStatus, { label: string; color: string; icon: a
 };
 
 export default function TrackRecord({ onNavigate }: { onNavigate: (key: string) => void }) {
+  const { TRACK_RECORD, LAYERS } = useNarrative();
   const [filter, setFilter] = useState<"all" | OutcomeStatus>("all");
   const s = useMemo(() => summary(), []);
-  const layerLabel = useMemo(() => Object.fromEntries(LAYERS.map(l => [l.key, l.title])), []);
+  const layerLabel = useMemo(() => Object.fromEntries(LAYERS.map(l => [l.key, l.title])), [LAYERS]);
 
   const visible = TRACK_RECORD.filter(t => filter === "all" || t.status === filter);
 

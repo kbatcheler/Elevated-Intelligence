@@ -1,6 +1,7 @@
 import { X, AlertTriangle, ArrowRight } from "lucide-react";
 import { useApp } from "../context/AppContext";
-import { ANOMALIES, type AnomalySeverity } from "../data/signals";
+import { useNarrative } from "../context/CompanyContext";
+import { type AnomalySeverity } from "../data/signals";
 
 const sevColor = (s: AnomalySeverity) =>
   s === "critical" ? "var(--coral)" : s === "high" ? "var(--amber)" : s === "medium" ? "var(--navy)" : "var(--slate-light)";
@@ -8,6 +9,7 @@ const sevBg = (s: AnomalySeverity) =>
   s === "critical" ? "var(--coral-faint)" : s === "high" ? "var(--amber-faint)" : s === "medium" ? "#E8ECF4" : "var(--cream-dark)";
 
 export default function AnomalyInbox({ onNavigate }: { onNavigate: (key: string) => void }) {
+  const { ANOMALIES } = useNarrative();
   const { inboxOpen, closeInbox } = useApp();
   if (!inboxOpen) return null;
 

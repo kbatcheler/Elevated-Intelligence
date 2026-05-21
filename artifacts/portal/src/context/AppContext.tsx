@@ -2,7 +2,8 @@ import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
   type ReactNode,
 } from "react";
-import { SIGNAL_POOL, EVIDENCE, type IncomingSignal, type EvidenceSpec } from "../data/signals";
+import { type IncomingSignal, type EvidenceSpec } from "../data/signals";
+import { useNarrative, useCompany } from "./CompanyContext";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -72,8 +73,11 @@ export function useApp() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const { SIGNAL_POOL, EVIDENCE } = useNarrative();
+  const { profile } = useCompany();
+
   const [tick, setTick] = useState(0);
-  const [signals, setSignals] = useState<IncomingSignal[]>([SIGNAL_POOL[0]]);
+  const [signals, setSignals] = useState<IncomingSignal[]>(() => [SIGNAL_POOL[0]]);
   const [pulse, setPulse] = useState<Pulse | null>(null);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [briefOpen, setBriefOpen] = useState(false);
@@ -85,6 +89,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const activeLayerRef = useRef(activeLayer);
   activeLayerRef.current = activeLayer;
   const signalIdxRef = useRef(0);
+  const signalPoolRef = useRef(SIGNAL_POOL);
+  signalPoolRef.current = SIGNAL_POOL;
+  const evidenceRef = useRef(EVIDENCE);
+  evidenceRef.current = EVIDENCE;
+
+  // Reset the signal stream when the active company profile changes — the
+  // ticker should immediately re-skin to the new brand's signals rather than
+  // continue scrolling the previous tenant's lines.
+  useEffect(() => {
+    signalIdxRef.current = 0;
+    setSignals([SIGNAL_POOL[0]]);
+    setPulse(null);
+    setInboxOpen(false);
+    setBriefOpen(false);
+    setEvidence(null);
+    setCommitted([]);
+    setTimeOffsetByLayer({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.id]);
 
   // 1s heartbeat
   useEffect(() => {
@@ -93,14 +116,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Signal stream — every ~5s push a new signal; ~30% of the time pulse a
-  // metric on the currently-viewed layer.
+  // metric on the currently-viewed layer. Reads pool from a ref so a profile
+  // swap during the cycle picks up the freshly-skinned pool on the next tick.
   useEffect(() => {
     const id = setInterval(() => {
-      signalIdxRef.current = (signalIdxRef.current + 1) % SIGNAL_POOL.length;
-      const next = SIGNAL_POOL[signalIdxRef.current];
+      const pool = signalPoolRef.current;
+      signalIdxRef.current = (signalIdxRef.current + 1) % pool.length;
+      const next = pool[signalIdxRef.current];
       setSignals(s => [next, ...s].slice(0, 20));
 
-      // 35% chance to pulse a metric IF it belongs to the currently active layer
       if (next.layer === activeLayerRef.current && next.metric && Math.random() < 0.55) {
         setPulse({ layer: next.layer, metric: next.metric, at: Date.now() });
       }
@@ -121,7 +145,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const closeBrief = useCallback(() => setBriefOpen(false), []);
 
   const openEvidence = useCallback((layer: string, metric: string) => {
-    const spec = EVIDENCE[`${layer}/${metric}`];
+    const spec = evidenceRef.current[`${layer}/${metric}`];
     if (spec) setEvidence(spec);
   }, []);
   const closeEvidence = useCallback(() => setEvidence(null), []);

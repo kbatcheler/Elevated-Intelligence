@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Eye, Search, ShieldAlert, BookOpen, Gauge, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
-import { ARCH_COMPONENTS, SAMPLE_QUESTION, type ArchComponent } from "../data/architecture";
+import { type ArchComponent } from "../data/architecture";
+import { useNarrative } from "../context/CompanyContext";
 
 const IconFor = ({ kind, size = 20 }: { kind: ArchComponent["icon"]; size?: number }) => {
   const props = { size, strokeWidth: 1.5 };
@@ -13,8 +14,8 @@ const IconFor = ({ kind, size = 20 }: { kind: ArchComponent["icon"]; size?: numb
   }
 };
 
-function FlowDiagram({ activeIdx }: { activeIdx: number }) {
-  const NODES = ARCH_COMPONENTS;
+function FlowDiagram({ activeIdx, nodes }: { activeIdx: number; nodes: ArchComponent[] }) {
+  const NODES = nodes;
   const W = 1080, H = 200, NODE_W = 180, NODE_H = 90, GAP = (W - NODES.length * NODE_W) / (NODES.length - 1);
   const nodeX = (i: number) => i * (NODE_W + GAP);
   const cy = H / 2;
@@ -78,6 +79,7 @@ function FlowDiagram({ activeIdx }: { activeIdx: number }) {
 }
 
 export default function Architecture() {
+  const { ARCH_COMPONENTS, SAMPLE_QUESTION } = useNarrative();
   const [activeIdx, setActiveIdx] = useState(0);
   const [expanded, setExpanded] = useState<Record<string, boolean>>(
     Object.fromEntries(ARCH_COMPONENTS.map(c => [c.key, true]))
@@ -86,7 +88,7 @@ export default function Architecture() {
   useEffect(() => {
     const id = setInterval(() => setActiveIdx(i => (i + 1) % ARCH_COMPONENTS.length), 1600);
     return () => clearInterval(id);
-  }, []);
+  }, [ARCH_COMPONENTS.length]);
 
   const toggle = (k: string) => setExpanded(s => ({ ...s, [k]: !s[k] }));
   const totalTokens = ARCH_COMPONENTS.reduce((s, c) => s + c.tokens, 0);
@@ -119,7 +121,7 @@ export default function Architecture() {
             {totalTokens.toLocaleString()} tokens · {totalMs}ms · {ARCH_COMPONENTS.length} stages
           </div>
         </div>
-        <FlowDiagram activeIdx={activeIdx} />
+        <FlowDiagram activeIdx={activeIdx} nodes={ARCH_COMPONENTS} />
       </div>
 
       {/* Sample query panel */}

@@ -1,5 +1,5 @@
 import { Users } from "lucide-react";
-import { PEERS } from "../data/peers";
+import { useCompany, useNarrative } from "../context/CompanyContext";
 
 const toneColor = (t: "ahead" | "median" | "behind") =>
   t === "ahead" ? "var(--teal)" : t === "median" ? "var(--amber)" : "var(--coral)";
@@ -8,6 +8,8 @@ const toneLabel = (t: "ahead" | "median" | "behind") =>
   t === "ahead" ? "Ahead of median" : t === "median" ? "On median" : "Behind median";
 
 export default function PeerBenchmark({ layerKey }: { layerKey: string }) {
+  const { PEERS } = useNarrative();
+  const { profile } = useCompany();
   const block = PEERS[layerKey];
   if (!block) return null;
 
@@ -32,7 +34,7 @@ export default function PeerBenchmark({ layerKey }: { layerKey: string }) {
             </div>
             {/* Values */}
             <div className="col-span-3 grid grid-cols-3 gap-2 text-center">
-              <ValueCell label="Mercer"  value={m.mercer}  emphasis tone={m.tone} />
+              <ValueCell label={profile.name}  value={m.mercer}  emphasis tone={m.tone} />
               <ValueCell label="Median"  value={m.median} />
               <ValueCell label="Best"    value={m.best}   sublabel={m.bestLabel} />
             </div>
@@ -43,7 +45,7 @@ export default function PeerBenchmark({ layerKey }: { layerKey: string }) {
                 <div className="absolute top-[-3px] h-2 w-px" style={{ left: "50%", background: "var(--slate-light)", height: 8 }} />
                 {/* Best dot */}
                 <div className="absolute top-[-3px] right-0 h-2 w-2 rounded-full" style={{ background: "var(--teal)" }} />
-                {/* Mercer marker */}
+                {/* Active company marker */}
                 <div className="absolute top-[-5px] h-3 w-3 rounded-full"
                      style={{ left: `calc(${m.position}% - 6px)`, background: toneColor(m.tone), border: "2px solid var(--paper)" }} />
               </div>

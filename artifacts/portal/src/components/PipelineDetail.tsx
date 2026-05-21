@@ -1,5 +1,6 @@
 import { Database, ChevronRight } from "lucide-react";
-import { PIPELINE_DEEP, type DeepTable, type DeepRow } from "../data/pipelineDeep";
+import { type DeepTable, type DeepRow } from "../data/pipelineDeep";
+import { useNarrative } from "../context/CompanyContext";
 
 const toneColor = (t?: DeepRow["tone"]) =>
   t === "bad"  ? "var(--coral)"
@@ -8,6 +9,7 @@ const toneColor = (t?: DeepRow["tone"]) =>
                  : "var(--slate)";
 
 export default function PipelineDetail({ layerKey }: { layerKey: string }) {
+  const { PIPELINE_DEEP } = useNarrative();
   const deep = PIPELINE_DEEP[layerKey];
   if (!deep) return null;
 

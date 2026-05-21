@@ -1,6 +1,7 @@
 import { Clock, CalendarDays, CalendarRange, ArrowRight, User, Zap } from "lucide-react";
-import { NEXT_STEPS, type NextStep } from "../data/nextSteps";
+import { type NextStep } from "../data/nextSteps";
 import { useApp } from "../context/AppContext";
+import { useNarrative } from "../context/CompanyContext";
 
 // Prescriptive playbook — every layer answers "what do I do next?" at three
 // time horizons. Each step has an owner, an effort estimate, and a named
@@ -13,6 +14,7 @@ const HORIZONS = [
 ] as const;
 
 export default function NextSteps({ layerKey, layerTitle }: { layerKey: string; layerTitle: string }) {
+  const { NEXT_STEPS } = useNarrative();
   const block = NEXT_STEPS[layerKey];
   if (!block) return null;
   const { committed, commitAction } = useApp();

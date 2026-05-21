@@ -3,12 +3,13 @@ import {
   ArrowUp, ArrowDown, Heart, MessageCircle, Share2, Eye,
   Instagram, Facebook, Youtube, Search,
 } from "lucide-react";
+import { useSwap } from "../../context/CompanyContext";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Brand & social — creative campaign grid + media mentions
 // ─────────────────────────────────────────────────────────────────────────────
 
-const CAMPAIGNS = [
+const CAMPAIGNS_RAW = [
   { title: "Q3 Garden Refresh",       channel: "Meta + IG",   bg: "linear-gradient(135deg, #1D9E75 0%, #0F5740 100%)", sentiment: 78, mentions: "12.4k", reach: "2.1M", spend: "$84k", icon: Instagram },
   { title: "DIY Weekend Project",     channel: "YouTube",     bg: "linear-gradient(135deg, #C8A24A 0%, #8A6F22 100%)", sentiment: 71, mentions: "8.7k",  reach: "1.4M", spend: "$62k", icon: Youtube },
   { title: "Trade Pro Tour 2026",     channel: "Earned PR",   bg: "linear-gradient(135deg, #1B2A4E 0%, #0F1A33 100%)", sentiment: 84, mentions: "3.2k",  reach: "640k", spend: "$48k", icon: Search },
@@ -17,7 +18,7 @@ const CAMPAIGNS = [
   { title: "Outdoor Living Lookbook", channel: "IG Stories",  bg: "linear-gradient(135deg, #BA7517 0%, #6B4209 100%)", sentiment: 69, mentions: "9.6k",  reach: "1.8M", spend: "$54k", icon: Instagram },
 ];
 
-const MEDIA = [
+const MEDIA_RAW = [
   { source: "DFW Morning News",  outlet: "Local TV",  headline: "Mercer storefronts navigate Texas supply crunch", tone: "neg" as const, reach: "640k" },
   { source: "Trade Pro Weekly",  outlet: "B2B Trade", headline: "Contractor confidence in Mercer holds despite delays", tone: "neu" as const, reach: "84k" },
   { source: "Southern Living",   outlet: "Lifestyle", headline: "Five backyard transformations using Mercer Garden", tone: "pos" as const, reach: "2.1M" },
@@ -26,6 +27,8 @@ const MEDIA = [
 ];
 
 export function BrandSocialExtras() {
+  const CAMPAIGNS = useSwap(CAMPAIGNS_RAW);
+  const MEDIA = useSwap(MEDIA_RAW);
   return (
     <div className="grid grid-cols-3 gap-6">
       <div className="col-span-2 card card-accent-coral">
@@ -98,13 +101,13 @@ export function BrandSocialExtras() {
 // Supply chain — DC heat tiles + supplier OTD scorecard
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DCS = [
+const DCS_RAW = [
   { name: "Dallas DC",  code: "DAL", role: "Primary",   throughput: 78, oos: 28, labour: -11, lanes: 14, status: "bad" as const },
   { name: "Phoenix DC", code: "PHX", role: "Secondary", throughput: 84, oos: 11, labour: -4,  lanes: 9,  status: "warn" as const },
   { name: "Atlanta DC", code: "ATL", role: "Tertiary",  throughput: 96, oos: 2,  labour: +1,  lanes: 7,  status: "good" as const },
 ];
 
-const SUPPLIERS = [
+const SUPPLIERS_RAW = [
   { code: "A", name: "Halverson Industries",   tier: "Tier-1", otd: 94, qty: "$8.2M", trend: +2,  status: "good" as const },
   { code: "B", name: "Sentinel Manufacturing", tier: "Tier-1", otd: 71, qty: "$6.4M", trend: -14, status: "bad" as const },
   { code: "C", name: "Bridgepoint Goods",      tier: "Tier-2", otd: 88, qty: "$3.1M", trend: -2,  status: "warn" as const },
@@ -119,6 +122,8 @@ const statusFg = (s: "good" | "warn" | "bad") =>
   s === "good" ? "var(--teal)" : s === "warn" ? "var(--amber)" : "var(--coral)";
 
 export function SupplyChainExtras() {
+  const DCS = useSwap(DCS_RAW);
+  const SUPPLIERS = useSwap(SUPPLIERS_RAW);
   return (
     <div className="grid grid-cols-3 gap-6">
       <div className="col-span-2 card card-accent-amber">
@@ -207,7 +212,7 @@ export function SupplyChainExtras() {
 // Customer intelligence — top trade accounts table with risk badges
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ACCOUNTS = [
+const ACCOUNTS_RAW = [
   { name: "Kessler Construction Group",  region: "TX",  initials: "KC", color: "#1B2A4E", ltv: "$487k", ytd: "$142k", trend: -18, risk: "high"   as const, lastOrder: "11d ago",  sla: 78 },
   { name: "Granger Contracting",         region: "AZ",  initials: "GC", color: "#534AB7", ltv: "$412k", ytd: "$118k", trend: -9,  risk: "med"    as const, lastOrder: "4d ago",   sla: 88 },
   { name: "Boone & Sons Trades",         region: "GA",  initials: "BS", color: "#1D9E75", ltv: "$378k", ytd: "$112k", trend: +4,  risk: "low"    as const, lastOrder: "2d ago",   sla: 96 },
@@ -216,7 +221,7 @@ const ACCOUNTS = [
   { name: "Magnolia Trade Co-op",        region: "FL",  initials: "MT", color: "#BA7517", ltv: "$284k", ytd: "$92k",  trend: +11, risk: "low"    as const, lastOrder: "1d ago",   sla: 98 },
 ];
 
-const RISK = {
+const RISK_RAW = {
   crit: { label: "CRITICAL", bg: "var(--coral-faint)",  fg: "var(--coral)" },
   high: { label: "HIGH",     bg: "var(--coral-faint)",  fg: "var(--coral)" },
   med:  { label: "MED",      bg: "var(--amber-faint)",  fg: "var(--amber)" },
@@ -224,6 +229,8 @@ const RISK = {
 };
 
 export function CustomerExtras() {
+  const ACCOUNTS = useSwap(ACCOUNTS_RAW);
+  const RISK = useSwap(RISK_RAW);
   return (
     <div className="card card-accent-coral">
       <div className="flex items-center justify-between mb-4">
@@ -282,7 +289,7 @@ export function CustomerExtras() {
 // Finance — cash bridge waterfall + departmental spend tiles
 // ─────────────────────────────────────────────────────────────────────────────
 
-const CASH_BRIDGE = [
+const CASH_BRIDGE_RAW = [
   { label: "Opening cash",     value: 38.4, kind: "base" as const },
   { label: "Operating inflow", value: 84.2, kind: "in"   as const },
   { label: "Working cap freed", value: 11.6, kind: "in"  as const },
@@ -293,7 +300,7 @@ const CASH_BRIDGE = [
   { label: "Closing cash",     value: 42.2, kind: "base" as const },
 ];
 
-const DEPT_SPEND = [
+const DEPT_SPEND_RAW = [
   { name: "Operations",        plan: 28.4, actual: 29.8, status: "warn" as const },
   { name: "Technology + Data", plan: 18.2, actual: 21.4, status: "bad"  as const },
   { name: "Marketing",         plan: 12.6, actual: 11.8, status: "good" as const },
@@ -303,6 +310,8 @@ const DEPT_SPEND = [
 ];
 
 export function FinanceExtras() {
+  const CASH_BRIDGE = useSwap(CASH_BRIDGE_RAW);
+  const DEPT_SPEND = useSwap(DEPT_SPEND_RAW);
   // Compute running totals for waterfall layout
   let running = 0;
   const enriched = CASH_BRIDGE.map(b => {
@@ -392,14 +401,14 @@ export function FinanceExtras() {
 // Receivables — AR aging buckets + top debtors
 // ─────────────────────────────────────────────────────────────────────────────
 
-const AGING = [
+const AGING_RAW = [
   { bucket: "Current",  range: "0–30 days",  value: 18.4, count: 412, status: "good" as const },
   { bucket: "Watch",    range: "31–60 days", value: 11.2, count: 184, status: "warn" as const },
   { bucket: "Overdue",  range: "61–90 days", value: 6.8,  count: 87,  status: "bad"  as const },
   { bucket: "Critical", range: "90+ days",   value: 4.1,  count: 41,  status: "bad"  as const },
 ];
 
-const DEBTORS = [
+const DEBTORS_RAW = [
   { name: "Heritage Pro Supply",       outstanding: "$842k", days: 96, status: "bad"  as const, action: "Final demand" },
   { name: "Mountain West Trades LLC",  outstanding: "$614k", days: 78, status: "bad"  as const, action: "Escalate" },
   { name: "Kessler Construction Group", outstanding: "$487k", days: 62, status: "warn" as const, action: "Call sequence" },
@@ -409,6 +418,8 @@ const DEBTORS = [
 ];
 
 export function ReceivablesExtras() {
+  const AGING = useSwap(AGING_RAW);
+  const DEBTORS = useSwap(DEBTORS_RAW);
   const total = AGING.reduce((s, a) => s + a.value, 0);
   return (
     <div className="space-y-6">
@@ -482,7 +493,7 @@ export function ReceivablesExtras() {
 // Talent & HR — recruitment funnel + open roles grid + attrition by team
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FUNNEL = [
+const FUNNEL_RAW = [
   { stage: "Applied",      count: 1842, conv: 100 },
   { stage: "Screen",       count: 624,  conv: 34 },
   { stage: "First round",  count: 218,  conv: 12 },
@@ -491,7 +502,7 @@ const FUNNEL = [
   { stage: "Joined",       count: 24,   conv: 1.3 },
 ];
 
-const OPEN_ROLES = [
+const OPEN_ROLES_RAW = [
   { title: "Sr Data Engineer",       team: "Technology",  region: "Dallas, TX", days: 84, prio: "crit" as const, status: "Final round" },
   { title: "DC Operations Lead",     team: "Operations",  region: "Dallas, TX", days: 62, prio: "crit" as const, status: "Sourcing" },
   { title: "Demand Planner",         team: "Planning",    region: "Remote",     days: 51, prio: "high" as const, status: "First round" },
@@ -500,7 +511,7 @@ const OPEN_ROLES = [
   { title: "Brand Manager · DIY",    team: "Marketing",   region: "Dallas, TX", days: 33, prio: "med"  as const, status: "First round" },
 ];
 
-const ATTRITION = [
+const ATTRITION_RAW = [
   { team: "DC Operations",    rate: 24, target: 12, headcount: 412 },
   { team: "Customer Service", rate: 21, target: 12, headcount: 184 },
   { team: "Technology",       rate: 17, target: 10, headcount: 96  },
@@ -516,6 +527,9 @@ const PRIO = {
 };
 
 export function TalentHRExtras() {
+  const FUNNEL = useSwap(FUNNEL_RAW);
+  const OPEN_ROLES = useSwap(OPEN_ROLES_RAW);
+  const ATTRITION = useSwap(ATTRITION_RAW);
   const maxFunnel = FUNNEL[0].count;
   return (
     <div className="space-y-6">

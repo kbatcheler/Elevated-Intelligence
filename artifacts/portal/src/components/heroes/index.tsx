@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import Sparkline, { makeSeries } from "../Sparkline";
 import AnimatedNumber from "../AnimatedNumber";
+import { useCompany, useSwap } from "../../context/CompanyContext";
 
 type HeroProps = { layer: LayerData };
 
@@ -94,7 +95,7 @@ export function BusinessPerformanceHero({ layer }: HeroProps) {
 // 2. Demand intelligence — Variance hero + channel breakdown ribbon
 // ─────────────────────────────────────────────────────────────────────────────
 
-const CHANNELS = [
+const CHANNELS_RAW = [
   { name: "DIY",            delta: -23, val: "-$1.4M" },
   { name: "Home improvement", delta: -18, val: "-$0.9M" },
   { name: "Garden + outdoor", delta: +4,  val: "+$0.2M" },
@@ -104,6 +105,7 @@ const CHANNELS = [
 ];
 
 export function DemandIntelligenceHero({ layer }: HeroProps) {
+  const CHANNELS = useSwap(CHANNELS_RAW);
   const max = Math.max(...CHANNELS.map(c => Math.abs(c.delta)));
   return (
     <div className="card card-accent-coral !p-0 overflow-hidden">
@@ -172,7 +174,7 @@ export function DemandIntelligenceHero({ layer }: HeroProps) {
 // 3. Competitive intelligence — Head-to-head scoreboard
 // ─────────────────────────────────────────────────────────────────────────────
 
-const RIVALS = [
+const RIVALS_RAW = [
   { name: "Home Depot",  share: 38.7, move: +1.4, depth: 18, color: "#F96302" },
   { name: "Lowe's",      share: 21.4, move: +0.6, depth: 14, color: "#004990" },
   { name: "Tractor Supply", share: 8.2, move: +0.3, depth: 9,  color: "#CC0000" },
@@ -181,6 +183,7 @@ const RIVALS = [
 ];
 
 export function CompetitiveIntelligenceHero({ layer: _layer }: HeroProps) {
+  const RIVALS = useSwap(RIVALS_RAW);
   return (
     <div className="space-y-4">
       <div className="card card-accent-coral !p-0 overflow-hidden">
@@ -281,7 +284,7 @@ export function CompetitiveIntelligenceHero({ layer: _layer }: HeroProps) {
 // 4. Pricing & margin — SKU price ladder vs competitor markers
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SKUS = [
+const SKUS_RAW = [
   { name: "10\" cordless drill",       mercer: 119, hd: 99,  lowes: 109, walmart: 89,  margin: 18, tone: "bad" as const  },
   { name: "Garden soil 40lb bag",      mercer: 8.4, hd: 7.8, lowes: 8.2, walmart: 6.9, margin: 24, tone: "warn" as const },
   { name: "Pressure washer 2000psi",   mercer: 249, hd: 229, lowes: 239, walmart: 219, margin: 16, tone: "bad" as const  },
@@ -290,19 +293,24 @@ const SKUS = [
 ];
 
 export function PricingMarginHero({ layer: _layer }: HeroProps) {
+  const SKUS = useSwap(SKUS_RAW);
+  const { profile, resolve } = useCompany();
   const min = Math.min(...SKUS.flatMap(s => [s.mercer, s.hd, s.lowes, s.walmart]));
   const max = Math.max(...SKUS.flatMap(s => [s.mercer, s.hd, s.lowes, s.walmart]));
   const range = max - min;
   const pos = (v: number) => ((v - min) / range) * 100;
+  const aboveCount = SKUS.filter(s => s.mercer > s.hd).length;
+  const hdLabel = resolve("Home Depot");
+  const lowesLabel = resolve("Lowe's");
 
   return (
     <div className="grid grid-cols-12 gap-4">
       <div className="col-span-8 card card-accent-coral">
         <div className="flex items-center justify-between mb-1">
           <div className="font-sans font-semibold text-[15px] text-[var(--navy)]">Price ladder · top 5 SKUs</div>
-          <span className="pill pill-coral">Mercer above HD on 4 of 5</span>
+          <span className="pill pill-coral">{profile.name} above {hdLabel} on {aboveCount} of {SKUS.length}</span>
         </div>
-        <div className="font-sans italic text-[11px] text-[var(--slate-light)] mb-4">Mercer ▲ · Home Depot ● · Lowe's ◆ · Walmart ✕ · normalised across categories</div>
+        <div className="font-sans italic text-[11px] text-[var(--slate-light)] mb-4">{profile.name} ▲ · {hdLabel} ● · {lowesLabel} ◆ · Walmart ✕ · normalised across categories</div>
         <ul className="space-y-3">
           {SKUS.map(s => (
             <li key={s.name} className="grid grid-cols-12 gap-3 items-center">
@@ -319,7 +327,7 @@ export function PricingMarginHero({ layer: _layer }: HeroProps) {
               </div>
               <div className="col-span-2 text-right">
                 <div className="tag inline-block" style={{ background: toneBg(s.tone), color: toneFg(s.tone) }}>
-                  {s.mercer > s.hd ? `+$${(s.mercer - s.hd).toFixed(s.mercer < 20 ? 1 : 0)} vs HD` : `−$${(s.hd - s.mercer).toFixed(0)} vs HD`}
+                  {s.mercer > s.hd ? `+$${(s.mercer - s.hd).toFixed(s.mercer < 20 ? 1 : 0)} vs peer` : `−$${(s.hd - s.mercer).toFixed(0)} vs peer`}
                 </div>
               </div>
             </li>
@@ -365,7 +373,7 @@ function Marker({ pos, symbol, color, label, big }: { pos: number; symbol: strin
 // 5. Sales pipeline — Horizontal funnel hero
 // ─────────────────────────────────────────────────────────────────────────────
 
-const STAGES = [
+const STAGES_RAW = [
   { stage: "Lead",        deals: 1842, value: 124.0, conv: 100 },
   { stage: "Qualified",   deals: 624,  value: 84.2,  conv: 34 },
   { stage: "Discovery",   deals: 318,  value: 52.4,  conv: 17 },
@@ -375,6 +383,7 @@ const STAGES = [
 ];
 
 export function SalesPipelineHero({ layer: _layer }: HeroProps) {
+  const STAGES = useSwap(STAGES_RAW);
   const maxVal = STAGES[0].value;
   return (
     <div className="grid grid-cols-12 gap-4">
@@ -447,7 +456,7 @@ export function SalesPipelineHero({ layer: _layer }: HeroProps) {
 // 6. Marketing performance — Channel donut + ROI per-channel table
 // ─────────────────────────────────────────────────────────────────────────────
 
-const MKT_CHANNELS = [
+const MKT_CHANNELS_RAW = [
   { name: "Paid search", spend: 184, rev: 642, roas: 3.49, color: "#1B2A4E", icon: Search },
   { name: "Paid social", spend: 142, rev: 384, roas: 2.70, color: "#534AB7", icon: Smartphone },
   { name: "Display",     spend: 78,  rev: 124, roas: 1.59, color: "#BA7517", icon: Tv },
@@ -457,6 +466,7 @@ const MKT_CHANNELS = [
 ];
 
 export function MarketingPerformanceHero({ layer: _layer }: HeroProps) {
+  const MKT_CHANNELS = useSwap(MKT_CHANNELS_RAW);
   const total = MKT_CHANNELS.reduce((s, c) => s + c.spend, 0);
   // Donut maths
   const r = 64, stroke = 22, circ = 2 * Math.PI * r;
@@ -535,7 +545,7 @@ export function MarketingPerformanceHero({ layer: _layer }: HeroProps) {
 // 7. People and operations — 8-team breakdown grid
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TEAMS = [
+const TEAMS_RAW = [
   { name: "DC Operations",    icon: Briefcase,   headcount: 412,  attrition: 24, target: 12, engagement: 58, open: 14 },
   { name: "Retail stores",    icon: ShoppingCart,headcount: 1240, attrition: 14, target: 14, engagement: 71, open: 6  },
   { name: "Customer service", icon: Users2,      headcount: 184,  attrition: 21, target: 12, engagement: 62, open: 4  },
@@ -547,6 +557,7 @@ const TEAMS = [
 ];
 
 export function PeopleOperationsHero({ layer: _layer }: HeroProps) {
+  const TEAMS = useSwap(TEAMS_RAW);
   const totalHead = TEAMS.reduce((s, t) => s + t.headcount, 0);
   const overAttrition = TEAMS.filter(t => t.attrition > t.target).length;
   return (

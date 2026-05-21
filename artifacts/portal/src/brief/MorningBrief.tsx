@@ -1,7 +1,6 @@
 import { X, Printer } from "lucide-react";
-import { LAYERS } from "../data/layers";
+import { useNarrative, useCompany } from "../context/CompanyContext";
 import { useApp } from "../context/AppContext";
-import { useCompany } from "../context/CompanyContext";
 
 // Composed top-finding-per-layer brief. Hard-coded copy because this is a
 // curated editorial product, not an auto-summary of the layer data.
@@ -32,6 +31,7 @@ const TOP_FINDINGS: BriefItem[] = [
 export default function MorningBrief() {
   const { closeBrief } = useApp();
   const { profile, resolve } = useCompany();
+  const { LAYERS } = useNarrative();
   const today = "Tuesday, 14 October 2026 · 06:42 CT";
   const layerByKey = Object.fromEntries(LAYERS.map(l => [l.key, l]));
   // Merge: profile overrides take precedence, falling back to the default Mercer copy.

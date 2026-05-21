@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Send, Sparkles, ArrowRight, ExternalLink } from "lucide-react";
-import { answer, SUGGESTED, type ChatResponse } from "../data/chatBrain";
-import { LAYERS } from "../data/layers";
+import { answer, type ChatResponse } from "../data/chatBrain";
 import { useApp } from "../context/AppContext";
+import { useCompany } from "../context/CompanyContext";
+import { deepResolveWith } from "../data/companies";
 
 interface Message {
   id: number;
@@ -37,6 +38,8 @@ function rich(text: string) {
 
 export default function ChatAssistant({ onNavigate }: { onNavigate: (key: string) => void }) {
   const { activeLayer, openInbox, openBrief } = useApp();
+  const { profile, resolve, narrative } = useCompany();
+  const { SUGGESTED, LAYERS } = narrative;
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -45,6 +48,20 @@ export default function ChatAssistant({ onNavigate }: { onNavigate: (key: string
   const inputRef = useRef<HTMLInputElement>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
   const idCounter = useRef(0);
+  const pendingTimeouts = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Reset the assistant session when the active company profile changes.
+  // Cancel pending fake-network timeouts, clear chat history and draft input
+  // so each profile starts fresh without leaking the previous tenant's lines.
+  useEffect(() => {
+    return () => {
+      pendingTimeouts.current.forEach(clearTimeout);
+      pendingTimeouts.current = [];
+      setThinking(false);
+      setMessages([]);
+      setInput("");
+    };
+  }, [profile.id]);
 
   // ESC closes panel
   useEffect(() => {
@@ -93,15 +110,22 @@ export default function ChatAssistant({ onNavigate }: { onNavigate: (key: string
     setMessages(m => [...m, userMsg]);
     setInput("");
     setThinking(true);
-    setTimeout(() => {
-      const resp = answer(q, activeLayer);
+    const t = setTimeout(() => {
+      const rawResp = answer(q, activeLayer);
+      const resp = deepResolveWith(rawResp, resolve);
       const sysMsg: Message = { id: idCounter.current++, from: "system", text: "", response: resp, ts: now() };
       setMessages(m => [...m, sysMsg]);
       setThinking(false);
-      // Side effects (navigation/overlays) — short delay so the user reads the response first
-      if (resp.openInbox) setTimeout(() => openInbox(), 600);
-      if (resp.openBrief) setTimeout(() => openBrief(), 600);
+      if (resp.openInbox) {
+        const t2 = setTimeout(() => openInbox(), 600);
+        pendingTimeouts.current.push(t2);
+      }
+      if (resp.openBrief) {
+        const t3 = setTimeout(() => openBrief(), 600);
+        pendingTimeouts.current.push(t3);
+      }
     }, 700 + Math.random() * 400);
+    pendingTimeouts.current.push(t);
   };
 
   return (
@@ -207,6 +231,7 @@ function UserBubble({ text, ts }: { text: string; ts: string }) {
 }
 
 function SystemBubble({ resp, ts, ask, navigate }: { resp: ChatResponse; ts: string; ask: (q: string) => void; navigate: (key: string) => void }) {
+  const { LAYERS } = useCompany().narrative;
   const layerByKey = Object.fromEntries(LAYERS.map(l => [l.key, l]));
   return (
     <div className="flex justify-start">

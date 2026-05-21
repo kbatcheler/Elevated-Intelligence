@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ArrowRight, Radio, Clock, AlertTriangle, XCircle, FileText, Layers, Banknote, Target } from "lucide-react";
-import { LAYERS } from "../data/layers";
-import { FEEDS, type DataFeed, type FeedStatus } from "../data/feeds";
+import { type DataFeed, type FeedStatus } from "../data/feeds";
+import { useNarrative } from "../context/CompanyContext";
 
 type Row = {
   layer: string;
@@ -17,33 +17,32 @@ type Row = {
 
 const PARSE = (s?: string) => Number((s || "0").replace(/[^0-9.]/g, ""));
 
-function buildRows(): Row[] {
-  const rows: Row[] = [];
-  LAYERS.forEach(l => {
-    l.gaps.forEach(g => {
-      const v = PARSE(l.gapsPipelineUsd) / l.gaps.length;
-      rows.push({
-        layer: l.key, layerTitle: l.title, category: g.category,
-        title: g.title, detail: g.detail, value: v,
-        valueLabel: `$${v.toFixed(2)}M`, source: "GAP",
-      });
-    });
-    (FEEDS[l.key] || []).forEach(f => {
-      if (!f.pipelineUsd) return;
-      rows.push({
-        layer: l.key, layerTitle: l.title, category: f.status.toUpperCase(),
-        title: f.source, detail: f.pipelineNote || `${f.status} feed — ${f.cadence}, last sync ${f.lastSync}`,
-        value: PARSE(f.pipelineUsd), valueLabel: f.pipelineUsd, source: "FEED", status: f.status,
-      });
-    });
-  });
-  return rows.sort((a, b) => b.value - a.value);
-}
-
 const STATUS_ICON: Record<FeedStatus, any> = { live: Radio, stale: Clock, partial: AlertTriangle, missing: XCircle, manual: FileText };
 
 export default function EngagementPipeline({ onNavigate }: { onNavigate: (k: string) => void }) {
-  const rows = useMemo(buildRows, []);
+  const { LAYERS, FEEDS } = useNarrative();
+  const rows = useMemo<Row[]>(() => {
+    const out: Row[] = [];
+    LAYERS.forEach(l => {
+      l.gaps.forEach(g => {
+        const v = PARSE(l.gapsPipelineUsd) / l.gaps.length;
+        out.push({
+          layer: l.key, layerTitle: l.title, category: g.category,
+          title: g.title, detail: g.detail, value: v,
+          valueLabel: `$${v.toFixed(2)}M`, source: "GAP",
+        });
+      });
+      (FEEDS[l.key] || []).forEach(f => {
+        if (!f.pipelineUsd) return;
+        out.push({
+          layer: l.key, layerTitle: l.title, category: f.status.toUpperCase(),
+          title: f.source, detail: f.pipelineNote || `${f.status} feed — ${f.cadence}, last sync ${f.lastSync}`,
+          value: PARSE(f.pipelineUsd), valueLabel: f.pipelineUsd, source: "FEED", status: f.status,
+        });
+      });
+    });
+    return out.sort((a, b) => b.value - a.value);
+  }, [LAYERS, FEEDS]);
   const [filter, setFilter] = useState<"all" | "GAP" | "FEED">("all");
   const filtered = filter === "all" ? rows : rows.filter(r => r.source === filter);
   const total = rows.reduce((s, r) => s + r.value, 0);

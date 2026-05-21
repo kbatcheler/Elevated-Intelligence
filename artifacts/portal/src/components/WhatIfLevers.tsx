@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Sliders, RotateCcw } from "lucide-react";
+import { useSwap } from "../context/CompanyContext";
 
 type LeverSpec = {
   key: string;
@@ -12,13 +13,13 @@ type LeverSpec = {
 };
 
 // Each scenario defines its levers + how they roll into a P&L outcome.
-const PRICING_LEVERS: LeverSpec[] = [
+const PRICING_LEVERS_RAW: LeverSpec[] = [
   { key: "promo",  label: "Promo depth",         unit: "%",   min: 14, max: 36, default: 32 },
   { key: "match",  label: "Match policy SKUs",   unit: " SKUs", min: 0,  max: 80, default: 24 },
   { key: "price",  label: "Headline price index",unit: "",    min: 96, max: 110, default: 104 },
 ];
 
-const DEMAND_LEVERS: LeverSpec[] = [
+const DEMAND_LEVERS_RAW: LeverSpec[] = [
   { key: "promo",     label: "DIY promo lift",         unit: "%",  min: 0,  max: 25, default: 0 },
   { key: "inventory", label: "Inter-DC inventory move",unit: "%",  min: 0,  max: 30, default: 0 },
   { key: "retrain",   label: "Forecast retrain",       unit: "",   min: 0,  max: 1,  default: 0, step: 1 },
@@ -49,6 +50,8 @@ function demandImpact(v: Record<string, number>) {
 }
 
 export default function WhatIfLevers({ scenario }: { scenario: "pricing" | "demand" }) {
+  const PRICING_LEVERS = useSwap(PRICING_LEVERS_RAW);
+  const DEMAND_LEVERS = useSwap(DEMAND_LEVERS_RAW);
   const levers = scenario === "pricing" ? PRICING_LEVERS : DEMAND_LEVERS;
   const [values, setValues] = useState<Record<string, number>>(
     () => Object.fromEntries(levers.map(l => [l.key, l.default])),

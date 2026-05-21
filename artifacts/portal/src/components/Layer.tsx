@@ -15,11 +15,10 @@ import WhatIfLevers from "./WhatIfLevers";
 import NextSteps from "./NextSteps";
 import PipelineDetail from "./PipelineDetail";
 import PeerBenchmark from "./PeerBenchmark";
-import { PEERS } from "../data/peers";
 import DemandLink from "./DemandLink";
 import { useApp } from "../context/AppContext";
-import { EVIDENCE } from "../data/signals";
-import { TIMELINES } from "../data/timetravel";
+import { useNarrative, useSwap } from "../context/CompanyContext";
+import { TIMELINES as TIMELINES_RAW } from "../data/timetravel";
 
 const toneColor = (t: Tone) =>
   t === "bad"  ? "var(--red)"
@@ -37,6 +36,8 @@ const tagClass = (c: string) => "tag tag-" + c.toLowerCase();
 export default function Layer({ layer, highlight }: { layer: LayerData; highlight?: string }) {
   const [open, setOpen] = useState(false);
   const { openEvidence, pulse, timeOffsetByLayer } = useApp();
+  const { PEERS, EVIDENCE } = useNarrative();
+  const TIMELINES = useSwap(TIMELINES_RAW);
   const isHi = (field: string) => highlight === field;
   const seedBase = layer.key.charCodeAt(0) + layer.key.charCodeAt(layer.key.length - 1);
 

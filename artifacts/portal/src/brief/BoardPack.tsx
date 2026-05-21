@@ -1,7 +1,6 @@
 import { X, Printer } from "lucide-react";
-import { LAYERS } from "../data/layers";
-import { TRACK_RECORD, summary } from "../data/trackRecord";
-import { useCompany } from "../context/CompanyContext";
+import { summary } from "../data/trackRecord";
+import { useNarrative, useCompany } from "../context/CompanyContext";
 
 // Eight-page board pack. Each section is a "page" with print-friendly CSS.
 // Order: Cover · Headline scorecard · Three root causes · Three recovery
@@ -9,6 +8,7 @@ import { useCompany } from "../context/CompanyContext";
 
 export default function BoardPack({ onClose }: { onClose: () => void }) {
   const { profile, resolve } = useCompany();
+  const { LAYERS, TRACK_RECORD } = useNarrative();
   const meta = `${profile.name} · ${profile.period} close-out · 14 October 2026`;
   const s = summary();
   const h = profile.headlines;

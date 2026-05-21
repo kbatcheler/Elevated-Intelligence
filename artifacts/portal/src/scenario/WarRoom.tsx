@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { Sliders, RotateCcw, CheckSquare, AlertTriangle } from "lucide-react";
-import { LEVERS, computeImpact, type Lever } from "../data/warroom";
+import { computeImpact, type Lever } from "../data/warroom";
 import { useApp } from "../context/AppContext";
+import { useNarrative } from "../context/CompanyContext";
 
 const fmt = (n: number, prefix = "$") => {
   const sign = n >= 0 ? "+" : "−";
@@ -9,6 +10,7 @@ const fmt = (n: number, prefix = "$") => {
 };
 
 export default function WarRoom({ onNavigate }: { onNavigate: (key: string) => void }) {
+  const { LEVERS } = useNarrative();
   const { commitAction } = useApp();
   const [values, setValues] = useState<Record<string, number>>(
     () => Object.fromEntries(LEVERS.map(l => [l.id, l.defaultValue])),
