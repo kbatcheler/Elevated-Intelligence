@@ -190,3 +190,21 @@ export function useSwap<T>(value: T): T {
   const { resolve } = useCompany();
   return useMemo(() => deepResolveWith(value, resolve), [value, resolve]);
 }
+
+/**
+ * Per-component dataset lookup. If the active profile defines an override at
+ * `profile.datasets[key]`, that override is returned (deep-swapped through
+ * the active vocab — usually a no-op since overrides are already in-profile).
+ * Otherwise the supplied RAW fallback is deep-swapped and returned.
+ *
+ * Use this for hero/extras datasets where token-level vocab can't translate
+ * the domain (e.g. hardware SKUs → music SKUs for Guitar Center).
+ */
+export function useDataset<T>(key: string, raw: T): T {
+  const { profile, resolve } = useCompany();
+  return useMemo(() => {
+    const override = profile.datasets?.[key];
+    const source = override !== undefined ? (override as T) : raw;
+    return deepResolveWith(source, resolve);
+  }, [profile, resolve, key, raw]);
+}

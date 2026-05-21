@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import Sparkline, { makeSeries } from "../Sparkline";
 import AnimatedNumber from "../AnimatedNumber";
-import { useCompany, useSwap } from "../../context/CompanyContext";
+import { useCompany, useSwap, useDataset } from "../../context/CompanyContext";
 
 type HeroProps = { layer: LayerData };
 
@@ -105,7 +105,7 @@ const CHANNELS_RAW = [
 ];
 
 export function DemandIntelligenceHero({ layer }: HeroProps) {
-  const CHANNELS = useSwap(CHANNELS_RAW);
+  const CHANNELS = useDataset("CHANNELS", CHANNELS_RAW);
   const max = Math.max(...CHANNELS.map(c => Math.abs(c.delta)));
   return (
     <div className="card card-accent-coral !p-0 overflow-hidden">
@@ -183,7 +183,16 @@ const RIVALS_RAW = [
 ];
 
 export function CompetitiveIntelligenceHero({ layer: _layer }: HeroProps) {
-  const RIVALS = useSwap(RIVALS_RAW);
+  const RIVALS = useDataset("RIVALS", RIVALS_RAW);
+  const { profile } = useCompany();
+  // Primary rival = highest-share competitor in the dataset. Defensive fallback
+  // ensures a custom profile with an empty RIVALS list doesn't crash the hero.
+  const topRival = [...RIVALS].sort((a, b) => b.share - a.share)[0]
+    ?? { name: "Top competitor", share: 30, move: 0, depth: 0, color: "#1B2A4E" };
+  // Our share comes from the profile (defaults to 14.3 for the Mercer baseline)
+  // so new profiles can declare their own market position without code edits.
+  const ourShare = profile.marketSharePct ?? 14.3;
+  const usWidth = Math.round((ourShare / (ourShare + topRival.share)) * 100);
   return (
     <div className="space-y-4">
       <div className="card card-accent-coral !p-0 overflow-hidden">
@@ -194,8 +203,8 @@ export function CompetitiveIntelligenceHero({ layer: _layer }: HeroProps) {
         </div>
         <div className="grid grid-cols-12 items-stretch">
           <div className="col-span-3 p-6 text-center" style={{ background: "var(--cream-dark)" }}>
-            <div className="font-sans font-bold text-[12px] text-[var(--navy)] tracking-wider">MERCER</div>
-            <div className="font-serif font-semibold tabular-nums mt-2" style={{ fontSize: 56, lineHeight: 1, color: "var(--coral)" }}>14.3%</div>
+            <div className="font-sans font-bold text-[12px] text-[var(--navy)] tracking-wider uppercase truncate">{profile.name}</div>
+            <div className="font-serif font-semibold tabular-nums mt-2" style={{ fontSize: 56, lineHeight: 1, color: "var(--coral)" }}>{ourShare}%</div>
             <div className="font-sans italic text-[11px] text-[var(--slate)] mt-1">market share</div>
             <div className="inline-flex items-center gap-1 mt-3 px-2 py-1 rounded-sm font-sans font-bold text-[11px] tabular-nums"
                  style={{ background: "var(--coral-faint)", color: "var(--coral)" }}>
@@ -205,18 +214,18 @@ export function CompetitiveIntelligenceHero({ layer: _layer }: HeroProps) {
           <div className="col-span-6 p-6 flex flex-col justify-center">
             <div className="eyebrow text-[var(--slate-light)] text-center mb-3">SHARE OF VOICE · ALL CHANNELS</div>
             <div className="flex items-center gap-3">
-              <span className="font-sans text-[11px] font-bold text-[var(--coral)] tabular-nums">14.3</span>
+              <span className="font-sans text-[11px] font-bold text-[var(--coral)] tabular-nums">{ourShare}</span>
               <div className="flex-1 h-8 flex rounded-sm overflow-hidden">
                 <div className="h-full flex items-center justify-end pr-2"
-                     style={{ width: "27%", background: "var(--coral)" }}>
+                     style={{ width: `${usWidth}%`, background: "var(--coral)" }}>
                   <span className="font-sans font-bold text-[10px] text-white">US</span>
                 </div>
                 <div className="h-full flex items-center justify-start pl-2"
-                     style={{ width: "73%", background: "var(--navy)" }}>
-                  <span className="font-sans font-bold text-[10px] text-white">HOME DEPOT</span>
+                     style={{ width: `${100 - usWidth}%`, background: "var(--navy)" }}>
+                  <span className="font-sans font-bold text-[10px] text-white uppercase truncate">{topRival.name}</span>
                 </div>
               </div>
-              <span className="font-sans text-[11px] font-bold text-[var(--navy)] tabular-nums">38.7</span>
+              <span className="font-sans text-[11px] font-bold text-[var(--navy)] tabular-nums">{topRival.share}</span>
             </div>
             <div className="grid grid-cols-3 gap-4 mt-5 pt-4 border-t border-[var(--cream-dark)] text-center">
               <div>
@@ -232,13 +241,13 @@ export function CompetitiveIntelligenceHero({ layer: _layer }: HeroProps) {
               <div>
                 <div className="eyebrow text-[var(--slate-light)]">Price index</div>
                 <div className="font-sans font-bold text-[20px] text-[var(--navy)] tabular-nums">104</div>
-                <div className="font-sans text-[10px] text-[var(--slate-light)]">vs HD = 100</div>
+                <div className="font-sans text-[10px] text-[var(--slate-light)]">vs peer = 100</div>
               </div>
             </div>
           </div>
           <div className="col-span-3 p-6 text-center" style={{ background: "var(--navy)" }}>
-            <div className="font-sans font-bold text-[12px] text-white opacity-80 tracking-wider">HOME DEPOT</div>
-            <div className="font-serif font-semibold tabular-nums mt-2" style={{ fontSize: 56, lineHeight: 1, color: "#FFE7C2" }}>38.7%</div>
+            <div className="font-sans font-bold text-[12px] text-white opacity-80 tracking-wider uppercase truncate">{topRival.name}</div>
+            <div className="font-serif font-semibold tabular-nums mt-2" style={{ fontSize: 56, lineHeight: 1, color: "#FFE7C2" }}>{topRival.share}%</div>
             <div className="font-sans italic text-[11px] text-white opacity-70 mt-1">market share</div>
             <div className="inline-flex items-center gap-1 mt-3 px-2 py-1 rounded-sm font-sans font-bold text-[11px] tabular-nums"
                  style={{ background: "rgba(255,231,194,0.18)", color: "#FFE7C2" }}>
@@ -293,7 +302,7 @@ const SKUS_RAW = [
 ];
 
 export function PricingMarginHero({ layer: _layer }: HeroProps) {
-  const SKUS = useSwap(SKUS_RAW);
+  const SKUS = useDataset("SKUS", SKUS_RAW);
   const { profile, resolve } = useCompany();
   const min = Math.min(...SKUS.flatMap(s => [s.mercer, s.hd, s.lowes, s.walmart]));
   const max = Math.max(...SKUS.flatMap(s => [s.mercer, s.hd, s.lowes, s.walmart]));
@@ -383,7 +392,7 @@ const STAGES_RAW = [
 ];
 
 export function SalesPipelineHero({ layer: _layer }: HeroProps) {
-  const STAGES = useSwap(STAGES_RAW);
+  const STAGES = useDataset("STAGES", STAGES_RAW);
   const maxVal = STAGES[0].value;
   return (
     <div className="grid grid-cols-12 gap-4">

@@ -77,6 +77,15 @@ export interface CompanyProfile {
   sourceSystems: string;             // e.g. "14 systems · 312 feeds"
   analyst: string;                   // e.g. "Katherine Boyd · Lead analyst"
 
+  // Competitive context — our share-of-market for the head-to-head scoreboard
+  marketSharePct?: number;           // e.g. 14.3 — defaults to 14.3 if unset
+
+  // Per-component dataset overrides — for items vocab substitution can't
+  // translate (e.g. hardware SKUs → music SKUs). Keyed by a stable string
+  // (the dataset's name in heroes/extras). When absent, the component falls
+  // back to deep-swapping its module-level RAW data through the vocab.
+  datasets?: Record<string, unknown>;
+
   // Data tag
   isGenerated?: boolean;
   generatedAt?: string;
@@ -258,6 +267,43 @@ export const GUITAR_CENTER: CompanyProfile = {
   recoveryConfidence: "Confidence 86% on the first $12M, 61% on the rest.",
   sourceSystems: "16 systems · 287 feeds",
   analyst: "Katherine Boyd · Lead analyst",
+  marketSharePct: 12.8,
+  datasets: {
+    // Demand-intelligence channel breakdown — music retail categories
+    CHANNELS: [
+      { name: "Electric guitars",     delta: -27, val: "-$5.1M" },
+      { name: "Recording & live sound", delta: -19, val: "-$3.2M" },
+      { name: "Lessons & rentals",    delta: +6,  val: "+$0.8M" },
+      { name: "Drums & percussion",   delta: -8,  val: "-$1.1M" },
+      { name: "Pro Coverage (B2B)",   delta: -3,  val: "-$0.4M" },
+      { name: "Keys & synths",        delta: -12, val: "-$1.6M" },
+    ],
+    // Competitive intelligence — music-industry rivals with brand colors
+    RIVALS: [
+      { name: "Sweetwater",         share: 34.2, move: +1.8, depth: 22, color: "#0066B3" },
+      { name: "Amazon Music Gear",  share: 18.6, move: +0.9, depth: 16, color: "#FF9900" },
+      { name: "Sam Ash legacy",     share: 6.1,  move: -0.4, depth: 11, color: "#C8102E" },
+      { name: "Reverb (in-house)",  share: 8.4,  move: +0.2, depth: 7,  color: "#FF5A00" },
+      { name: "Music & Arts",       share: 5.2,  move: -0.1, depth: 9,  color: "#5B2C82" },
+    ],
+    // Pricing & margin — music-product SKU ladder
+    SKUS: [
+      { name: "Fender Player Strat MIM",   mercer: 849,  hd: 799,  lowes: 829,  walmart: 779, margin: 18, tone: "bad" as const  },
+      { name: "Shure SM7B dynamic mic",    mercer: 419,  hd: 399,  lowes: 409,  walmart: 379, margin: 22, tone: "warn" as const },
+      { name: "Roland TD-17KVX e-kit",     mercer: 1799, hd: 1699, lowes: 1749, walmart: 1649,margin: 16, tone: "bad" as const  },
+      { name: "Yamaha P-125a digital piano", mercer: 749, hd: 799, lowes: 779,  walmart: 729, margin: 28, tone: "good" as const },
+      { name: "D'Addario EXL110 strings 3pk", mercer: 19, hd: 17, lowes: 18,    walmart: 15,  margin: 21, tone: "warn" as const },
+    ],
+    // Sales pipeline — Pro Coverage funnel (B2B account stages)
+    STAGES: [
+      { stage: "Lead",        deals: 1284, value: 86.4, conv: 100 },
+      { stage: "Qualified",   deals: 472,  value: 58.2, conv: 37 },
+      { stage: "Discovery",   deals: 226,  value: 36.4, conv: 18 },
+      { stage: "Proposal",    deals: 98,   value: 22.1, conv: 7.6 },
+      { stage: "Negotiation", deals: 41,   value: 12.8, conv: 3.2 },
+      { stage: "Closed-Won",  deals: 14,   value: 5.4,  conv: 1.1 },
+    ],
+  },
 };
 
 // ───────────────────────────────────────────────────────────────────────────
