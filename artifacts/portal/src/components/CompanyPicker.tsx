@@ -186,16 +186,25 @@ export default function CompanyPicker() {
                 </div>
               </Section>
               {customProfiles.length > 0 && (
-                <Section title="Saved by you · seeded from the web">
+                <Section
+                  title="Saved by you · seeded from the web"
+                  action={
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Delete ALL ${customProfiles.length} saved profile${customProfiles.length === 1 ? "" : "s"}? You can re-seed any of them later.`)) {
+                          customProfiles.forEach(p => removeCustomProfile(p.id));
+                        }
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-sm font-sans text-[10px] uppercase tracking-wider text-[var(--slate)] hover:text-[var(--coral)] hover:bg-[var(--coral-faint)] transition-colors"
+                      title="Delete every saved profile">
+                      <Trash2 size={11} strokeWidth={1.8} /> Clear all
+                    </button>
+                  }>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {customProfiles.map(p => (
                       <ProfileCard key={p.id} profile={p} active={p.id === profile.id}
                                    onSelect={() => setProfileId(p.id)}
-                                   onDelete={() => {
-                                     if (window.confirm(`Delete the saved profile for ${p.name}? You can re-seed it any time.`)) {
-                                       removeCustomProfile(p.id);
-                                     }
-                                   }} />
+                                   onDelete={() => removeCustomProfile(p.id)} />
                     ))}
                   </div>
                 </Section>
@@ -413,10 +422,13 @@ function TabBtn({ label, active, onClick }: { label: string; active: boolean; on
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div>
-      <div className="eyebrow text-[var(--slate-light)] mb-3">{title}</div>
+      <div className="flex items-center justify-between mb-3">
+        <div className="eyebrow text-[var(--slate-light)]">{title}</div>
+        {action}
+      </div>
       {children}
     </div>
   );
@@ -435,6 +447,16 @@ function Field({ label, hint, children }: { label: string; hint: string; childre
 }
 
 function ProfileCard({ profile, active, onSelect, onDelete }: { profile: CompanyProfile; active: boolean; onSelect: () => void; onDelete?: () => void }) {
+  // Two-step inline delete: first click arms (turns coral with "Confirm"),
+  // second click commits. Auto-disarms after 4s so a stray click can't nuke
+  // a saved profile. Replaces the previous native window.confirm() popup.
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return undefined;
+    const t = window.setTimeout(() => setArmed(false), 4000);
+    return () => window.clearTimeout(t);
+  }, [armed]);
+
   return (
     <div className={"relative text-left p-4 rounded-sm transition-all group " +
             (active ? "ring-2 ring-[var(--gold)]" : "hover:border-[var(--navy)]")}
@@ -445,7 +467,7 @@ function ProfileCard({ profile, active, onSelect, onDelete }: { profile: Company
                style={{ background: "var(--navy)", color: "var(--gold-light)" }}>
             {profile.logoEmoji ?? profile.logoMonogram}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pr-7">
             <div className="flex items-baseline justify-between gap-2">
               <div className="font-serif font-semibold text-[17px] text-[var(--navy)] leading-tight truncate">{profile.name}</div>
               {active && <span className="font-sans text-[10px] uppercase tracking-wider text-[var(--gold)] shrink-0">Active</span>}
@@ -466,12 +488,32 @@ function ProfileCard({ profile, active, onSelect, onDelete }: { profile: Company
         </div>
       </button>
       {onDelete && (
-        <button onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                aria-label={`Delete saved profile for ${profile.name}`}
-                title="Delete this saved profile"
-                className="absolute top-2 right-2 p-1.5 rounded-sm text-[var(--slate-light)] hover:text-[var(--coral)] hover:bg-[var(--coral-faint)] transition-colors opacity-0 group-hover:opacity-100">
-          <Trash2 size={13} strokeWidth={1.8} />
-        </button>
+        armed ? (
+          <div onClick={(e) => e.stopPropagation()}
+               className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-sm"
+               style={{ background: "var(--coral-faint)", border: "1px solid var(--coral)" }}>
+            <span className="font-sans text-[10px] uppercase tracking-wider text-[var(--coral)]">Delete?</span>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                    aria-label={`Confirm delete ${profile.name}`}
+                    title="Yes, delete"
+                    className="p-1 rounded-sm text-[var(--coral)] hover:bg-white/40">
+              <Check size={12} strokeWidth={2.2} />
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); setArmed(false); }}
+                    aria-label="Cancel delete"
+                    title="Cancel"
+                    className="p-1 rounded-sm text-[var(--slate)] hover:bg-white/40">
+              <X size={12} strokeWidth={2.2} />
+            </button>
+          </div>
+        ) : (
+          <button onClick={(e) => { e.stopPropagation(); setArmed(true); }}
+                  aria-label={`Delete saved profile for ${profile.name}`}
+                  title="Delete this saved profile"
+                  className="absolute top-2 right-2 p-1.5 rounded-sm text-[var(--slate-light)] hover:text-[var(--coral)] hover:bg-[var(--coral-faint)] transition-colors">
+            <Trash2 size={13} strokeWidth={1.8} />
+          </button>
+        )
       )}
     </div>
   );
