@@ -18,6 +18,37 @@ function clamp(v: unknown, max: number): string | undefined {
   return trimmed.slice(0, max);
 }
 
+// In-memory server-side cache for generated briefs, keyed by a stable
+// hash of the normalised inputs. Survives client localStorage clears
+// (e.g. Replit preview reloads) so repeat opens of the same profile
+// return in <10ms instead of waiting 10-20s for another Claude call.
+// Process-lifetime only; that's fine for a demo + costs nothing in
+// extra deps. 7-day TTL is plenty for sales-prep sessions.
+const briefCache = new Map<string, { brief: unknown; cachedAt: number }>();
+const BRIEF_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const BRIEF_CACHE_MAX = 200;
+
+function cacheKey(parts: Array<string | number | undefined>): string {
+  return parts.map(p => (p ?? "").toString().toLowerCase().trim()).join("\u0001");
+}
+function cacheGet(key: string): unknown | null {
+  const hit = briefCache.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.cachedAt > BRIEF_CACHE_TTL_MS) {
+    briefCache.delete(key);
+    return null;
+  }
+  return hit.brief;
+}
+function cacheSet(key: string, brief: unknown): void {
+  if (briefCache.size >= BRIEF_CACHE_MAX) {
+    // Evict oldest entry — Map iteration is insertion-ordered.
+    const oldest = briefCache.keys().next().value;
+    if (oldest !== undefined) briefCache.delete(oldest);
+  }
+  briefCache.set(key, { brief, cachedAt: Date.now() });
+}
+
 const SYSTEM_PROMPT = `You are a senior strategist at a top-tier management consultancy producing a confidential "company intelligence" briefing for a CEO-level sales meeting. The briefing must be substantive, specific, and editorial — not marketing fluff, not bullet-point soup. Use your training-data knowledge of the real company.
 
 Return STRICT JSON only — no prose, no code fences. Conform exactly to this TypeScript shape:
@@ -74,6 +105,19 @@ router.post("/intelligence/brief", briefRateLimit, async (req, res) => {
   if (!name) {
     res.status(400).json({ error: "Company name is required." });
     return;
+  }
+
+  // Cache-first: same inputs → return the previously generated brief
+  // instantly. `?refresh=1` skips the cache for forced regeneration.
+  const forceRefresh = req.query.refresh === "1" || req.query.refresh === "true";
+  const key = cacheKey([name, url, sector, hqCity, hqState, revenueBand, ownership, founded, tagline]);
+  if (!forceRefresh) {
+    const cached = cacheGet(key);
+    if (cached) {
+      res.setHeader("X-Cache", "HIT");
+      res.json(cached);
+      return;
+    }
   }
 
   const baseUrl = process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL;
@@ -142,7 +186,10 @@ router.post("/intelligence/brief", briefRateLimit, async (req, res) => {
       return;
     }
 
-    res.json({ ...normalised.value, generatedAt: new Date().toISOString() });
+    const payloadOut = { ...normalised.value, generatedAt: new Date().toISOString() };
+    cacheSet(key, payloadOut);
+    res.setHeader("X-Cache", "MISS");
+    res.json(payloadOut);
   } catch (e) {
     req.log.error({ err: String(e) }, "Intelligence brief route failed");
     res.status(500).json({ error: "Briefing generation failed unexpectedly." });

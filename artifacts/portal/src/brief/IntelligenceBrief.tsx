@@ -50,7 +50,8 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
     setLoading(true);
     setError(null);
     try {
-      const resp = await fetch(`${import.meta.env.BASE_URL}api/intelligence/brief`, {
+      const url = `${import.meta.env.BASE_URL}api/intelligence/brief${force ? "?refresh=1" : ""}`;
+      const resp = await fetch(url, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
