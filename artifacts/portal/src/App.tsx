@@ -259,7 +259,7 @@ export default function App() {
               : active === "committed-actions"       ? <CommittedTray onNavigate={handleNavigate} />
               : active === "scenario-warroom"        ? <WarRoom onNavigate={handleNavigate} />
               : active === "track-record"            ? <TrackRecord onNavigate={handleNavigate} />
-              : layer && <Layer layer={layer} highlight={highlight} key={active} />}
+              : layer && <Layer layer={layer} highlight={highlight} key={active} onNavigate={handleNavigate} />}
           </div>
         </main>
 

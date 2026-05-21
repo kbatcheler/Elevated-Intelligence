@@ -33,7 +33,15 @@ const TrendIcon = ({ t }: { t: Tone }) =>
 
 const tagClass = (c: string) => "tag tag-" + c.toLowerCase();
 
-export default function Layer({ layer, highlight }: { layer: LayerData; highlight?: string }) {
+export default function Layer({
+  layer,
+  highlight,
+  onNavigate,
+}: {
+  layer: LayerData;
+  highlight?: string;
+  onNavigate?: (key: string, field?: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const { openEvidence, pulse, timeOffsetByLayer } = useApp();
   const { PEERS, EVIDENCE } = useNarrative();
@@ -185,9 +193,14 @@ export default function Layer({ layer, highlight }: { layer: LayerData; highligh
               <div className="font-sans font-semibold text-[12px] text-[var(--navy)] mt-1.5">{g.title}</div>
               <div className="font-sans italic text-[11px] text-[var(--slate-light)] leading-snug mt-0.5">{g.detail}</div>
             </div>
-            <a className="font-sans text-[11px] text-[var(--navy)] hover:text-[var(--coral)] whitespace-nowrap mt-1 flex items-center gap-1 cursor-pointer">
+            <button
+              type="button"
+              onClick={() => onNavigate?.("engagement-pipeline", `gap:${layer.key}:${i}`)}
+              className="font-sans text-[11px] text-[var(--navy)] hover:text-[var(--coral)] whitespace-nowrap mt-1 flex items-center gap-1 cursor-pointer bg-transparent border-0 p-0"
+              title="Open the engagement pipeline to route this gap to delivery"
+            >
               Route to pipeline <ArrowRight size={12} strokeWidth={1.5} />
-            </a>
+            </button>
           </li>
         ))}
       </ul>
