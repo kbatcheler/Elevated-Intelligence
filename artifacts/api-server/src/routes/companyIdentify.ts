@@ -11,9 +11,13 @@ const SYSTEM_PROMPT = `You are an entity-resolution specialist. The user types a
 Rules:
 1. The URL is the AUTHORITATIVE identifier. The name is a HINT. The candidate(s) you return MUST be the company whose homepage lives at the supplied URL — not a more famous same-named company. Set "canonicalUrl" on every candidate to the supplied URL (normalised, no protocol).
 2. CORRELATION CHECK: confirm the supplied name plausibly matches the supplied URL. If they correlate (e.g. "HumanCo" + humanco.com, "Guitar Center" + guitarcenter.com), return ONE candidate with confidence ≥ 0.92 — the URL anchors it, no disambiguation needed. If the name and URL appear to refer to DIFFERENT entities (e.g. "Apple" + microsoft.com, or "Delta Airlines" + deltafaucet.com), return TWO candidates — first the company at the URL (higher confidence), second the company the name suggests (lower confidence) — so the user can see the mismatch and pick.
-3. If you do not recognise the URL as a real public company at all, return ONE candidate with the user's literal name, canonicalUrl = the supplied URL, sector "Unknown", confidence 0.4, distinguisher "URL not in public-company knowledge — will seed from supplied details only". Do NOT invent a different company.
-4. NEVER substitute a more famous company that shares a partial name. If the user types "Mercer Industries" + mercerindustries.com, do NOT return Mercer (the consulting firm at mercer.com).
-5. Sort candidates by confidence descending. Cap at 3. Single high-confidence match is the expected outcome — only return multiple when there is genuine name/URL mismatch.
+3. URL-UNKNOWN FALLBACK: If you cannot specifically identify what company operates at the supplied URL from your training data (you only know the NAME), you MUST return ONE candidate with: name = the user's literal name, canonicalUrl = the supplied URL, sector "Unknown", confidence 0.40, oneLiner "Public details not in training data — will seed from the homepage you supplied", distinguisher "URL not in public-company knowledge". Do NOT fall back to a same-named company in a different industry. Do NOT invent details. The downstream seeder will work from the URL directly.
+4. NEVER substitute a more famous company that shares a partial name. Concrete worked examples (these are FAILURES you must avoid):
+   - "humanco" + humanco.com → CORRECT: the consumer-food / wellness CPG holding company founded by Jason Karp (HumanCo, Austin, TX). WRONG: the UK HR-consulting firm of similar name. If you don't know HumanCo the CPG, use the URL-UNKNOWN FALLBACK — do NOT return the HR firm.
+   - "Mercer Industries" + mercerindustries.com → CORRECT: whatever sits at mercerindustries.com. WRONG: Mercer (the consulting firm at mercer.com).
+   - "Delta" + deltafaucet.com → CORRECT: Delta Faucet Company. WRONG: Delta Air Lines.
+5. The supplied URL is the GROUND TRUTH. When in doubt, lower your confidence and use the URL-UNKNOWN fallback rather than guessing a wrong entity that merely shares the name.
+6. Sort candidates by confidence descending. Cap at 3. Single high-confidence match is the expected outcome — only return multiple when there is genuine name/URL mismatch.
 
 Return STRICT JSON only — no prose, no code fences. Shape:
 

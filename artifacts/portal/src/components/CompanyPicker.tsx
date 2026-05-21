@@ -103,7 +103,7 @@ export default function CompanyPicker() {
     }
   };
 
-  // Step 2: seed with a confirmed identity (locks Claude to this entity).
+  // Step 2: seed with a confirmed identity (locks the model to this entity).
   const seedConfirmed = async (c: Candidate) => {
     setError(null);
     setStage("seeding");
@@ -298,13 +298,13 @@ function SeedInputView({
           {stage === "identifying" ? (
             <>
               <Loader2 size={14} strokeWidth={1.8} className="animate-spin" />
-              <span>Identifying via Anthropic Claude…</span>
+              <span>Identifying via DifferentDay AI…</span>
               <span className="font-mono text-[11px] opacity-80 ml-1">{elapsedLabel}</span>
             </>
           ) : stage === "seeding" ? (
             <>
               <Loader2 size={14} strokeWidth={1.8} className="animate-spin" />
-              <span>Seeding 13 intelligence layers via Anthropic Claude…</span>
+              <span>Seeding 13 intelligence layers via DifferentDay AI…</span>
               <span className="font-mono text-[11px] opacity-80 ml-1">{elapsedLabel}</span>
             </>
           ) : (

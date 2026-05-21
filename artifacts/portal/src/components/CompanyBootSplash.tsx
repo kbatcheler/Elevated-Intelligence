@@ -26,6 +26,11 @@ function formatBytes(n: number): string {
 function formatInt(n: number): string {
   return n.toLocaleString();
 }
+// White-label the underlying model identifier as a DifferentDay AI engine tier
+// so the receipt reads as our product, not the raw upstream provider name.
+function brandModel(_raw: string): string {
+  return "DifferentDay AI · core";
+}
 
 export default function CompanyBootSplash() {
   const { bootSplash } = useCompany();
@@ -93,7 +98,7 @@ export default function CompanyBootSplash() {
               </span>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2.5">
-              <Stat label="Model"          value={meta.model} mono />
+              <Stat label="Engine"         value={brandModel(meta.model)} mono />
               <Stat label="Round-trip"     value={formatDuration(meta.durationMs)} mono />
               <Stat label="Tokens in/out"  value={
                 meta.inputTokens !== null && meta.outputTokens !== null
@@ -109,7 +114,7 @@ export default function CompanyBootSplash() {
 
         <div className="text-center mt-5 font-serif italic text-[12px] text-[var(--cream)]/55">
           {meta
-            ? "Receipt above is real Anthropic API metadata, captured from this seed request."
+            ? "Receipt above is real DifferentDay AI provenance, captured from this seed request."
             : "Synthetic seed data · the sales rep should review before the meeting"}
         </div>
       </div>
