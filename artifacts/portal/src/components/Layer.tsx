@@ -7,6 +7,7 @@ import ChallengeModal from "./ChallengeModal";
 import DataFeedsCard from "./DataFeedsCard";
 import AnimatedNumber from "./AnimatedNumber";
 import Sparkline, { makeSeries } from "./Sparkline";
+import { EXTRAS } from "./extras";
 
 const toneColor = (t: Tone) =>
   t === "bad"  ? "var(--red)"
@@ -74,6 +75,9 @@ export default function Layer({ layer, highlight }: { layer: LayerData; highligh
           </div>
         ))}
       </div>
+
+      {/* Domain-specific extras (unique per layer) */}
+      {EXTRAS[layer.key] ? (() => { const E = EXTRAS[layer.key]; return <E />; })() : null}
 
       <div className="grid grid-cols-3 gap-6">
         {/* Left column: narrative + visualisation */}

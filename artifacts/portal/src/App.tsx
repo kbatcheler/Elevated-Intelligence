@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   BarChart3, TrendingUp, Crosshair, Users, Megaphone,
   Truck, Tag, GitBranch, Target, UserCog, Cpu, ChevronDown, Briefcase,
+  Banknote, Receipt, UserPlus,
 } from "lucide-react";
 import { LAYERS } from "./data/layers";
 import Layer from "./components/Layer";
@@ -14,6 +15,7 @@ type NavItem = { key: string; label: string; group: string; icon: any; status: "
 
 const NAV: NavItem[] = [
   { key: "business-performance",     label: "Business performance",     group: "Executive",      icon: BarChart3, status: "warn" },
+  { key: "finance",                  label: "Finance",                  group: "Executive",      icon: Banknote,   status: "bad"  },
   { key: "demand-intelligence",      label: "Demand intelligence",      group: "Market-facing",  icon: TrendingUp, status: "bad"  },
   { key: "competitive-intelligence", label: "Competitive intelligence", group: "Market-facing",  icon: Crosshair,  status: "bad"  },
   { key: "customer-intelligence",    label: "Customer intelligence",    group: "Market-facing",  icon: Users,      status: "warn" },
@@ -23,6 +25,8 @@ const NAV: NavItem[] = [
   { key: "sales-pipeline",           label: "Sales pipeline",           group: "Operational",    icon: GitBranch,  status: "bad"  },
   { key: "marketing-performance",    label: "Marketing performance",    group: "Operational",    icon: Target,     status: "warn" },
   { key: "people-operations",        label: "People and operations",    group: "Operational",    icon: UserCog,    status: "bad"  },
+  { key: "receivables",              label: "Receivables and invoicing", group: "Operational",    icon: Receipt,    status: "bad"  },
+  { key: "talent-hr",                label: "Talent and HR",            group: "Operational",    icon: UserPlus,   status: "bad"  },
   { key: "intelligence-architecture",label: "Intelligence architecture",group: "System",         icon: Cpu,        status: "good" },
   { key: "engagement-pipeline",      label: "Engagement pipeline",      group: "System",         icon: Briefcase,  status: "warn" },
 ];

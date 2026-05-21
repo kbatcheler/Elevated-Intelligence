@@ -143,6 +143,45 @@ export const NARRATOR: Record<string, NarratorContent> = {
       { title: "Comp review approval path in TX + AZ?",       targetLayer: "supply-chain" },
     ],
   },
+  "finance": {
+    summary:
+      "Cash closed Q3 ahead of plan by $3.8M, but the strength is working-capital tightening, not operational outperformance. EBITDA finished $6.5M behind plan, with Technology + Data and Operations overspending while Marketing and HR came in under. Two opex lines — cloud infrastructure and DC contract labour — account for almost all the variance and are both addressable in Q4. Reset the Technology budget envelope before Q4 board, not after.",
+    cross: [
+      { icon: "alert", title: "Receivables drag is the cash story", body: "$10.9M past 60-day terms — three of six largest debtors also appear as critical churn risk.", targetLayer: "receivables", targetField: "metric:1" },
+      { icon: "link",  title: "DC contract labour traces to Talent", body: "Contract pickers covered the 14-role DC vacancy gap at 1.6x rate — close the roles, close the overspend.", targetLayer: "talent-hr", targetField: "cause:0" },
+    ],
+    next: [
+      { title: "Which cloud platforms drive the +18% overrun?", targetLayer: "finance" },
+      { title: "Can we restore dunning workflow this week?",    targetLayer: "receivables" },
+      { title: "Critical role fill sequencing for Q4?",         targetLayer: "talent-hr" },
+    ],
+  },
+  "receivables": {
+    summary:
+      "The receivables book swelled to $40.5M in Q3, with $10.9M past 60-day terms — a 41% rise on Q2. Deterioration is concentrated: six trade customers carry 62% of past-due value, and three of those six are also critical churn risks. Collections should be sequenced with account recovery, not run as a parallel adversarial workflow. Reactivating the dunning cadence and joint AM+finance calls on the top six is this week's move.",
+    cross: [
+      { icon: "alert", title: "Top debtors are top churn risks",     body: "Heritage Pro, Mountain West Trades and Kessler all carry open service tickets and unpaid invoices in parallel.", targetLayer: "customer-intelligence", targetField: "header" },
+      { icon: "link",  title: "Service breach correlates with delay", body: "Accounts with Q3 SLA breaches paid 18 days slower on average — supply chain is upstream.", targetLayer: "supply-chain", targetField: "cause:0" },
+    ],
+    next: [
+      { title: "Top 6 debtor recovery call sequence?", targetLayer: "receivables" },
+      { title: "Restore automated dunning cadence?",   targetLayer: "receivables" },
+      { title: "Joint workflow with Customer team?",   targetLayer: "customer-intelligence" },
+    ],
+  },
+  "talent-hr": {
+    summary:
+      "Q4 delivery risk concentrates in 24 unfilled critical roles. Six have been open more than 60 days, all in Operations, Data Engineering and Commercial — the same functions whose gaps drive Q3 variance. Funnel conversion halved versus Q2; the failure point is sourcing quality and offer competitiveness, not late-stage drop-off. Targeted comp moves in two DC regions plus an executive search on the senior data engineering role would close 80% of the Q4 staffing risk.",
+    cross: [
+      { icon: "alert", title: "Open DC roles cap Supply throughput", body: "14 unfilled DC roles map directly to the throughput shortfall in Dallas — same root cause.", targetLayer: "supply-chain", targetField: "cause:1" },
+      { icon: "link",  title: "Data engineering loss blocks Pricing", body: "Senior data engineer vacancy is the gating constraint on margin elasticity model retrain.", targetLayer: "pricing-margin", targetField: "gap:1" },
+    ],
+    next: [
+      { title: "Comp review approval path TX + AZ?",        targetLayer: "talent-hr" },
+      { title: "Which 6 roles to retain external search?",  targetLayer: "talent-hr" },
+      { title: "Internal mobility candidates for 14 lateral moves?", targetLayer: "people-operations" },
+    ],
+  },
   "intelligence-architecture": {
     summary:
       "The architecture page makes the reasoning chain visible. Five named components — Cortex Lens, Confounder, Challenger, Synthesist, Evaluator — work together on every diagnostic question. The user-facing narrative is the synthesis of all five; confidence and gap detection are emergent properties of the chain working correctly.",
