@@ -90,6 +90,17 @@ router.post("/companies/seed", seedRateLimit, async (req, res) => {
   const nameIn   = typeof raw.name   === "string" ? raw.name.trim().slice(0, 120)   : "";
   const urlIn    = typeof raw.url    === "string" ? raw.url.trim().slice(0, 200)    : "";
   const sectorIn = typeof raw.sector === "string" ? raw.sector.trim().slice(0, 160) : "";
+  // Optional "confirmed identity" payload from the disambiguation step —
+  // pins Claude to a specific real entity instead of letting it guess.
+  const confirmRaw = raw.confirmed && typeof raw.confirmed === "object" ? raw.confirmed as Record<string, unknown> : null;
+  const confirmed = confirmRaw ? {
+    name:         typeof confirmRaw.name         === "string" ? confirmRaw.name.trim().slice(0, 120)         : "",
+    canonicalUrl: typeof confirmRaw.canonicalUrl === "string" ? confirmRaw.canonicalUrl.trim().slice(0, 200) : "",
+    sector:       typeof confirmRaw.sector       === "string" ? confirmRaw.sector.trim().slice(0, 160)       : "",
+    hqCity:       typeof confirmRaw.hqCity       === "string" ? confirmRaw.hqCity.trim().slice(0, 80)        : "",
+    hqState:      typeof confirmRaw.hqState      === "string" ? confirmRaw.hqState.trim().slice(0, 40)       : "",
+    oneLiner:     typeof confirmRaw.oneLiner     === "string" ? confirmRaw.oneLiner.trim().slice(0, 400)     : "",
+  } : null;
   if (!nameIn) {
     res.status(400).json({ error: "Company name is required." });
     return;
@@ -104,11 +115,22 @@ router.post("/companies/seed", seedRateLimit, async (req, res) => {
     return;
   }
 
-  const userPrompt =
-    `Company name: ${name}\n` +
-    (url    ? `Homepage: ${url}\n`        : "") +
-    (sector ? `Sector hint: ${sector}\n`  : "") +
-    `\nReturn the JSON profile now.`;
+  const userPrompt = confirmed
+    ? `CONFIRMED IDENTITY (use these values verbatim — do NOT substitute a more famous same-named company):\n` +
+      `  Name:        ${confirmed.name}\n` +
+      `  Homepage:    ${confirmed.canonicalUrl || url}\n` +
+      `  Sector:      ${confirmed.sector || sector}\n` +
+      `  HQ:          ${[confirmed.hqCity, confirmed.hqState].filter(Boolean).join(", ") || "(use your knowledge)"}\n` +
+      `  One-liner:   ${confirmed.oneLiner || "(use your knowledge)"}\n` +
+      `\nUser-typed inputs (for reference only — confirmed identity wins on conflict):\n` +
+      `  Typed name: ${name}\n` +
+      (url ? `  Typed URL:  ${url}\n` : "") +
+      `\nReturn the JSON profile for the CONFIRMED entity now.`
+    : `Company name: ${name}\n` +
+      (url    ? `Homepage: ${url}\n`        : "") +
+      (sector ? `Sector hint: ${sector}\n`  : "") +
+      `\nIMPORTANT: The homepage URL is authoritative. If the typed name is ambiguous across multiple real companies, anchor on the URL. Do NOT silently substitute a more famous same-named company.\n` +
+      `\nReturn the JSON profile now.`;
 
   try {
     const apiRes = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/messages`, {

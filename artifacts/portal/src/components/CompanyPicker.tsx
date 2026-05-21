@@ -1,7 +1,22 @@
 import { useState } from "react";
-import { X, Globe, Sparkles, RotateCcw, ChevronRight, Loader2, AlertCircle } from "lucide-react";
+import { X, Globe, Sparkles, RotateCcw, ChevronRight, Loader2, AlertCircle, ArrowLeft, Check } from "lucide-react";
 import { useCompany } from "../context/CompanyContext";
 import { DEFAULT_PROFILE_ID, type CompanyProfile } from "../data/companies";
+
+interface Candidate {
+  name: string;
+  canonicalUrl: string;
+  sector: string;
+  hqCity: string;
+  hqState: string;
+  oneLiner: string;
+  distinguisher: string;
+  confidence: number;
+}
+type Stage = "input" | "identifying" | "disambiguate" | "seeding";
+
+// Confidence at which we skip the disambiguation step entirely.
+const AUTO_PROCEED_CONFIDENCE = 0.92;
 
 export default function CompanyPicker() {
   const { pickerOpen, setPickerOpen, library, customProfiles, profile, setProfileId, resetToDefault, addCustomProfile } = useCompany();
@@ -9,32 +24,94 @@ export default function CompanyPicker() {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [sector, setSector] = useState("");
-  const [generating, setGenerating] = useState(false);
+  const [stage, setStage] = useState<Stage>("input");
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   if (!pickerOpen) return null;
 
-  const generate = async () => {
+  const reset = () => {
+    setStage("input"); setCandidates([]); setError(null);
+  };
+
+  // Step 1: ask the server to identify the company. If unambiguous + high
+  // confidence, skip straight to seed; otherwise show the disambiguation list.
+  const identify = async () => {
     if (!name.trim()) { setError("Company name is required."); return; }
     setError(null);
-    setGenerating(true);
+    setStage("identifying");
     try {
-      const res = await fetch("/api/companies/seed", {
+      const res = await fetch("/api/companies/identify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim(), url: url.trim(), sector: sector.trim() }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error ?? `Identification failed (HTTP ${res.status})`);
+      }
+      const data = await res.json() as { candidates: Candidate[]; verdict: string };
+      const cands = data.candidates ?? [];
+      if (cands.length === 0) {
+        throw new Error("AI returned no candidates.");
+      }
+      // Persist candidates BEFORE auto-proceeding so a downstream seed
+      // failure can fall back to a usable disambiguation picker.
+      setCandidates(cands);
+      // Auto-proceed only when the server explicitly says "unambiguous"
+      // AND there's a single dominant candidate. Belt-and-braces: an
+      // inconsistent verdict (e.g. "ambiguous" with one high-confidence
+      // entry) always shows the picker — wrong-company risk wins.
+      const top = cands[0];
+      if (
+        data.verdict === "unambiguous" &&
+        cands.length === 1 &&
+        top.confidence >= AUTO_PROCEED_CONFIDENCE
+      ) {
+        await seedConfirmed(top);
+        return;
+      }
+      setStage("disambiguate");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Identification failed.");
+      setStage("input");
+    }
+  };
+
+  // Step 2: seed with a confirmed identity (locks Claude to this entity).
+  const seedConfirmed = async (c: Candidate) => {
+    setError(null);
+    setStage("seeding");
+    try {
+      const res = await fetch("/api/companies/seed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name:   c.name,
+          url:    c.canonicalUrl || url.trim(),
+          sector: c.sector || sector.trim(),
+          confirmed: {
+            name:         c.name,
+            canonicalUrl: c.canonicalUrl || url.trim(),
+            sector:       c.sector,
+            hqCity:       c.hqCity,
+            hqState:      c.hqState,
+            oneLiner:     c.oneLiner,
+          },
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
         throw new Error(body?.error ?? `Seeding failed (HTTP ${res.status})`);
       }
-      const profile = (await res.json()) as CompanyProfile;
-      addCustomProfile(profile);
+      const seeded = await res.json() as CompanyProfile;
+      addCustomProfile(seeded);
       setName(""); setUrl(""); setSector("");
-    } catch (e: any) {
-      setError(e?.message ?? "Could not seed the profile.");
-    } finally {
-      setGenerating(false);
+      setCandidates([]);
+      setStage("input");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not seed the profile.");
+      setStage("disambiguate");
     }
   };
 
@@ -61,7 +138,7 @@ export default function CompanyPicker() {
 
         {/* Tabs */}
         <div className="flex border-b border-[var(--cream-dark)] shrink-0" style={{ background: "var(--cream-light)" }}>
-          <TabBtn label="From the library" active={tab === "library"} onClick={() => setTab("library")} />
+          <TabBtn label="From the library" active={tab === "library"} onClick={() => { setTab("library"); reset(); }} />
           <TabBtn label="Seed from name + URL" active={tab === "generate"} onClick={() => setTab("generate")} />
           <div className="flex-1" />
           {profile.id !== DEFAULT_PROFILE_ID && (
@@ -93,65 +170,193 @@ export default function CompanyPicker() {
                 </Section>
               )}
             </div>
+          ) : stage === "disambiguate" ? (
+            <DisambiguateView
+              typedName={name.trim()}
+              typedUrl={url.trim()}
+              candidates={candidates}
+              error={error}
+              onPick={seedConfirmed}
+              onBack={reset}
+            />
           ) : (
-            <div className="max-w-[560px] mx-auto pt-4">
-              <div className="text-center mb-7">
-                <div className="eyebrow text-[var(--coral)] mb-2">Sales tool · seed a prospect</div>
-                <h2 className="font-serif font-semibold text-[28px] leading-tight text-[var(--navy)] mb-3">
-                  Walk in with a finished implementation.
-                </h2>
-                <p className="font-serif italic text-[14px] text-[var(--slate)] leading-relaxed">
-                  Type a prospect's name and homepage. We'll seed all thirteen layers with public intelligence — competitor set, named geographies, named suppliers, recent narrative. Sales rep can edit any cell before the meeting.
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <Field label="Company name" hint="As the prospect would say it">
-                  <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Guitar Center"
-                         className="w-full px-3 py-2.5 rounded-sm font-sans text-[14px] text-[var(--navy)]"
-                         style={{ background: "var(--cream-light)", border: "1px solid var(--cream-dark)" }} />
-                </Field>
-                <Field label="Homepage URL" hint="Used as the canonical identifier">
-                  <div className="relative">
-                    <Globe size={14} strokeWidth={1.8} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--slate-light)]" />
-                    <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="guitarcenter.com"
-                           className="w-full pl-10 pr-3 py-2.5 rounded-sm font-sans text-[14px] text-[var(--navy)]"
-                           style={{ background: "var(--cream-light)", border: "1px solid var(--cream-dark)" }} />
-                  </div>
-                </Field>
-                <Field label="Sector hint" hint="Optional — improves the seed if specified">
-                  <input value={sector} onChange={(e) => setSector(e.target.value)} placeholder="e.g. specialty music retail"
-                         className="w-full px-3 py-2.5 rounded-sm font-sans text-[14px] text-[var(--navy)]"
-                         style={{ background: "var(--cream-light)", border: "1px solid var(--cream-dark)" }} />
-                </Field>
-
-                {error && (
-                  <div className="flex items-start gap-2 px-3 py-2 rounded-sm font-sans text-[12px] text-[var(--coral)]"
-                       style={{ background: "var(--coral-faint)", border: "1px solid var(--coral)" }}>
-                    <AlertCircle size={14} strokeWidth={1.8} className="mt-[1px] shrink-0" />
-                    <span>{error}</span>
-                  </div>
-                )}
-
-                <button onClick={generate} disabled={generating || !name.trim()}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-sm font-sans font-semibold text-[12px] uppercase tracking-wider disabled:opacity-50"
-                        style={{ background: "var(--navy)", color: "var(--cream)", border: "1px solid var(--gold)" }}>
-                  {generating ? (
-                    <><Loader2 size={14} strokeWidth={1.8} className="animate-spin" /> Seeding from public intelligence…</>
-                  ) : (
-                    <><Sparkles size={14} strokeWidth={1.8} /> Seed the framework</>
-                  )}
-                </button>
-
-                <p className="font-serif italic text-[11px] text-[var(--slate-light)] text-center leading-snug pt-2">
-                  We use public sources only — homepage, recent news, sector benchmarks. Numbers are scaled to the company's revenue band, not extracted from private filings. The sales rep should review before the meeting.
-                </p>
-              </div>
-            </div>
+            <SeedInputView
+              name={name} setName={setName}
+              url={url} setUrl={setUrl}
+              sector={sector} setSector={setSector}
+              error={error}
+              stage={stage}
+              onSubmit={identify}
+            />
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+function SeedInputView({
+  name, setName, url, setUrl, sector, setSector, error, stage, onSubmit,
+}: {
+  name: string; setName: (v: string) => void;
+  url: string; setUrl: (v: string) => void;
+  sector: string; setSector: (v: string) => void;
+  error: string | null;
+  stage: Stage;
+  onSubmit: () => void;
+}) {
+  const busy = stage === "identifying" || stage === "seeding";
+  return (
+    <div className="max-w-[560px] mx-auto pt-4">
+      <div className="text-center mb-7">
+        <div className="eyebrow text-[var(--coral)] mb-2">Sales tool · seed a prospect</div>
+        <h2 className="font-serif font-semibold text-[28px] leading-tight text-[var(--navy)] mb-3">
+          Walk in with a finished implementation.
+        </h2>
+        <p className="font-serif italic text-[14px] text-[var(--slate)] leading-relaxed">
+          Type a prospect's name and homepage. We'll first confirm which company you mean — then seed all thirteen layers with public intelligence so it's exact, not generic.
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        <Field label="Company name" hint="As the prospect would say it">
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Guitar Center"
+                 disabled={busy}
+                 className="w-full px-3 py-2.5 rounded-sm font-sans text-[14px] text-[var(--navy)] disabled:opacity-60"
+                 style={{ background: "var(--cream-light)", border: "1px solid var(--cream-dark)" }} />
+        </Field>
+        <Field label="Homepage URL" hint="The authoritative identifier — prevents wrong-company errors">
+          <div className="relative">
+            <Globe size={14} strokeWidth={1.8} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--slate-light)]" />
+            <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="guitarcenter.com"
+                   disabled={busy}
+                   className="w-full pl-10 pr-3 py-2.5 rounded-sm font-sans text-[14px] text-[var(--navy)] disabled:opacity-60"
+                   style={{ background: "var(--cream-light)", border: "1px solid var(--cream-dark)" }} />
+          </div>
+        </Field>
+        <Field label="Sector hint" hint="Optional — helps disambiguate if the name is common">
+          <input value={sector} onChange={(e) => setSector(e.target.value)} placeholder="e.g. specialty music retail"
+                 disabled={busy}
+                 className="w-full px-3 py-2.5 rounded-sm font-sans text-[14px] text-[var(--navy)] disabled:opacity-60"
+                 style={{ background: "var(--cream-light)", border: "1px solid var(--cream-dark)" }} />
+        </Field>
+
+        {error && (
+          <div className="flex items-start gap-2 px-3 py-2 rounded-sm font-sans text-[12px] text-[var(--coral)]"
+               style={{ background: "var(--coral-faint)", border: "1px solid var(--coral)" }}>
+            <AlertCircle size={14} strokeWidth={1.8} className="mt-[1px] shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <button onClick={onSubmit} disabled={busy || !name.trim()}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-sm font-sans font-semibold text-[12px] uppercase tracking-wider disabled:opacity-50"
+                style={{ background: "var(--navy)", color: "var(--cream)", border: "1px solid var(--gold)" }}>
+          {stage === "identifying" ? (
+            <><Loader2 size={14} strokeWidth={1.8} className="animate-spin" /> Identifying company…</>
+          ) : stage === "seeding" ? (
+            <><Loader2 size={14} strokeWidth={1.8} className="animate-spin" /> Seeding all thirteen layers…</>
+          ) : (
+            <><Sparkles size={14} strokeWidth={1.8} /> Identify &amp; seed</>
+          )}
+        </button>
+
+        <p className="font-serif italic text-[11px] text-[var(--slate-light)] text-center leading-snug pt-2">
+          Step 1: confirm the right company. Step 2: seed the framework. Public sources only — the rep should review before the meeting.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function DisambiguateView({
+  typedName, typedUrl, candidates, error, onPick, onBack,
+}: {
+  typedName: string;
+  typedUrl: string;
+  candidates: Candidate[];
+  error: string | null;
+  onPick: (c: Candidate) => void;
+  onBack: () => void;
+}) {
+  return (
+    <div className="max-w-[640px] mx-auto pt-2">
+      <button onClick={onBack}
+              className="flex items-center gap-1.5 font-sans text-[11px] uppercase tracking-wider text-[var(--slate)] hover:text-[var(--navy)] mb-5">
+        <ArrowLeft size={11} strokeWidth={1.8} /> Back to input
+      </button>
+
+      <div className="mb-6">
+        <div className="eyebrow text-[var(--coral)] mb-2">Confirm the company</div>
+        <h2 className="font-serif font-semibold text-[24px] leading-tight text-[var(--navy)] mb-2">
+          Which {`"${typedName}"`} did you mean?
+        </h2>
+        <p className="font-serif italic text-[13px] text-[var(--slate)] leading-relaxed">
+          {candidates.length > 1
+            ? `We found ${candidates.length} possible matches${typedUrl ? "" : " — supplying a homepage URL avoids this step next time"}. Pick the right one to seed.`
+            : "We're not fully confident on this one — confirm or go back and add the homepage URL."}
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {candidates.map((c, i) => (
+          <button key={i} onClick={() => onPick(c)}
+                  className="w-full text-left p-4 rounded-sm transition-all hover:border-[var(--navy)] group"
+                  style={{ background: "var(--cream-light)", border: "1px solid var(--cream-dark)" }}>
+            <div className="flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline justify-between gap-3 mb-1">
+                  <div className="font-serif font-semibold text-[18px] text-[var(--navy)] leading-tight">{c.name}</div>
+                  <ConfidencePill v={c.confidence} />
+                </div>
+                {c.canonicalUrl && (
+                  <div className="font-sans text-[11px] text-[var(--slate)] mb-1.5">{c.canonicalUrl}</div>
+                )}
+                <div className="font-serif italic text-[13px] text-[var(--ink)] leading-snug mb-2">{c.oneLiner}</div>
+                <div className="flex items-center flex-wrap gap-x-3 gap-y-1 font-sans text-[11px] text-[var(--slate-light)]">
+                  {c.sector && <span className="uppercase tracking-wider">{c.sector}</span>}
+                  {c.hqCity && <><span className="opacity-40">·</span><span>{c.hqCity}{c.hqState ? `, ${c.hqState}` : ""}</span></>}
+                  {c.distinguisher && (
+                    <>
+                      <span className="opacity-40">·</span>
+                      <span className="italic text-[var(--coral)]">{c.distinguisher}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <Check size={16} strokeWidth={1.8} className="text-[var(--cream-dark)] group-hover:text-[var(--coral)] shrink-0 mt-1" />
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {error && (
+        <div className="mt-4 flex items-start gap-2 px-3 py-2 rounded-sm font-sans text-[12px] text-[var(--coral)]"
+             style={{ background: "var(--coral-faint)", border: "1px solid var(--coral)" }}>
+          <AlertCircle size={14} strokeWidth={1.8} className="mt-[1px] shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <p className="font-serif italic text-[11px] text-[var(--slate-light)] text-center leading-snug pt-5">
+        Picking a candidate seeds the framework against that exact entity — no silent substitution.
+      </p>
+    </div>
+  );
+}
+
+function ConfidencePill({ v }: { v: number }) {
+  const pct = Math.round(v * 100);
+  const tone =
+    v >= 0.85 ? { bg: "var(--teal-faint)", fg: "var(--teal)", label: "High confidence" } :
+    v >= 0.6  ? { bg: "var(--gold-faint)", fg: "var(--gold)", label: "Medium" } :
+                 { bg: "var(--coral-faint)", fg: "var(--coral)", label: "Low" };
+  return (
+    <span className="shrink-0 font-sans text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-sm tabular-nums"
+          style={{ background: tone.bg, color: tone.fg, border: `1px solid ${tone.fg}` }}
+          title={`${tone.label} · ${pct}% confidence`}>
+      {pct}%
+    </span>
   );
 }
 
