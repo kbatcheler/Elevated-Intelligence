@@ -9,6 +9,12 @@ import AnimatedNumber from "./AnimatedNumber";
 import Sparkline, { makeSeries } from "./Sparkline";
 import { EXTRAS } from "./extras";
 import { HEROES } from "./heroes";
+import TimeTravel from "./TimeTravel";
+import CommitButton from "./CommitButton";
+import WhatIfLevers from "./WhatIfLevers";
+import { useApp } from "../context/AppContext";
+import { EVIDENCE } from "../data/signals";
+import { TIMELINES } from "../data/timetravel";
 
 const toneColor = (t: Tone) =>
   t === "bad"  ? "var(--red)"
@@ -25,8 +31,19 @@ const tagClass = (c: string) => "tag tag-" + c.toLowerCase();
 
 export default function Layer({ layer, highlight }: { layer: LayerData; highlight?: string }) {
   const [open, setOpen] = useState(false);
+  const { openEvidence, pulse, timeOffsetByLayer } = useApp();
   const isHi = (field: string) => highlight === field;
   const seedBase = layer.key.charCodeAt(0) + layer.key.charCodeAt(layer.key.length - 1);
+
+  // Time-travel overrides
+  const offset = timeOffsetByLayer[layer.key] ?? 0;
+  const timeline = TIMELINES[layer.key];
+  const snap = timeline ? timeline[2 - offset] : null;
+  const isRewound = offset > 0;
+  const displayConf = snap?.confidence ?? layer.confidence;
+  const displayDiagnosedAt = snap?.diagnosedAt ?? layer.diagnosedAt;
+
+  const showWhatIf = layer.key === "pricing-margin" || layer.key === "demand-intelligence";
 
   return (
     <div className="space-y-6 pb-12">
@@ -39,13 +56,13 @@ export default function Layer({ layer, highlight }: { layer: LayerData; highligh
           <div className="mt-4 flex items-center gap-4 text-[12px] text-[var(--slate-light)]">
             <span className="flex items-center gap-1.5">
               <span className="relative inline-flex">
-                <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--teal)" }} />
-                <span className="absolute inset-0 h-1.5 w-1.5 rounded-full animate-ping" style={{ background: "var(--teal)", opacity: 0.4 }} />
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: isRewound ? "var(--amber)" : "var(--teal)" }} />
+                <span className="absolute inset-0 h-1.5 w-1.5 rounded-full animate-ping" style={{ background: isRewound ? "var(--amber)" : "var(--teal)", opacity: 0.4 }} />
               </span>
-              Diagnosed {layer.diagnosedAt}
+              {isRewound ? "Rewound to " : "Diagnosed "}{displayDiagnosedAt}
             </span>
             <span className="opacity-40">·</span>
-            <div className="flex items-center gap-1.5"><span>Confidence</span><ConfidenceBand value={layer.confidence} /></div>
+            <div className="flex items-center gap-1.5"><span>Confidence</span><ConfidenceBand value={displayConf} /></div>
             <span className="opacity-40">·</span>
             <span>{layer.sources} sources</span>
           </div>
@@ -55,39 +72,70 @@ export default function Layer({ layer, highlight }: { layer: LayerData; highligh
         </button>
       </div>
 
+      {/* Time-travel slider */}
+      <TimeTravel layerKey={layer.key} />
+
       {/* Hero: custom per-layer treatment, or default metric strip */}
       {HEROES[layer.key] ? (() => { const H = HEROES[layer.key]; return <H layer={layer} />; })() : (
         <div className="grid grid-cols-4 gap-4">
-          {layer.metrics.map((m, i) => (
-            <div key={i} className={"card " + (isHi(`metric:${i}`) ? "pulse-coral" : "")}>
-              <div className="flex items-start justify-between">
-                <div className="eyebrow text-[var(--slate-light)]">{m.label}</div>
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold" style={{ color: toneColor(m.tone) }}>
-                  <TrendIcon t={m.tone} />
-                </span>
+          {layer.metrics.map((m, i) => {
+            const evKey = `${layer.key}/${m.label}`;
+            const hasEvidence = !!EVIDENCE[evKey];
+            const isPulsing = pulse?.layer === layer.key && pulse.metric === m.label;
+            const cls = "card " +
+              (isHi(`metric:${i}`) || isPulsing ? "pulse-coral " : "") +
+              (hasEvidence ? "cursor-pointer hover:border-[var(--navy)] transition-colors" : "");
+            return (
+              <div key={i}
+                   onClick={hasEvidence ? () => openEvidence(layer.key, m.label) : undefined}
+                   className={cls}>
+                <div className="flex items-start justify-between">
+                  <div className="eyebrow text-[var(--slate-light)]">
+                    {m.label}
+                    {hasEvidence && <span className="ml-1.5 inline-block h-1 w-1 rounded-full align-middle" style={{ background: "var(--gold)" }} />}
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold" style={{ color: toneColor(m.tone) }}>
+                    <TrendIcon t={m.tone} />
+                  </span>
+                </div>
+                <div className="font-sans font-semibold mt-2 tabular-nums" style={{ fontSize: 36, lineHeight: 1.05, color: toneColor(m.tone) }}>
+                  <AnimatedNumber value={m.value} />
+                </div>
+                <div className="flex items-end justify-between mt-2 gap-3">
+                  <div className="font-sans italic text-[11px] text-[var(--slate-light)]">{m.sub}</div>
+                  <Sparkline data={makeSeries(seedBase + i * 17, 14, m.tone === "bad" ? -0.6 : m.tone === "good" ? 0.4 : 0)}
+                             color={toneColor(m.tone)} />
+                </div>
+                {hasEvidence && (
+                  <div className="mt-2 pt-2 border-t border-[var(--cream-dark)] eyebrow text-[var(--slate-light)] flex items-center gap-1">
+                    Click for evidence <ArrowRight size={10} strokeWidth={1.8} />
+                  </div>
+                )}
               </div>
-              <div className="font-sans font-semibold mt-2 tabular-nums" style={{ fontSize: 36, lineHeight: 1.05, color: toneColor(m.tone) }}>
-                <AnimatedNumber value={m.value} />
-              </div>
-              <div className="flex items-end justify-between mt-2 gap-3">
-                <div className="font-sans italic text-[11px] text-[var(--slate-light)]">{m.sub}</div>
-                <Sparkline data={makeSeries(seedBase + i * 17, 14, m.tone === "bad" ? -0.6 : m.tone === "good" ? 0.4 : 0)}
-                           color={toneColor(m.tone)} />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {/* Domain-specific extras (unique per layer) */}
       {EXTRAS[layer.key] ? (() => { const E = EXTRAS[layer.key]; return <E />; })() : null}
 
+      {/* What-if levers — Pricing and Demand */}
+      {showWhatIf && <WhatIfLevers scenario={layer.key === "pricing-margin" ? "pricing" : "demand"} />}
+
       <div className="grid grid-cols-3 gap-6">
         {/* Left column: narrative + visualisation */}
         <div className="col-span-2 space-y-6">
           <div className="card card-hero card-accent-coral">
             <div className="eyebrow text-[var(--coral)] mb-3">Executive narrative</div>
-            <p className="font-serif text-[19px] leading-[1.55] text-[var(--ink)]">{layer.narrative}</p>
+            <p className="font-serif text-[19px] leading-[1.55] text-[var(--ink)]">
+              {isRewound && snap ? snap.headline : layer.narrative}
+            </p>
+            {isRewound && (
+              <div className="mt-3 pt-3 border-t border-[var(--cream-dark)] font-sans italic text-[11px] text-[var(--amber)]">
+                Viewing the diagnosis as the system saw it {snap?.label.toLowerCase()}. Switch back to "Now" for the current view.
+              </div>
+            )}
           </div>
 
           <div className="card card-accent-navy">
@@ -131,13 +179,23 @@ export default function Layer({ layer, highlight }: { layer: LayerData; highligh
             <ul className="space-y-4">
               {layer.actions.map((a, i) => (
                 <li key={i} className={"flex items-start gap-3 " + (isHi(`action:${i}`) ? "pulse-coral !rounded-sm" : "")}>
-                  <span className="mt-1.5 inline-block h-2 w-2 rounded-full" style={{ background: "var(--gold)" }} />
-                  <div className="flex-1">
+                  <span className="mt-1.5 inline-block h-2 w-2 rounded-full shrink-0" style={{ background: "var(--gold)" }} />
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-baseline justify-between gap-3">
                       <div className="font-sans font-semibold text-[13px] text-[var(--navy)] leading-snug">{a.title}</div>
                       <div className="font-sans text-[14px] font-bold text-[var(--teal)] whitespace-nowrap tabular-nums">{a.impact}</div>
                     </div>
                     <div className="font-sans italic text-[11px] text-[var(--slate-light)] leading-snug mt-0.5">{a.detail}</div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <CommitButton
+                        layer={layer.key}
+                        layerTitle={layer.title}
+                        title={a.title}
+                        detail={a.detail}
+                        impact={a.impact}
+                        idx={i}
+                      />
+                    </div>
                   </div>
                 </li>
               ))}

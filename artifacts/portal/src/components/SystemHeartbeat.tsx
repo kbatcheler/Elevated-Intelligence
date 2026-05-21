@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Radio, Clock, XCircle, Zap, AlertTriangle } from "lucide-react";
 import { FEEDS, ACTIVITY_STREAM } from "../data/feeds";
 import { LAYERS } from "../data/layers";
+import { ANOMALIES } from "../data/signals";
+import { useApp } from "../context/AppContext";
 
 function aggregate() {
   let live = 0, stale = 0, partial = 0, missing = 0, manual = 0;
@@ -20,6 +22,7 @@ function aggregate() {
 
 export default function SystemHeartbeat({ onNavigate }: { onNavigate: (key: string) => void }) {
   const stats = aggregate();
+  const { openInbox } = useApp();
   const [idx, setIdx] = useState(0);
   const [tick, setTick] = useState(0);
 
@@ -67,10 +70,12 @@ export default function SystemHeartbeat({ onNavigate }: { onNavigate: (key: stri
           <XCircle size={11} strokeWidth={1.8} className="text-[var(--coral)]" />
           <span className="tabular-nums font-semibold text-[var(--navy)]">{stats.missing}</span> missing
         </span>
-        <span className="flex items-center gap-1.5 text-[var(--slate)]">
+        <button onClick={openInbox}
+                className="flex items-center gap-1.5 text-[var(--slate)] hover:text-[var(--coral)] transition-colors group">
           <Zap size={11} strokeWidth={1.8} className="text-[var(--coral)]" />
-          <span className="tabular-nums font-semibold text-[var(--navy)]">{47 + (tick % 6)}</span> anomalies today
-        </span>
+          <span className="tabular-nums font-semibold text-[var(--navy)] group-hover:text-[var(--coral)]">{ANOMALIES.length}</span>
+          <span className="group-hover:underline">anomalies today</span>
+        </button>
       </div>
       <div className="flex-1 border-l border-[var(--cream-dark)] flex items-center overflow-hidden">
         <button
