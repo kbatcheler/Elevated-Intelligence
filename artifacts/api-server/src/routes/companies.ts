@@ -1,6 +1,12 @@
 import { Router, type IRouter } from "express";
+import { rateLimit } from "../middlewares/rateLimit";
 
 const router: IRouter = Router();
+
+// LLM proxy guard — same shape as /intelligence/brief. Seeding a new
+// prospect is also a costly Anthropic call, so it gets the same per-IP
+// budget to prevent cost-abuse against the public endpoint.
+const seedRateLimit = rateLimit({ perMinute: 6 });
 
 const SYSTEM_PROMPT = `You are an analyst seeding a demo for a sales tool called Different Day. The user provides a real company name + homepage; you produce a JSON profile that lets a 13-layer business-intelligence portal re-skin its narrative to that company.
 
@@ -78,12 +84,17 @@ Critical rules:
 - Tone: editorial, precise. No marketing fluff. Specific over generic.
 - Output JSON ONLY. No \`\`\` fences. No commentary.`;
 
-router.post("/companies/seed", async (req, res) => {
-  const { name, url, sector } = (req.body ?? {}) as { name?: string; url?: string; sector?: string };
-  if (!name || typeof name !== "string" || name.trim().length === 0) {
+router.post("/companies/seed", seedRateLimit, async (req, res) => {
+  const raw = (req.body ?? {}) as Record<string, unknown>;
+  // Clamp user-supplied prompt inputs to sane lengths before assembly.
+  const nameIn   = typeof raw.name   === "string" ? raw.name.trim().slice(0, 120)   : "";
+  const urlIn    = typeof raw.url    === "string" ? raw.url.trim().slice(0, 200)    : "";
+  const sectorIn = typeof raw.sector === "string" ? raw.sector.trim().slice(0, 160) : "";
+  if (!nameIn) {
     res.status(400).json({ error: "Company name is required." });
     return;
   }
+  const name = nameIn, url = urlIn, sector = sectorIn;
 
   const baseUrl = process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL;
   const apiKey = process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY;
@@ -94,9 +105,9 @@ router.post("/companies/seed", async (req, res) => {
   }
 
   const userPrompt =
-    `Company name: ${name.trim()}\n` +
-    (url?.trim() ? `Homepage: ${url.trim()}\n` : "") +
-    (sector?.trim() ? `Sector hint: ${sector.trim()}\n` : "") +
+    `Company name: ${name}\n` +
+    (url    ? `Homepage: ${url}\n`        : "") +
+    (sector ? `Sector hint: ${sector}\n`  : "") +
     `\nReturn the JSON profile now.`;
 
   try {
@@ -143,7 +154,7 @@ router.post("/companies/seed", async (req, res) => {
 
     // Strict shape-validate-and-normalise. The client trusts this payload
     // and renders it directly; malformed AI output must not crash the UI.
-    const normalised = normaliseProfile(profile, name.trim());
+    const normalised = normaliseProfile(profile, name);
     if (!normalised.ok) {
       req.log.error({ reason: normalised.reason }, "AI profile failed validation");
       res.status(502).json({ error: `AI profile invalid: ${normalised.reason}` });

@@ -18,6 +18,7 @@ import CommittedTray from "./components/CommittedTray";
 import DependencyGraph from "./dependency/DependencyGraph";
 import MorningBrief from "./brief/MorningBrief";
 import BoardPack from "./brief/BoardPack";
+import IntelligenceBrief from "./brief/IntelligenceBrief";
 import ChatAssistant from "./components/ChatAssistant";
 import WarRoom from "./scenario/WarRoom";
 import TrackRecord from "./components/TrackRecord";
@@ -63,6 +64,7 @@ export default function App() {
   const [highlight, setHighlight] = useState<string | undefined>(undefined);
   const [clientOpen, setClientOpen] = useState(false);
   const [boardPackOpen, setBoardPackOpen] = useState(false);
+  const [intelOpen, setIntelOpen] = useState(false);
   const {
     setActiveLayer, openInbox, openBrief, briefOpen, committed,
   } = useApp();
@@ -168,6 +170,13 @@ export default function App() {
             <FileText size={14} strokeWidth={1.5} className="text-[var(--gold-light)]" />
             Board pack
           </button>
+          <button onClick={() => setIntelOpen(true)}
+                  title="AI-generated company intelligence brief"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm font-sans text-[12px] text-[var(--cream)] hover:bg-white/10 transition-colors"
+                  style={{ border: "1px solid var(--coral)" }}>
+            <Sparkles size={14} strokeWidth={1.5} className="text-[var(--coral)]" />
+            Intelligence
+          </button>
           <button onClick={() => setPickerOpen(true)}
                   title="Switch company / seed a prospect"
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm font-sans text-[11px] uppercase tracking-wider text-[var(--cream)] hover:bg-white/10 transition-colors"
@@ -269,6 +278,7 @@ export default function App() {
       <EvidencePanel />
       {briefOpen && <MorningBrief />}
       {boardPackOpen && <BoardPack onClose={() => setBoardPackOpen(false)} />}
+      {intelOpen && <IntelligenceBrief onClose={() => setIntelOpen(false)} />}
       <ChatAssistant onNavigate={handleNavigate} />
       <Tour />
       <CompanyPicker />
