@@ -37,14 +37,24 @@ export default function CompanyPicker() {
   // Step 1: ask the server to identify the company. If unambiguous + high
   // confidence, skip straight to seed; otherwise show the disambiguation list.
   const identify = async () => {
-    if (!name.trim()) { setError("Company name is required."); return; }
+    const trimmedName = name.trim();
+    const trimmedUrl  = url.trim();
+    if (!trimmedName) { setError("Company name is required."); return; }
+    if (!trimmedUrl)  { setError("Homepage URL is required — it's the only way to disambiguate from same-named companies."); return; }
+    // Light client-side domain shape check. The server enforces this strictly;
+    // catching it here gives a faster, kinder error than a 400 round-trip.
+    const cleaned = trimmedUrl.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+    if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(cleaned)) {
+      setError("Homepage URL must look like a real domain (e.g. humanco.com or www.humanco.com).");
+      return;
+    }
     setError(null);
     setStage("identifying");
     try {
       const res = await fetch("/api/companies/identify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), url: url.trim(), sector: sector.trim() }),
+        body: JSON.stringify({ name: trimmedName, url: trimmedUrl, sector: sector.trim() }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -220,22 +230,22 @@ function SeedInputView({
           Walk in with a finished implementation.
         </h2>
         <p className="font-serif italic text-[14px] text-[var(--slate)] leading-relaxed">
-          Type a prospect's name and homepage. We'll first confirm which company you mean — then seed all thirteen layers with public intelligence so it's exact, not generic.
+          Type the prospect's name <strong>and</strong> their homepage URL. The URL is the authoritative identifier — both are required and the framework is seeded directly from that domain.
         </p>
       </div>
 
       <div className="space-y-4">
-        <Field label="Company name" hint="As the prospect would say it">
+        <Field label="Company name *" hint="As the prospect would say it">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Guitar Center"
-                 disabled={busy}
+                 disabled={busy} required
                  className="w-full px-3 py-2.5 rounded-sm font-sans text-[14px] text-[var(--navy)] disabled:opacity-60"
                  style={{ background: "var(--cream-light)", border: "1px solid var(--cream-dark)" }} />
         </Field>
-        <Field label="Homepage URL" hint="The authoritative identifier — prevents wrong-company errors">
+        <Field label="Homepage URL *" hint="Required · the authoritative identifier · must match the company name (e.g. humanco.com for HumanCo)">
           <div className="relative">
             <Globe size={14} strokeWidth={1.8} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--slate-light)]" />
-            <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="guitarcenter.com"
-                   disabled={busy}
+            <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="guitarcenter.com" type="url"
+                   disabled={busy} required
                    className="w-full pl-10 pr-3 py-2.5 rounded-sm font-sans text-[14px] text-[var(--navy)] disabled:opacity-60"
                    style={{ background: "var(--cream-light)", border: "1px solid var(--cream-dark)" }} />
           </div>
@@ -255,7 +265,7 @@ function SeedInputView({
           </div>
         )}
 
-        <button onClick={onSubmit} disabled={busy || !name.trim()}
+        <button onClick={onSubmit} disabled={busy || !name.trim() || !url.trim()}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-sm font-sans font-semibold text-[12px] uppercase tracking-wider disabled:opacity-50"
                 style={{ background: "var(--navy)", color: "var(--cream)", border: "1px solid var(--gold)" }}>
           {stage === "identifying" ? (

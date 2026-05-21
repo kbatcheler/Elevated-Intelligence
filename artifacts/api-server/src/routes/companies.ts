@@ -8,7 +8,14 @@ const router: IRouter = Router();
 // budget to prevent cost-abuse against the public endpoint.
 const seedRateLimit = rateLimit({ perMinute: 6 });
 
-const SYSTEM_PROMPT = `You are an analyst seeding a demo for a sales tool called Different Day. The user provides a real company name + homepage; you produce a JSON profile that lets a 13-layer business-intelligence portal re-skin its narrative to that company.
+const SYSTEM_PROMPT = `You are an analyst seeding a demo for a sales tool called Different Day. The user provides a real company name + homepage URL; you produce a JSON profile that lets a 13-layer business-intelligence portal re-skin its narrative to that company.
+
+URL AUTHORITY (read carefully — this is the single most important rule):
+- The supplied homepage URL is the AUTHORITATIVE identifier of which company this profile describes. The name is a HINT.
+- The profile you generate MUST describe the company whose homepage lives at that URL — never a more famous same-named entity (e.g. "Mercer Industries" + mercerindustries.com is NOT Mercer consulting; "Apollo" + apollo.io is NOT Apollo Hospitals or Apollo Tyres).
+- Perform an internal name↔URL correlation check before writing anything: if the name and URL appear to refer to different companies, anchor on the URL and describe the company at that domain — do NOT split the difference and do NOT silently substitute.
+- The "url" field in the output JSON must equal the supplied homepage URL (without protocol or path). The server will additionally overwrite this field with the validated URL as a safety net.
+
 
 Return STRICT JSON only — no prose, no code fences. Conform exactly to this TypeScript shape:
 
@@ -105,6 +112,22 @@ router.post("/companies/seed", seedRateLimit, async (req, res) => {
     res.status(400).json({ error: "Company name is required." });
     return;
   }
+  if (!urlIn) {
+    res.status(400).json({ error: "Homepage URL is required — it's the authoritative identifier for this company." });
+    return;
+  }
+  // Canonicalise: strip protocol, path, leading www., lowercase. The result is
+  // what we pass to the LLM as the authoritative anchor AND what we stamp onto
+  // the saved profile's url field, so it must be clean and consistent.
+  const urlBare = urlIn
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/.*$/, "")
+    .replace(/^www\./i, "")
+    .toLowerCase();
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(urlBare)) {
+    res.status(400).json({ error: "Homepage URL must look like a real domain (e.g. humanco.com)." });
+    return;
+  }
   const name = nameIn, url = urlIn, sector = sectorIn;
 
   const baseUrl = process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL;
@@ -118,18 +141,18 @@ router.post("/companies/seed", seedRateLimit, async (req, res) => {
   const userPrompt = confirmed
     ? `CONFIRMED IDENTITY (use these values verbatim — do NOT substitute a more famous same-named company):\n` +
       `  Name:        ${confirmed.name}\n` +
-      `  Homepage:    ${confirmed.canonicalUrl || url}\n` +
+      `  Homepage:    ${confirmed.canonicalUrl || url}  (AUTHORITATIVE — the profile MUST be about the company at this domain)\n` +
       `  Sector:      ${confirmed.sector || sector}\n` +
       `  HQ:          ${[confirmed.hqCity, confirmed.hqState].filter(Boolean).join(", ") || "(use your knowledge)"}\n` +
       `  One-liner:   ${confirmed.oneLiner || "(use your knowledge)"}\n` +
       `\nUser-typed inputs (for reference only — confirmed identity wins on conflict):\n` +
       `  Typed name: ${name}\n` +
-      (url ? `  Typed URL:  ${url}\n` : "") +
-      `\nReturn the JSON profile for the CONFIRMED entity now.`
+      `  Typed URL:  ${url}\n` +
+      `\nReturn the JSON profile for the CONFIRMED entity now. Set the "url" field to ${confirmed.canonicalUrl || urlBare}.`
     : `Company name: ${name}\n` +
-      (url    ? `Homepage: ${url}\n`        : "") +
+      `Homepage URL: ${url}  (AUTHORITATIVE — the profile MUST be about the company at this domain)\n` +
       (sector ? `Sector hint: ${sector}\n`  : "") +
-      `\nIMPORTANT: The homepage URL is authoritative. If the typed name is ambiguous across multiple real companies, anchor on the URL. Do NOT silently substitute a more famous same-named company.\n` +
+      `\nCRITICAL: The profile you generate MUST describe the company whose homepage is ${urlBare}. The name "${name}" is a HINT; the URL is the truth. If the typed name resembles a more famous same-named company, IGNORE that and describe the actual entity at ${urlBare}. Set the "url" field to ${urlBare}.\n` +
       `\nReturn the JSON profile now.`;
 
   try {
@@ -176,7 +199,7 @@ router.post("/companies/seed", seedRateLimit, async (req, res) => {
 
     // Strict shape-validate-and-normalise. The client trusts this payload
     // and renders it directly; malformed AI output must not crash the UI.
-    const normalised = normaliseProfile(profile, name);
+    const normalised = normaliseProfile(profile, name, urlBare);
     if (!normalised.ok) {
       req.log.error({ reason: normalised.reason }, "AI profile failed validation");
       res.status(502).json({ error: `AI profile invalid: ${normalised.reason}` });
@@ -211,7 +234,7 @@ function asNumber(v: unknown, min: number, max: number, fallback?: number): numb
   return fallback ?? null;
 }
 
-function normaliseProfile(raw: Record<string, unknown>, inputName: string): NormResult {
+function normaliseProfile(raw: Record<string, unknown>, inputName: string, authoritativeUrl: string): NormResult {
   const name = asString(raw.name, 80, inputName);
   if (!name) return { ok: false, reason: "missing name" };
 
@@ -273,7 +296,9 @@ function normaliseProfile(raw: Record<string, unknown>, inputName: string): Norm
   const profile: Record<string, unknown> = {
     id: slug || `seed-${Date.now()}`,
     name,
-    url:           asString(raw.url, 120, "") ?? "",
+    // Authoritative URL wins — never trust the model's url field. Strip protocol/path
+    // and lowercase so saved profiles always carry a clean, canonical domain.
+    url:           authoritativeUrl,
     logoMonogram:  asString(raw.logoMonogram, 4, name.slice(0, 2).toUpperCase()) ?? name.slice(0, 2).toUpperCase(),
     logoEmoji:     asString(raw.logoEmoji, 8) ?? undefined,
     sector:        asString(raw.sector, 120, "—") ?? "—",

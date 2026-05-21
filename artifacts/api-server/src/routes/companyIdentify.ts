@@ -6,14 +6,14 @@ const router: IRouter = Router();
 // LLM proxy guard — small, fast calls but still chargeable.
 const identifyRateLimit = rateLimit({ perMinute: 12 });
 
-const SYSTEM_PROMPT = `You are an entity-resolution specialist. The user types a company name and (usually) a homepage URL. Your job is to identify the REAL company they mean and either return a single high-confidence match or surface the ambiguity by returning multiple candidates.
+const SYSTEM_PROMPT = `You are an entity-resolution specialist. The user types a company name AND a homepage URL (both are mandatory). Your job is to identify the REAL company that lives at that URL and either return a single high-confidence match or surface the ambiguity by returning multiple candidates.
 
 Rules:
-1. The URL is the AUTHORITATIVE identifier. If the user supplied a URL that maps unambiguously to a real company you can recognise, return a single candidate with confidence ≥ 0.95. Do not invent ambiguity that doesn't exist.
-2. If the URL is missing OR the name is genuinely ambiguous across multiple real entities (e.g. "Delta" → airline, faucets, dental insurance; "Apollo" → tyres, hospitals, asset manager; "Atlas" → many; "Mars" → candy or aerospace), return 2-3 candidates spanning the most-likely meanings, each with realistic confidence scores. Do NOT pad with implausible options.
-3. If the name + URL together point to ONE company you can recognise but with low certainty (e.g. niche brand), return 1 candidate with the confidence you actually have (0.5-0.85). Do not bluff a high score.
-4. If the name is plainly unidentifiable (no real company you know matches), return one candidate with the user's literal name + URL, sector "Unknown", confidence 0.3, distinguisher "No public match found — will seed from supplied details only".
-5. NEVER substitute a more famous company that shares a partial name. If the user types "Mercer Industries" and the URL is mercerindustries.com, do NOT return Mercer (the consulting firm). Use the URL to anchor.
+1. The URL is the AUTHORITATIVE identifier. The name is a HINT. The candidate(s) you return MUST be the company whose homepage lives at the supplied URL — not a more famous same-named company. Set "canonicalUrl" on every candidate to the supplied URL (normalised, no protocol).
+2. CORRELATION CHECK: confirm the supplied name plausibly matches the supplied URL. If they correlate (e.g. "HumanCo" + humanco.com, "Guitar Center" + guitarcenter.com), return ONE candidate with confidence ≥ 0.92 — the URL anchors it, no disambiguation needed. If the name and URL appear to refer to DIFFERENT entities (e.g. "Apple" + microsoft.com, or "Delta Airlines" + deltafaucet.com), return TWO candidates — first the company at the URL (higher confidence), second the company the name suggests (lower confidence) — so the user can see the mismatch and pick.
+3. If you do not recognise the URL as a real public company at all, return ONE candidate with the user's literal name, canonicalUrl = the supplied URL, sector "Unknown", confidence 0.4, distinguisher "URL not in public-company knowledge — will seed from supplied details only". Do NOT invent a different company.
+4. NEVER substitute a more famous company that shares a partial name. If the user types "Mercer Industries" + mercerindustries.com, do NOT return Mercer (the consulting firm at mercer.com).
+5. Sort candidates by confidence descending. Cap at 3. Single high-confidence match is the expected outcome — only return multiple when there is genuine name/URL mismatch.
 
 Return STRICT JSON only — no prose, no code fences. Shape:
 
@@ -42,6 +42,20 @@ router.post("/companies/identify", identifyRateLimit, async (req, res) => {
     res.status(400).json({ error: "Company name is required." });
     return;
   }
+  if (!url) {
+    res.status(400).json({ error: "Homepage URL is required — it's the authoritative identifier for this company." });
+    return;
+  }
+  // Server-side domain shape guard. The client also validates, but never trust the client.
+  const urlBare = url
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/.*$/, "")
+    .replace(/^www\./i, "")
+    .toLowerCase();
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(urlBare)) {
+    res.status(400).json({ error: "Homepage URL must look like a real domain (e.g. humanco.com)." });
+    return;
+  }
 
   const baseUrl = process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL;
   const apiKey = process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY;
@@ -53,9 +67,9 @@ router.post("/companies/identify", identifyRateLimit, async (req, res) => {
 
   const userPrompt =
     `User-typed name: ${name}\n` +
-    (url    ? `User-typed homepage URL: ${url}\n` : "User-typed homepage URL: (none — disambiguation MORE likely)\n") +
+    `User-typed homepage URL: ${url}  (AUTHORITATIVE — anchor on this domain)\n` +
     (sector ? `User-supplied sector hint: ${sector}\n` : "") +
-    `\nIdentify the company. Return the JSON now.`;
+    `\nIdentify the company at ${urlBare}, confirm it correlates with the typed name "${name}", and return the JSON now.`;
 
   try {
     const apiRes = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/messages`, {
