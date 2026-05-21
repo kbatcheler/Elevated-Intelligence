@@ -1,4 +1,4 @@
-import { X, Database, Activity } from "lucide-react";
+import { X, Database, Activity, Calculator } from "lucide-react";
 import { useApp } from "../context/AppContext";
 
 const confColor = (c: number) =>
@@ -45,6 +45,39 @@ export default function EvidencePanel() {
 {e.query}
             </pre>
           </section>
+
+          {/* Calculation trace */}
+          {e.calculation && e.calculation.length > 0 && (
+            <section className="px-7 py-5 border-b border-[var(--cream-dark)]">
+              <div className="flex items-center gap-2 eyebrow text-[var(--slate-light)] mb-3">
+                <Calculator size={11} strokeWidth={1.8} /> Show the math
+              </div>
+              <ol className="space-y-2">
+                {e.calculation.map((s, i) => {
+                  const isFinal = i === e.calculation!.length - 1;
+                  return (
+                    <li key={i} className="flex items-start gap-3 py-2 px-3 rounded-sm"
+                        style={{
+                          background: isFinal ? "var(--gold-faint)" : "transparent",
+                          borderLeft: isFinal ? "2px solid var(--gold)" : "2px solid var(--cream-dark)",
+                        }}>
+                      <div className="flex-1">
+                        <div className={"font-sans text-[12px] leading-tight " + (isFinal ? "font-bold text-[var(--navy)]" : "font-semibold text-[var(--ink)]")}>
+                          {s.step}
+                        </div>
+                        {s.note && (
+                          <div className="font-serif italic text-[11px] text-[var(--slate)] mt-0.5 leading-snug">{s.note}</div>
+                        )}
+                      </div>
+                      <div className={"font-sans tabular-nums shrink-0 " + (isFinal ? "text-[16px] font-bold text-[var(--coral)]" : "text-[13px] font-semibold text-[var(--navy)]")}>
+                        {s.value}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          )}
 
           {/* Source rows */}
           <section className="px-7 py-5 border-b border-[var(--cream-dark)]">

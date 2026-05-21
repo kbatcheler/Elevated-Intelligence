@@ -14,6 +14,8 @@ import CommitButton from "./CommitButton";
 import WhatIfLevers from "./WhatIfLevers";
 import NextSteps from "./NextSteps";
 import PipelineDetail from "./PipelineDetail";
+import PeerBenchmark from "./PeerBenchmark";
+import { PEERS } from "../data/peers";
 import DemandLink from "./DemandLink";
 import { useApp } from "../context/AppContext";
 import { EVIDENCE } from "../data/signals";
@@ -233,6 +235,9 @@ export default function Layer({ layer, highlight }: { layer: LayerData; highligh
           </div>
         </div>
       </div>
+
+      {/* Peer benchmarks — only on layers where peer data is meaningful */}
+      {PEERS[layer.key] && <PeerBenchmark layerKey={layer.key} />}
 
       {/* Prescriptive next steps — every layer, full-width below the two-column grid */}
       <NextSteps layerKey={layer.key} layerTitle={layer.title} />

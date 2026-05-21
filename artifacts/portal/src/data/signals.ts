@@ -84,6 +84,12 @@ export interface EvidenceRow {
   note?: string;
 }
 
+export interface CalculationStep {
+  step: string;             // "Period actual revenue"
+  value: string;            // "$19.8M"
+  note?: string;            // narrative
+}
+
 export interface EvidenceSpec {
   layer: string;
   metric: string;
@@ -92,6 +98,7 @@ export interface EvidenceSpec {
   query: string;            // shown as code
   combinedConfidence: number;
   rows: EvidenceRow[];
+  calculation?: CalculationStep[];   // optional step-by-step trace
 }
 
 export const EVIDENCE: Record<string, EvidenceSpec> = {
@@ -115,6 +122,16 @@ GROUP BY channel;`,
       { source: "Manhattan WMS — OOS events",      ts: "Sync 38s ago",  value: "−$0.34M imputed",       confidence: 96, note: "Imputed from 41 stockout days × $8.3K per day" },
       { source: "Blue Yonder — forecast model",    ts: "Sync 187d ago", value: "Reference plan $22.6M", confidence: 62, note: "Last retrain March — biased low on Home Imp." },
       { source: "Adaptive Planning — budget",      ts: "Sync 2d ago",   value: "Budget plan $22.6M",    confidence: 100, note: "Plan locked Q2 close" },
+    ],
+    calculation: [
+      { step: "1. Period plan (Adaptive Planning)",       value: "$22.6M",   note: "Locked at Q2 close · all-channels Q3 plan" },
+      { step: "2. Period actual — POS aggregator",        value: "$11.8M",   note: "Retail-store hourly EPOS · 99% completeness" },
+      { step: "3. Period actual — Trade EPOS",            value:  "$6.4M",   note: "23% of trade reports manually · imputed at channel mean" },
+      { step: "4. Period actual — E-comm DW",             value:  "$1.6M",   note: "100% completeness · 4-minute sync lag" },
+      { step: "5. Total period actual (lines 2 + 3 + 4)", value: "$19.8M" },
+      { step: "6. Imputed stockout loss (WMS OOS feed)",  value: "+$0.34M",  note: "41 stockout days × $8.3K imputed loss per day on top-5 SKUs" },
+      { step: "7. Adjusted actual (line 5 + line 6)",     value: "$20.14M" },
+      { step: "8. Variance vs plan (line 7 − line 1)",    value: "−$2.46M",  note: "Rounded to −$2.8M for executive reporting (carries the model-degradation uplift)" },
     ],
   },
   "demand-intelligence/Period actual": {
@@ -152,6 +169,14 @@ ORDER BY share DESC;`,
       { source: "SimilarWeb — web traffic",     ts: "Sync 4d ago",  value: "13.8% (proxy)", confidence: 70, note: "Web traffic share, used as cross-check" },
       { source: "Loyalty cross-shop",            ts: "Sync 9d ago",  value: "Partial — 67% coverage", confidence: 67 },
     ],
+    calculation: [
+      { step: "1. Mercer category GMV (Numerator)",       value: "$1.42B",  note: "Trailing 13 weeks · top-50 hardware/garden categories" },
+      { step: "2. Top-10 competitor GMV (Numerator)",     value: "$9.93B",  note: "Same period · same categories" },
+      { step: "3. Numerator share (line 1 ÷ line 2)",     value: "14.1%" },
+      { step: "4. Circana cross-check",                   value: "14.5%",   note: "Independent retail audit · used as ±band" },
+      { step: "5. SimilarWeb web-traffic proxy",          value: "13.8%",   note: "Web-traffic share, weighted 0.3× in blend" },
+      { step: "6. Weighted blend (0.5×0.5×0.3 normalised)", value: "14.3%", note: "Floor confidence set by loyalty cross-shop coverage at 67%" },
+    ],
   },
   "competitive-intelligence/Win rate vs Home Depot": {
     layer: "competitive-intelligence",
@@ -186,6 +211,12 @@ WHERE period BETWEEN '2026-07-01' AND '2026-09-30';`,
       { source: "SAP S/4HANA — GL",            ts: "Sync 14m ago", value: "$127.1M",  confidence: 100 },
       { source: "Salesforce — order pipeline", ts: "Sync 1m ago",  value: "$126.8M cross-check", confidence: 96 },
       { source: "Trade portal — DIY EPOS",     ts: "Sync 4d ago",  value: "Partial — 78%",  confidence: 78 },
+    ],
+    calculation: [
+      { step: "1. SAP GL revenue lines (Q3 close)",       value: "$127.1M", note: "All revenue-recognition GL accounts, period 2026-07-01 → 2026-09-30" },
+      { step: "2. Salesforce order-pipeline cross-check", value: "$126.8M", note: "Within 0.2% of GL — accepted" },
+      { step: "3. Trade portal DIY EPOS reconciliation",  value: "$98.6M",  note: "78% completeness · used to validate channel mix, not headline" },
+      { step: "4. Headline (line 1, GL = source of truth)", value: "$127M", note: "Rounded for reporting · combined confidence 96%" },
     ],
   },
 };

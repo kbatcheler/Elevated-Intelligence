@@ -3,6 +3,7 @@ import {
   BarChart3, TrendingUp, Crosshair, Users, Megaphone,
   Truck, Tag, GitBranch, Target, UserCog, Cpu, ChevronDown, Briefcase,
   Banknote, Receipt, UserPlus, Network, Newspaper, CheckSquare, Lock,
+  Sliders, Award, FileText,
 } from "lucide-react";
 import { LAYERS } from "./data/layers";
 import Layer from "./components/Layer";
@@ -17,7 +18,11 @@ import EvidencePanel from "./components/EvidencePanel";
 import CommittedTray from "./components/CommittedTray";
 import DependencyGraph from "./dependency/DependencyGraph";
 import MorningBrief from "./brief/MorningBrief";
+import BoardPack from "./brief/BoardPack";
 import ChatAssistant from "./components/ChatAssistant";
+import WarRoom from "./scenario/WarRoom";
+import TrackRecord from "./components/TrackRecord";
+import Tour from "./tour/Tour";
 import { useApp } from "./context/AppContext";
 
 type NavItem = { key: string; label: string; group: string; icon: any; status: "good" | "warn" | "bad" };
@@ -39,7 +44,9 @@ const NAV: NavItem[] = [
   { key: "intelligence-architecture",label: "Intelligence architecture",group: "System",         icon: Cpu,        status: "good" },
   { key: "engagement-pipeline",      label: "Engagement pipeline",      group: "System",         icon: Briefcase,  status: "warn" },
   { key: "dependency-graph",         label: "Cross-layer map",          group: "System",         icon: Network,    status: "good" },
+  { key: "scenario-warroom",         label: "Scenario war-room",        group: "System",         icon: Sliders,    status: "good" },
   { key: "committed-actions",        label: "Committed actions",        group: "System",         icon: CheckSquare,status: "good" },
+  { key: "track-record",             label: "Outcome track record",     group: "System",         icon: Award,      status: "good" },
 ];
 
 const GROUPS = ["Executive", "Market-facing", "Operational", "System"] as const;
@@ -51,6 +58,7 @@ export default function App() {
   const [active, setActive] = useState("business-performance");
   const [highlight, setHighlight] = useState<string | undefined>(undefined);
   const [clientOpen, setClientOpen] = useState(false);
+  const [boardPackOpen, setBoardPackOpen] = useState(false);
   const {
     setActiveLayer, openInbox, openBrief, briefOpen, committed,
   } = useApp();
@@ -135,6 +143,12 @@ export default function App() {
             <Newspaper size={14} strokeWidth={1.5} className="text-[var(--gold-light)]" />
             Morning brief
           </button>
+          <button onClick={() => setBoardPackOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm font-sans text-[12px] text-[var(--cream)] hover:bg-white/10 transition-colors"
+                  style={{ border: "1px solid var(--gold)" }}>
+            <FileText size={14} strokeWidth={1.5} className="text-[var(--gold-light)]" />
+            Board pack
+          </button>
           <span className="font-sans text-[12px] text-[var(--cream)] opacity-70">Katherine Boyd · Lead analyst</span>
           <span className="h-8 w-8 rounded-full flex items-center justify-center font-sans font-semibold text-[12px]"
                 style={{ background: "var(--gold)", color: "var(--navy-deep)" }}>KB</span>
@@ -208,13 +222,17 @@ export default function App() {
               : active === "engagement-pipeline"     ? <EngagementPipeline onNavigate={handleNavigate} />
               : active === "dependency-graph"        ? <DependencyGraph onNavigate={handleNavigate} />
               : active === "committed-actions"       ? <CommittedTray onNavigate={handleNavigate} />
+              : active === "scenario-warroom"        ? <WarRoom onNavigate={handleNavigate} />
+              : active === "track-record"            ? <TrackRecord onNavigate={handleNavigate} />
               : layer && <Layer layer={layer} highlight={highlight} key={active} />}
           </div>
         </main>
 
         {/* Narrator */}
         <Narrator layerKey={
-          active === "engagement-pipeline" || active === "dependency-graph" || active === "committed-actions"
+          active === "engagement-pipeline" || active === "dependency-graph" ||
+          active === "committed-actions"   || active === "scenario-warroom"  ||
+          active === "track-record"
             ? "intelligence-architecture"
             : active
         } onNavigate={handleNavigate} />
@@ -224,7 +242,9 @@ export default function App() {
       <AnomalyInbox onNavigate={handleNavigate} />
       <EvidencePanel />
       {briefOpen && <MorningBrief />}
+      {boardPackOpen && <BoardPack onClose={() => setBoardPackOpen(false)} />}
       <ChatAssistant onNavigate={handleNavigate} />
+      <Tour />
     </div>
   );
 }

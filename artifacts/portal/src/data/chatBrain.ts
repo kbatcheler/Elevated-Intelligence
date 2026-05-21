@@ -157,6 +157,38 @@ export const PATTERNS: ChatPattern[] = [
       followups: ["Where should I start?", "What can we recover in Q4?", "Read me the morning brief"],
     }),
   },
+  // Scenario war-room
+  {
+    match: (q) => has(q, "war-room", "war room", "scenario", "what if we", "stack levers", "stack the levers", "model the recovery", "lever"),
+    respond: () => ({
+      text:
+        "Opening the **scenario war-room**. Six reversible levers — pricing match-cap, SE counter-promo, Phoenix DC shifts, Supplier C activation, marketing reallocation, credit holds. " +
+        "Stack them in any combination and the combined Q4 EBITDA bridge updates live, with a confidence band. Commit the whole scenario in one click.",
+      citations: [],
+      navigate: "scenario-warroom",
+      followups: ["What's the headline diagnosis?", "What can we recover in Q4?"],
+    }),
+  },
+  // Track record
+  {
+    match: (q) => has(q, "track record", "track-record", "outcomes", "past actions", "how have we done", "are you accurate", "how accurate", "your record", "your history"),
+    respond: () => ({
+      text:
+        "Opening the **outcome track record**. Every recommendation we've made is graded against what it actually delivered — predicted vs delivered dollars, hit rate by category, and short notes on what worked and what didn't.",
+      citations: [],
+      navigate: "track-record",
+      followups: ["Where should I start?", "What can we recover in Q4?"],
+    }),
+  },
+  // Board pack
+  {
+    match: (q) => has(q, "board pack", "board-pack", "boardpack", "board folder", "board read"),
+    respond: () => ({
+      text: "The **board pack** is open from the topbar — eight pages, print-ready: cover, headline scorecard, three root causes, three recovery levers, the system's track record, decisions log, layer findings, and appendix.",
+      citations: [],
+      followups: ["Read me the morning brief", "What can we recover in Q4?"],
+    }),
+  },
   // Brief
   {
     match: (q) => has(q, "morning brief", "brief", "read me", "print", "executive briefing"),
