@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Globe, Sparkles, RotateCcw, ChevronRight, Loader2, AlertCircle, ArrowLeft, Check } from "lucide-react";
+import { X, Globe, Sparkles, RotateCcw, ChevronRight, Loader2, AlertCircle, ArrowLeft, Check, Trash2 } from "lucide-react";
 import { useCompany } from "../context/CompanyContext";
 import { DEFAULT_PROFILE_ID, type CompanyProfile } from "../data/companies";
 
@@ -19,7 +19,7 @@ type Stage = "input" | "identifying" | "disambiguate" | "seeding";
 const AUTO_PROCEED_CONFIDENCE = 0.92;
 
 export default function CompanyPicker() {
-  const { pickerOpen, setPickerOpen, library, customProfiles, profile, setProfileId, resetToDefault, addCustomProfile } = useCompany();
+  const { pickerOpen, setPickerOpen, library, customProfiles, profile, setProfileId, resetToDefault, addCustomProfile, removeCustomProfile } = useCompany();
   const [tab, setTab] = useState<"library" | "generate">("library");
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -164,7 +164,13 @@ export default function CompanyPicker() {
                 <Section title="Saved by you · seeded from the web">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {customProfiles.map(p => (
-                      <ProfileCard key={p.id} profile={p} active={p.id === profile.id} onSelect={() => setProfileId(p.id)} />
+                      <ProfileCard key={p.id} profile={p} active={p.id === profile.id}
+                                   onSelect={() => setProfileId(p.id)}
+                                   onDelete={() => {
+                                     if (window.confirm(`Delete the saved profile for ${p.name}? You can re-seed it any time.`)) {
+                                       removeCustomProfile(p.id);
+                                     }
+                                   }} />
                     ))}
                   </div>
                 </Section>
@@ -392,36 +398,45 @@ function Field({ label, hint, children }: { label: string; hint: string; childre
   );
 }
 
-function ProfileCard({ profile, active, onSelect }: { profile: CompanyProfile; active: boolean; onSelect: () => void }) {
+function ProfileCard({ profile, active, onSelect, onDelete }: { profile: CompanyProfile; active: boolean; onSelect: () => void; onDelete?: () => void }) {
   return (
-    <button onClick={onSelect}
-            className={"text-left p-4 rounded-sm transition-all group " +
-              (active ? "ring-2 ring-[var(--gold)]" : "hover:border-[var(--navy)]")}
-            style={{ background: active ? "var(--gold-faint)" : "var(--cream-light)", border: "1px solid var(--cream-dark)" }}>
-      <div className="flex items-start gap-3">
-        <div className="h-12 w-12 rounded-sm flex items-center justify-center font-serif font-bold text-[20px] shrink-0"
-             style={{ background: "var(--navy)", color: "var(--gold-light)" }}>
-          {profile.logoEmoji ?? profile.logoMonogram}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline justify-between gap-2">
-            <div className="font-serif font-semibold text-[17px] text-[var(--navy)] leading-tight truncate">{profile.name}</div>
-            {active && <span className="font-sans text-[10px] uppercase tracking-wider text-[var(--gold)] shrink-0">Active</span>}
+    <div className={"relative text-left p-4 rounded-sm transition-all group " +
+            (active ? "ring-2 ring-[var(--gold)]" : "hover:border-[var(--navy)]")}
+         style={{ background: active ? "var(--gold-faint)" : "var(--cream-light)", border: "1px solid var(--cream-dark)" }}>
+      <button onClick={onSelect} className="w-full text-left cursor-pointer bg-transparent border-0 p-0">
+        <div className="flex items-start gap-3">
+          <div className="h-12 w-12 rounded-sm flex items-center justify-center font-serif font-bold text-[20px] shrink-0"
+               style={{ background: "var(--navy)", color: "var(--gold-light)" }}>
+            {profile.logoEmoji ?? profile.logoMonogram}
           </div>
-          <div className="font-sans text-[11px] text-[var(--slate)] mt-0.5">{profile.url}</div>
-          <div className="font-serif italic text-[12px] text-[var(--slate)] mt-1.5 leading-snug">{profile.tagline}</div>
-          <div className="flex items-center gap-2 mt-2.5 font-sans text-[10px] uppercase tracking-wider text-[var(--slate-light)]">
-            <span>{profile.sector}</span>
-            <span className="opacity-30">·</span>
-            <span>{profile.revenueBand}</span>
-            {!active && (
-              <span className="ml-auto flex items-center gap-0.5 text-[var(--coral)] group-hover:text-[var(--navy)]">
-                Switch <ChevronRight size={10} strokeWidth={2} />
-              </span>
-            )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline justify-between gap-2">
+              <div className="font-serif font-semibold text-[17px] text-[var(--navy)] leading-tight truncate">{profile.name}</div>
+              {active && <span className="font-sans text-[10px] uppercase tracking-wider text-[var(--gold)] shrink-0">Active</span>}
+            </div>
+            <div className="font-sans text-[11px] text-[var(--slate)] mt-0.5">{profile.url}</div>
+            <div className="font-serif italic text-[12px] text-[var(--slate)] mt-1.5 leading-snug">{profile.tagline}</div>
+            <div className="flex items-center gap-2 mt-2.5 font-sans text-[10px] uppercase tracking-wider text-[var(--slate-light)]">
+              <span>{profile.sector}</span>
+              <span className="opacity-30">·</span>
+              <span>{profile.revenueBand}</span>
+              {!active && (
+                <span className="ml-auto flex items-center gap-0.5 text-[var(--coral)] group-hover:text-[var(--navy)]">
+                  Switch <ChevronRight size={10} strokeWidth={2} />
+                </span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </button>
+      </button>
+      {onDelete && (
+        <button onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                aria-label={`Delete saved profile for ${profile.name}`}
+                title="Delete this saved profile"
+                className="absolute top-2 right-2 p-1.5 rounded-sm text-[var(--slate-light)] hover:text-[var(--coral)] hover:bg-[var(--coral-faint)] transition-colors opacity-0 group-hover:opacity-100">
+          <Trash2 size={13} strokeWidth={1.8} />
+        </button>
+      )}
+    </div>
   );
 }

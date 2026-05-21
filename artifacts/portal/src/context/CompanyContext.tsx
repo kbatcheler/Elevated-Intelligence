@@ -49,6 +49,7 @@ interface CompanyContextValue {
   customProfiles: CompanyProfile[];
   setProfileId: (id: string) => void;
   addCustomProfile: (p: CompanyProfile) => void;
+  removeCustomProfile: (id: string) => void;
   resetToDefault: () => void;
   resolve: (text: string) => string;
   narrative: NarrativeBundle;
@@ -134,6 +135,21 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     setPickerOpen(false);
   }, []);
 
+  // Purge a saved custom profile. If the deleted profile is the active one,
+  // snap back to the default so the report doesn't render a missing profile.
+  const removeCustomProfile = useCallback((id: string) => {
+    setCustomProfiles(prev => {
+      const next = prev.filter(p => p.id !== id);
+      try { window.localStorage.setItem(STORAGE_KEY_CUSTOM, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+    setActiveId(curr => {
+      if (curr !== id) return curr;
+      try { window.localStorage.setItem(STORAGE_KEY_ACTIVE, DEFAULT_PROFILE_ID); } catch { /* ignore */ }
+      return DEFAULT_PROFILE_ID;
+    });
+  }, []);
+
   const resetToDefault = useCallback(() => {
     setActiveId(DEFAULT_PROFILE_ID);
     try { window.localStorage.setItem(STORAGE_KEY_ACTIVE, DEFAULT_PROFILE_ID); } catch { /* ignore */ }
@@ -157,6 +173,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     customProfiles,
     setProfileId,
     addCustomProfile,
+    removeCustomProfile,
     resetToDefault,
     resolve,
     narrative,
