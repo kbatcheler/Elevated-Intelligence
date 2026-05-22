@@ -48,7 +48,7 @@ export interface NarrativeBundle {
 // vocabulary indexing — and is updated by the orchestrator as that work
 // actually completes. NO fake setTimeout ticks: every status change here is
 // tied to a network round-trip resolving or a sync computation finishing.
-export type SeedStepKind = "ground" | "identify" | "disambiguate" | "seed" | "prefetch" | "indexing";
+export type SeedStepKind = "ground" | "identify" | "disambiguate" | "seed" | "narrate" | "prefetch" | "indexing";
 export type SeedStepStatus = "pending" | "running" | "done" | "skipped" | "failed";
 export interface SeedStep {
   kind: SeedStepKind;
@@ -129,8 +129,28 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   // and Mercer copy stays bit-perfect. Memoised per profile.id.
   const narrative = useMemo<NarrativeBundle>(() => {
     const swap = <T,>(v: T): T => deepResolveWith(v, resolve);
+    // 1. Vocab-swap every dataset (no-op for the default Mercer profile).
+    let layersOut = swap(RAW_LAYERS);
+    // 2. For seeded profiles, overlay per-layer LLM-rewritten narrative /
+    //    causes / actions on top of the vocab swap. Missing layers fall
+    //    through to the vocab-swapped Mercer copy (logical filler). This is
+    //    what makes the Executive narrative on each layer ACTUALLY about the
+    //    seeded company instead of Mercer-with-word-substitutions.
+    const overrides = profile.layerOverrides;
+    if (overrides) {
+      layersOut = layersOut.map(layer => {
+        const ov = overrides[layer.key];
+        if (!ov) return layer;
+        return {
+          ...layer,
+          ...(ov.narrative ? { narrative: ov.narrative } : {}),
+          ...(ov.causes  && ov.causes.length  === layer.causes.length  ? { causes:  ov.causes  } : {}),
+          ...(ov.actions && ov.actions.length === layer.actions.length ? { actions: ov.actions } : {}),
+        };
+      });
+    }
     return {
-      LAYERS:          swap(RAW_LAYERS),
+      LAYERS:          layersOut,
       NARRATOR:        swap(RAW_NARRATOR),
       PEERS:           swap(RAW_PEERS),
       FEEDS:           swap(RAW_FEEDS),
@@ -147,7 +167,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       SUGGESTED:       swap(RAW_SUGGESTED),
       PATTERNS:        swap(RAW_PATTERNS),
     };
-  }, [resolve]);
+  }, [resolve, profile.layerOverrides]);
 
   const setProfileId = useCallback((id: string) => {
     const next = [...LIBRARY, ...customProfiles].find(p => p.id === id);

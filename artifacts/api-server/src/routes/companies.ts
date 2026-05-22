@@ -366,4 +366,344 @@ function normaliseProfile(raw: Record<string, unknown>, inputName: string, autho
   return { ok: true, value: profile };
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// /companies/narrate — second LLM call. The seed call gives us identity,
+// vocab, headlines, and one executive read. But every layer in the portal
+// (`LAYERS[i].narrative`, `causes[]`, `actions[]`) is hardcoded Mercer prose
+// that the vocab swap can only word-substitute. So "Apple" appears, but the
+// narrative still talks about "DIY channels", "stockouts", "promo matching" —
+// shapes that are wrong for Apple.
+//
+// This endpoint takes the seeded profile + the (already vocab-swapped) layer
+// skeleton (narrative + causes + actions × 13 layers) and asks the LLM to
+// rewrite each layer in the company's authentic voice: real product
+// categories, real competitor moves, real operating-model cues. Numbers are
+// preserved so the rewritten prose still matches the static chart data.
+//
+// Client-driven design: the portal posts the skeleton it ALREADY has rendered
+// (so the source of truth stays in `data/layers.ts`, no server-side copy to
+// drift). Server returns layerOverrides that merge on top of that skeleton.
+// ───────────────────────────────────────────────────────────────────────────
+
+const narrateRateLimit = rateLimit({ perMinute: 6 });
+
+const NARRATE_SYSTEM_PROMPT = `You are rewriting a 13-layer business-intelligence report so each layer reads as if it were written about the specific company described in the COMPANY block — not the generic template it was authored against.
+
+You will receive an array of LAYER objects. Each contains:
+  - key: stable layer id (e.g. "business-performance")
+  - question: the diagnostic question that layer answers
+  - narrative: a paragraph of executive prose (currently generic — already had simple word swaps applied, but the operating-model cues, channel names, supplier types, and metro references are wrong for this company)
+  - causes: array of 3 root-cause objects { title, impact, detail }
+  - actions: array of 4 recommended-action objects { title, detail, impact }
+
+Your job, for EACH layer, is to rewrite narrative + causes + actions so they:
+1. PRESERVE all numeric values verbatim (revenue $, %, bps, dollar impacts, recovery $). Static charts elsewhere in the report are anchored to these numbers — drift will create internal contradiction.
+2. PRESERVE the structural shape: 3 causes, 4 actions per layer, same field names.
+3. REPLACE generic Mercer-shaped operating cues with this company's actual operating reality:
+   - Channel names (e.g. "DIY channel" → whatever channel mix this company actually runs)
+   - Product/category labels (e.g. "cordless tools" → this company's real headline category)
+   - Competitor names (use the company's REAL primary + secondary competitors)
+   - Supplier / vendor archetype (use a real supplier relationship for this sector if you know one; otherwise a plausible one)
+   - Metro / DC names (use a real region this company actually operates in)
+   - Operating constraints (e.g. "DC labour shortage" → whatever the analogue is for this company — could be cloud capacity, fab capacity, store labour, etc.)
+4. KEEP the diagnostic logic intact: if the original says "demand softness compounded by supply disruption", the rewrite should still describe a demand problem made worse by a supply problem — but framed in this company's actual operating vocabulary.
+5. STAY editorial and precise. No marketing fluff. Specific over generic. Match the original's terse, analytical tone.
+6. Where public information is sparse for this company, use LOGICAL FILLER consistent with the sector — a plausible competitor, a sector-appropriate supplier, a metro they likely operate in. Do not say "data unavailable" or hedge — write with the same confidence the original has.
+
+Return STRICT JSON only. No prose, no code fences. Exact shape:
+{
+  "layerOverrides": {
+    "<layerKey>": {
+      "narrative": string,
+      "causes":  [{ "title": string, "impact": string, "detail": string }, ...3 entries],
+      "actions": [{ "title": string, "detail": string, "impact": string }, ...4 entries]
+    },
+    ...one entry per layer in the input...
+  }
+}
+
+Rules:
+- Every input layer key MUST appear in layerOverrides.
+- causes must be length 3, actions must be length 4, in the same order as input.
+- "impact" strings must preserve original numeric values verbatim ($X, Y%, Zbps).
+- Output JSON ONLY. No \`\`\` fences. No commentary.`;
+
+router.post("/companies/narrate", narrateRateLimit, async (req, res) => {
+  const raw = (req.body ?? {}) as Record<string, unknown>;
+
+  // Company context — small, structured, drives the rewrite.
+  const ctx = raw.profile && typeof raw.profile === "object" ? raw.profile as Record<string, unknown> : null;
+  if (!ctx) {
+    res.status(400).json({ error: "profile is required (with name, sector, vocab, headlines)." });
+    return;
+  }
+  const ctxName       = typeof ctx.name       === "string" ? ctx.name.slice(0, 120)       : "";
+  const ctxSector     = typeof ctx.sector     === "string" ? ctx.sector.slice(0, 160)     : "";
+  const ctxHqCity     = typeof ctx.hqCity     === "string" ? ctx.hqCity.slice(0, 80)      : "";
+  const ctxHqState    = typeof ctx.hqState    === "string" ? ctx.hqState.slice(0, 40)     : "";
+  const ctxTagline    = typeof ctx.tagline    === "string" ? ctx.tagline.slice(0, 240)    : "";
+  const ctxRevBand    = typeof ctx.revenueBand=== "string" ? ctx.revenueBand.slice(0, 40) : "";
+  const ctxExecRead   = typeof ctx.executiveRead === "string" ? ctx.executiveRead.slice(0, 1400) : "";
+  const ctxVocab      = ctx.vocab && typeof ctx.vocab === "object" && !Array.isArray(ctx.vocab)
+    ? ctx.vocab as Record<string, unknown> : {};
+  if (!ctxName) {
+    res.status(400).json({ error: "profile.name is required." });
+    return;
+  }
+
+  // Layer skeleton from the client — already vocab-swapped. Each entry must
+  // be {key, question, narrative, causes[3], actions[4]}. Bounded to 13 to
+  // prevent runaway payloads.
+  const skelIn = Array.isArray(raw.layerSkeleton) ? raw.layerSkeleton.slice(0, 16) : null;
+  if (!skelIn || skelIn.length === 0) {
+    res.status(400).json({ error: "layerSkeleton is required (array of {key, question, narrative, causes, actions})." });
+    return;
+  }
+  type SkelLayer = { key: string; question: string; narrative: string; causes: Array<{title: string; impact: string; detail: string}>; actions: Array<{title: string; detail: string; impact: string}>; };
+  const skeleton: SkelLayer[] = [];
+  for (const item of skelIn) {
+    if (!item || typeof item !== "object") continue;
+    const obj = item as Record<string, unknown>;
+    const key = typeof obj.key === "string" ? obj.key.slice(0, 64) : "";
+    const question = typeof obj.question === "string" ? obj.question.slice(0, 240) : "";
+    const narrative = typeof obj.narrative === "string" ? obj.narrative.slice(0, 1600) : "";
+    if (!key || !narrative) continue;
+    const causesArr = Array.isArray(obj.causes) ? obj.causes.slice(0, 3) : [];
+    const actionsArr = Array.isArray(obj.actions) ? obj.actions.slice(0, 4) : [];
+    const causes = causesArr.map(c => {
+      const cc = (c && typeof c === "object") ? c as Record<string, unknown> : {};
+      return {
+        title:  typeof cc.title  === "string" ? cc.title.slice(0, 200)  : "",
+        impact: typeof cc.impact === "string" ? cc.impact.slice(0, 64)  : "",
+        detail: typeof cc.detail === "string" ? cc.detail.slice(0, 400) : "",
+      };
+    });
+    const actions = actionsArr.map(a => {
+      const aa = (a && typeof a === "object") ? a as Record<string, unknown> : {};
+      return {
+        title:  typeof aa.title  === "string" ? aa.title.slice(0, 200)  : "",
+        detail: typeof aa.detail === "string" ? aa.detail.slice(0, 400) : "",
+        impact: typeof aa.impact === "string" ? aa.impact.slice(0, 64)  : "",
+      };
+    });
+    if (causes.length !== 3 || actions.length !== 4) continue;
+    skeleton.push({ key, question, narrative, causes, actions });
+  }
+  if (skeleton.length === 0) {
+    res.status(400).json({ error: "No valid layer skeletons after sanitisation (each needs 3 causes + 4 actions)." });
+    return;
+  }
+
+  const baseUrl = process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL;
+  const apiKey  = process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY;
+  if (!baseUrl || !apiKey) {
+    req.log.error("Anthropic AI integration env vars missing");
+    res.status(503).json({ error: "AI integration is not configured on this server." });
+    return;
+  }
+
+  // Build the user prompt. COMPANY context first (so LLM anchors on it),
+  // then VOCAB MAP (so it knows the company's named entities), then the
+  // skeleton it has to rewrite.
+  const vocabLines = Object.entries(ctxVocab)
+    .filter(([, v]) => typeof v === "string" && (v as string).length > 0)
+    .slice(0, 40)
+    .map(([k, v]) => `  "${k}" → "${v}"`)
+    .join("\n");
+
+  const userPrompt =
+    `COMPANY\n` +
+    `  Name:        ${ctxName}\n` +
+    `  Sector:      ${ctxSector || "(unspecified)"}\n` +
+    `  HQ:          ${[ctxHqCity, ctxHqState].filter(Boolean).join(", ") || "(unspecified)"}\n` +
+    `  Revenue:     ${ctxRevBand || "(unspecified)"}\n` +
+    `  Tagline:     ${ctxTagline || "(unspecified)"}\n` +
+    (ctxExecRead ? `  Executive read (already adapted for this company — match this voice and operating frame):\n    ${ctxExecRead}\n` : "") +
+    `\nVOCAB MAP (Mercer-template entity → this company's actual entity — use the RIGHT side in all rewrites):\n${vocabLines || "  (empty)"}\n` +
+    `\nLAYER SKELETON to rewrite (${skeleton.length} layers). Numbers must be preserved. Rewrite narrative + causes + actions so each layer reads as if natively about ${ctxName}:\n` +
+    JSON.stringify(skeleton, null, 2) +
+    `\n\nReturn the JSON now. Every input layer key must appear in layerOverrides.`;
+
+  const tStart = Date.now();
+  try {
+    const apiRes = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/messages`, {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 16384,
+        system: NARRATE_SYSTEM_PROMPT,
+        messages: [{ role: "user", content: userPrompt }],
+      }),
+    });
+
+    if (!apiRes.ok) {
+      const errBody = await apiRes.text();
+      req.log.error({ status: apiRes.status, body: errBody.slice(0, 500) }, "Anthropic narrate API error");
+      res.status(502).json({ error: `Upstream AI error (HTTP ${apiRes.status}).` });
+      return;
+    }
+
+    const payload = (await apiRes.json()) as {
+      content?: Array<{ type: string; text?: string }>;
+      usage?: { input_tokens?: number; output_tokens?: number };
+      model?: string;
+    };
+    const textBlock = payload.content?.find(b => b.type === "text");
+    const text = textBlock?.text ?? "";
+    if (!text) {
+      res.status(502).json({ error: "AI returned no text content." });
+      return;
+    }
+
+    const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      req.log.error({ snippet: cleaned.slice(0, 300) }, "Failed to parse narrate JSON");
+      res.status(502).json({ error: "AI returned invalid JSON. Try again." });
+      return;
+    }
+
+    const layerOverridesIn = parsed.layerOverrides;
+    if (!layerOverridesIn || typeof layerOverridesIn !== "object" || Array.isArray(layerOverridesIn)) {
+      res.status(502).json({ error: "AI response missing layerOverrides object." });
+      return;
+    }
+
+    // Whitelist input keys, validate each override matches the expected shape.
+    // Anything malformed is silently dropped so the client falls back to the
+    // vocab-swapped Mercer text for that layer (logical filler, not a crash).
+    const validKeys = new Set(skeleton.map(s => s.key));
+    const skeletonByKey = new Map(skeleton.map(s => [s.key, s]));
+    const layerOverrides: Record<string, { narrative: string; causes: Array<{title:string;impact:string;detail:string}>; actions: Array<{title:string;detail:string;impact:string}> }> = {};
+    let acceptedLayers = 0;
+    let numericRejections = 0;
+    for (const [k, v] of Object.entries(layerOverridesIn as Record<string, unknown>)) {
+      if (!validKeys.has(k)) continue;
+      if (!v || typeof v !== "object") continue;
+      const vv = v as Record<string, unknown>;
+      const narrative = typeof vv.narrative === "string" ? vv.narrative.slice(0, 2000) : "";
+      const causesArr = Array.isArray(vv.causes) ? vv.causes : [];
+      const actionsArr = Array.isArray(vv.actions) ? vv.actions : [];
+      if (!narrative || causesArr.length !== 3 || actionsArr.length !== 4) continue;
+      const causes = causesArr.map(c => {
+        const cc = (c && typeof c === "object") ? c as Record<string, unknown> : {};
+        return {
+          title:  typeof cc.title  === "string" ? cc.title.slice(0, 240)  : "",
+          impact: typeof cc.impact === "string" ? cc.impact.slice(0, 80)  : "",
+          detail: typeof cc.detail === "string" ? cc.detail.slice(0, 500) : "",
+        };
+      });
+      const actions = actionsArr.map(a => {
+        const aa = (a && typeof a === "object") ? a as Record<string, unknown> : {};
+        return {
+          title:  typeof aa.title  === "string" ? aa.title.slice(0, 240)  : "",
+          detail: typeof aa.detail === "string" ? aa.detail.slice(0, 500) : "",
+          impact: typeof aa.impact === "string" ? aa.impact.slice(0, 80)  : "",
+        };
+      });
+      // Drop the override if any required string came back empty.
+      if (causes.some(c => !c.title || !c.detail) || actions.some(a => !a.title || !a.detail)) continue;
+
+      // Numeric-preservation guard. The original narrative + each cause/action
+      // impact field is anchored to the static chart numbers elsewhere in the
+      // report. If the LLM drifted on any of those numbers we MUST drop the
+      // override for this layer — otherwise the rewritten prose contradicts
+      // the chart sitting right next to it. Falling back to the vocab-swapped
+      // skeleton is preferable to a confidently-wrong number.
+      const inSkel = skeletonByKey.get(k)!;
+      const numerics = extractNumerics(inSkel.narrative);
+      const outNums = extractNumerics(narrative);
+      const missing = [...numerics].filter(n => !outNums.has(n));
+      // Each cause/action impact is positional — same index in input/output
+      // must contain the same numeric token set. This catches both "drift" and
+      // "moved into a different cause" hallucinations.
+      const impactDrift =
+        inSkel.causes.some((c, i)  => !numericsContained(c.impact,  causes[i]?.impact))  ||
+        inSkel.actions.some((a, i) => !numericsContained(a.impact, actions[i]?.impact));
+      if (missing.length > 0 || impactDrift) {
+        numericRejections++;
+        continue;
+      }
+
+      layerOverrides[k] = { narrative, causes, actions };
+      acceptedLayers++;
+    }
+
+    if (acceptedLayers === 0) {
+      res.status(502).json({ error: "AI returned no usable layer overrides." });
+      return;
+    }
+
+    res.json({
+      layerOverrides,
+      _meta: {
+        model:             payload.model ?? "claude-sonnet-4-6",
+        durationMs:        Date.now() - tStart,
+        inputTokens:       payload.usage?.input_tokens  ?? null,
+        outputTokens:      payload.usage?.output_tokens ?? null,
+        bytesReturned:     Buffer.byteLength(text, "utf8"),
+        layersRequested:   skeleton.length,
+        layersGenerated:   acceptedLayers,
+        // Visibility into how often the model drifted on numbers. Non-zero
+        // counts here are a quality regression signal worth investigating.
+        numericRejections,
+      },
+    });
+  } catch (e) {
+    req.log.error({ err: String(e) }, "Narrate route failed");
+    res.status(500).json({ error: "Narration failed unexpectedly." });
+  }
+});
+
+// Numeric-token extractor for the narrate guard. Catches $-prefixed dollars,
+// percentages, basis points, percentage-points, and bare integers/decimals
+// with optional unit suffixes (M, K, B, x). Normalises by stripping commas
+// and lowercasing the unit so "$1,200M" and "$1200m" compare equal.
+function extractNumerics(s: string): Set<string> {
+  const out = new Set<string>();
+  if (!s) return out;
+  // Normalise Unicode minus (U+2212) → ASCII '-' so "−$6.2M" and "-$6.2M"
+  // compare equal. Both forms appear in the codebase (the static narrative
+  // uses U+2212 in places like "−8%" / "−380bps") and the LLM frequently
+  // swaps between them, which would otherwise cause spurious rejections.
+  const norm = s.replace(/\u2212/g, "-");
+  // Match comma-grouped digit runs (1,234,567) OR plain digit runs (1234567),
+  // each with optional decimal and optional unit suffix. The previous regex
+  // restricted to \d{1,3}(?:,\d{3})*, which split ungrouped 4+ digit values
+  // like "1200M" into "120" + "0M" and broke containment checks.
+  // Require a word boundary after letter suffixes (M/K/B/x/bps/pp) so the
+  // "B" of "basis points" doesn't get gobbled as a suffix — without this,
+  // "380 basis points" extracts as "380b" but "380bps" extracts as "380bps",
+  // causing spurious mismatches when the model normalises one form to the
+  // other. Optional whitespace before the suffix accepts "$11M" and "$11 M".
+  const re = /-?\$?\s*(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:\s*(?:bps|pp|%|M|K|B|x)\b)?/gi;
+  for (const m of norm.matchAll(re)) {
+    const raw = m[0].replace(/\s+/g, "").replace(/,/g, "").toLowerCase();
+    // Skip bare small integers — they're almost always counting noise
+    // ("3 causes", "two layers"), not anchored chart values.
+    const bareNum = raw.replace(/[^0-9.]/g, "");
+    if (!/[a-z%$]/i.test(raw) && Number(bareNum) < 5) continue;
+    out.add(raw);
+  }
+  return out;
+}
+
+// Compact predicate: does the output string contain every numeric token from
+// the input string? Used for positional impact-field checks (cause/action).
+function numericsContained(input: string, output: string | undefined): boolean {
+  if (!output) return false;
+  const inNums = extractNumerics(input);
+  if (inNums.size === 0) return true;
+  const outNums = extractNumerics(output);
+  for (const n of inNums) if (!outNums.has(n)) return false;
+  return true;
+}
+
 export default router;

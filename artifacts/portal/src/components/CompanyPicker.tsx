@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Globe, Sparkles, RotateCcw, ChevronRight, Loader2, AlertCircle, ArrowLeft, Check, Trash2 } from "lucide-react";
 import { useCompany, type SeedStep } from "../context/CompanyContext";
-import { DEFAULT_PROFILE_ID, type CompanyProfile } from "../data/companies";
+import { DEFAULT_PROFILE_ID, makeResolver, deepResolveWith, type CompanyProfile } from "../data/companies";
+import { LAYERS as RAW_LAYERS } from "../data/layers";
 
 // Initial step plan for the live seed splash. Steps progress through
 // pending → running → done|skipped|failed as the orchestrator (below)
@@ -12,6 +13,7 @@ function initialSeedSteps(): SeedStep[] {
     { kind: "identify",      status: "pending", label: "Cross-checking identity with DifferentDay AI" },
     { kind: "disambiguate",  status: "pending", label: "Confirming there's only one match" },
     { kind: "seed",          status: "pending", label: "Generating company profile + 13 intelligence layers" },
+    { kind: "narrate",       status: "pending", label: "Rewriting all 13 layer narratives for this company" },
     { kind: "indexing",      status: "pending", label: "Indexing vocabulary into the narrative bundle" },
     { kind: "prefetch",      status: "pending", label: "Pre-warming the Executive intelligence brief" },
   ];
@@ -265,12 +267,89 @@ export default function CompanyPicker() {
       ] : [],
     });
 
+    // Narrate step — second LLM call. Rewrites every layer's narrative + 3
+    // causes + 4 actions in this company's authentic voice so each report
+    // page actually reads as if it were written for them. Without this step
+    // the deep panels still tell a Mercer-shaped story with word swaps only.
+    //
+    // We post the (already vocab-swapped) skeleton so the LLM has a concrete
+    // structural template to rewrite — keeping LAYERS as the single source of
+    // truth and avoiding a duplicate server-side copy that could drift.
+    //
+    // Failure here is non-fatal: the seeded profile is still usable; layers
+    // simply fall through to the vocab-swapped Mercer text (logical filler).
+    updateSeedStep("narrate", { status: "running" });
+    const narrateStart = performance.now();
+    let layerOverrides: CompanyProfile["layerOverrides"] = undefined;
+    try {
+      const resolve = makeResolver(seeded);
+      const skeleton = RAW_LAYERS.map(l => ({
+        key:       l.key,
+        question:  resolve(l.question),
+        narrative: resolve(l.narrative),
+        causes:    deepResolveWith(l.causes,  resolve),
+        actions:   deepResolveWith(l.actions, resolve),
+      }));
+      const nRes = await fetch("/api/companies/narrate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profile: {
+            name:          seeded.name,
+            sector:        seeded.sector,
+            hqCity:        seeded.hqCity,
+            hqState:       seeded.hqState,
+            tagline:       seeded.tagline,
+            revenueBand:   seeded.revenueBand,
+            executiveRead: seeded.executiveRead,
+            vocab:         seeded.vocab,
+          },
+          layerSkeleton: skeleton,
+        }),
+      });
+      const narrateMs = Math.round(performance.now() - narrateStart);
+      if (!nRes.ok) {
+        const body = await nRes.json().catch(() => ({}));
+        updateSeedStep("narrate", {
+          status: "failed",
+          errorReason: body?.error ?? `HTTP ${nRes.status}`,
+          detail: "Layer narratives will fall back to vocab-swapped template copy.",
+        });
+      } else {
+        const json = await nRes.json() as {
+          layerOverrides?: NonNullable<CompanyProfile["layerOverrides"]>;
+          _meta?: { durationMs: number; inputTokens: number | null; outputTokens: number | null; bytesReturned: number; layersGenerated: number; layersRequested: number };
+        };
+        layerOverrides = json.layerOverrides;
+        const nMeta = json._meta;
+        updateSeedStep("narrate", {
+          status: "done",
+          stats: nMeta ? [
+            { label: "Round-trip",    value: fmtMs(narrateMs) },
+            { label: "Tokens in/out", value: nMeta.inputTokens != null && nMeta.outputTokens != null
+                                              ? `${fmtInt(nMeta.inputTokens)} → ${fmtInt(nMeta.outputTokens)}` : "—" },
+            { label: "Payload",       value: fmtBytes(nMeta.bytesReturned) },
+            { label: "Layers adapted", value: `${nMeta.layersGenerated} of ${nMeta.layersRequested}` },
+          ] : [{ label: "Round-trip", value: fmtMs(narrateMs) }],
+        });
+      }
+    } catch (e) {
+      const narrateMs = Math.round(performance.now() - narrateStart);
+      updateSeedStep("narrate", {
+        status: "failed",
+        errorReason: `${e instanceof Error ? e.message : String(e)} after ${fmtMs(narrateMs)}`,
+        detail: "Layer narratives will fall back to vocab-swapped template copy.",
+      });
+    }
+
     // Indexing step — real but instant. We measure the wall-clock cost of the
     // narrative deep-swap that happens as a side-effect of activating the
     // profile (the useMemo in CompanyContext re-runs on the next render).
     updateSeedStep("indexing", { status: "running" });
     const idxStart = performance.now();
-    addCustomProfile(seeded);
+    // Merge layerOverrides into the saved profile so they survive across
+    // reloads (custom profiles are persisted to localStorage).
+    addCustomProfile(layerOverrides ? { ...seeded, layerOverrides } : seeded);
     // Allow React to flush the re-render so the swap actually happens before
     // we stop the timer. requestAnimationFrame is the cheapest way to defer.
     await new Promise<void>(r => requestAnimationFrame(() => r()));
