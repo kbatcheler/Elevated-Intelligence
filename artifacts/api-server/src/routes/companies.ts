@@ -502,16 +502,15 @@ router.post("/companies/narrate", narrateRateLimit, async (req, res) => {
     return;
   }
 
-  // Build the user prompt. COMPANY context first (so LLM anchors on it),
-  // then VOCAB MAP (so it knows the company's named entities), then the
-  // skeleton it has to rewrite.
+  // Build the COMPANY+VOCAB prompt header — identical for every batch so the
+  // model frames each chunk against the same identity and entity map.
   const vocabLines = Object.entries(ctxVocab)
     .filter(([, v]) => typeof v === "string" && (v as string).length > 0)
     .slice(0, 40)
     .map(([k, v]) => `  "${k}" → "${v}"`)
     .join("\n");
 
-  const userPrompt =
+  const promptHeader =
     `COMPANY\n` +
     `  Name:        ${ctxName}\n` +
     `  Sector:      ${ctxSector || "(unspecified)"}\n` +
@@ -519,60 +518,120 @@ router.post("/companies/narrate", narrateRateLimit, async (req, res) => {
     `  Revenue:     ${ctxRevBand || "(unspecified)"}\n` +
     `  Tagline:     ${ctxTagline || "(unspecified)"}\n` +
     (ctxExecRead ? `  Executive read (already adapted for this company — match this voice and operating frame):\n    ${ctxExecRead}\n` : "") +
-    `\nVOCAB MAP (Mercer-template entity → this company's actual entity — use the RIGHT side in all rewrites):\n${vocabLines || "  (empty)"}\n` +
-    `\nLAYER SKELETON to rewrite (${skeleton.length} layers). Numbers must be preserved. Rewrite narrative + causes + actions so each layer reads as if natively about ${ctxName}:\n` +
-    JSON.stringify(skeleton, null, 2) +
-    `\n\nReturn the JSON now. Every input layer key must appear in layerOverrides.`;
+    `\nVOCAB MAP (Mercer-template entity → this company's actual entity — use the RIGHT side in all rewrites):\n${vocabLines || "  (empty)"}\n`;
 
-  const tStart = Date.now();
-  try {
-    const apiRes = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/messages`, {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 16384,
-        system: NARRATE_SYSTEM_PROMPT,
-        messages: [{ role: "user", content: userPrompt }],
-      }),
-    });
+  // Batch strategy. Generating all 13 layers in a single LLM call routinely
+  // exceeds Replit's 120s proxy timeout (we saw real 502s with responseTime
+  // exactly 120000ms). Splitting into ~5-layer batches and firing them in
+  // parallel cuts wall time to roughly one batch's generation cost — well
+  // under the proxy ceiling — at the cost of repeating the system prompt
+  // and COMPANY header per batch. The numeric/shape guards downstream
+  // operate per-layer so this is purely a transport optimisation.
+  const BATCH_SIZE = 5;
+  const batches: typeof skeleton[] = [];
+  for (let i = 0; i < skeleton.length; i += BATCH_SIZE) batches.push(skeleton.slice(i, i + BATCH_SIZE));
 
-    if (!apiRes.ok) {
-      const errBody = await apiRes.text();
-      req.log.error({ status: apiRes.status, body: errBody.slice(0, 500) }, "Anthropic narrate API error");
-      res.status(502).json({ error: `Upstream AI error (HTTP ${apiRes.status}).` });
-      return;
+  // Per-batch budget — generous enough for Claude to finish ~5 layers worth
+  // of structured JSON output, tight enough to fail fast if upstream stalls
+  // so the user sees the failed step instead of a hung splash.
+  const PER_BATCH_TIMEOUT_MS = 100_000;
+
+  async function runBatch(chunk: typeof skeleton, batchIdx: number): Promise<Record<string, unknown>> {
+    const userPrompt =
+      promptHeader +
+      `\nLAYER SKELETON to rewrite (batch ${batchIdx + 1} of ${batches.length}, ${chunk.length} layers). ` +
+      `Numbers must be preserved. Rewrite narrative + causes + actions so each layer reads as if natively about ${ctxName}:\n` +
+      JSON.stringify(chunk, null, 2) +
+      `\n\nReturn the JSON now. Every input layer key in THIS batch must appear in layerOverrides.`;
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), PER_BATCH_TIMEOUT_MS);
+    let apiRes: Response;
+    try {
+      apiRes = await fetch(`${baseUrl!.replace(/\/$/, "")}/v1/messages`, {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey!,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          // Smaller batches need fewer tokens. Each layer is ~1.2K output
+          // tokens; 5 layers ≈ 6K, +50% headroom keeps us safe.
+          max_tokens: Math.min(16384, Math.max(4096, chunk.length * 1800)),
+          system: NARRATE_SYSTEM_PROMPT,
+          messages: [{ role: "user", content: userPrompt }],
+        }),
+        signal: ctrl.signal,
+      });
+    } finally {
+      clearTimeout(timer);
     }
 
+    if (!apiRes.ok) {
+      const errBody = await apiRes.text().catch(() => "");
+      throw new Error(`Anthropic HTTP ${apiRes.status}: ${errBody.slice(0, 200)}`);
+    }
     const payload = (await apiRes.json()) as {
       content?: Array<{ type: string; text?: string }>;
       usage?: { input_tokens?: number; output_tokens?: number };
-      model?: string;
     };
     const textBlock = payload.content?.find(b => b.type === "text");
     const text = textBlock?.text ?? "";
-    if (!text) {
-      res.status(502).json({ error: "AI returned no text content." });
-      return;
-    }
+    if (!text) throw new Error("Empty text content from Anthropic.");
 
     const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
     let parsed: Record<string, unknown>;
     try {
       parsed = JSON.parse(cleaned);
     } catch {
-      req.log.error({ snippet: cleaned.slice(0, 300) }, "Failed to parse narrate JSON");
-      res.status(502).json({ error: "AI returned invalid JSON. Try again." });
-      return;
+      throw new Error(`Invalid JSON (snippet: ${cleaned.slice(0, 120)})`);
+    }
+    const lo = parsed.layerOverrides;
+    if (!lo || typeof lo !== "object" || Array.isArray(lo)) {
+      throw new Error("Response missing layerOverrides object.");
+    }
+    // Stash usage on the bag so we can aggregate after.
+    (lo as Record<string, unknown>).__usage = payload.usage ?? {};
+    (lo as Record<string, unknown>).__bytes = Buffer.byteLength(text, "utf8");
+    return lo as Record<string, unknown>;
+  }
+
+  const tStart = Date.now();
+  try {
+    // Run batches in parallel. Partial failures are non-fatal — failed
+    // batches just contribute no overrides, and the client falls back to the
+    // vocab-swapped skeleton for those layers (logical filler).
+    const batchResults = await Promise.allSettled(batches.map((b, i) => runBatch(b, i)));
+
+    // Merge accepted batches into one layerOverridesIn map, aggregate usage.
+    const layerOverridesIn: Record<string, unknown> = {};
+    let aggInputTokens = 0;
+    let aggOutputTokens = 0;
+    let aggBytes = 0;
+    let failedBatches = 0;
+    let usageAvailable = false;
+    for (const r of batchResults) {
+      if (r.status === "rejected") {
+        failedBatches++;
+        req.log.warn({ err: String(r.reason) }, "Narrate batch failed");
+        continue;
+      }
+      const usage = (r.value.__usage ?? {}) as { input_tokens?: number; output_tokens?: number };
+      const bytes = (r.value.__bytes as number | undefined) ?? 0;
+      if (typeof usage.input_tokens  === "number") { aggInputTokens  += usage.input_tokens;  usageAvailable = true; }
+      if (typeof usage.output_tokens === "number") { aggOutputTokens += usage.output_tokens; usageAvailable = true; }
+      aggBytes += bytes;
+      delete r.value.__usage;
+      delete r.value.__bytes;
+      for (const [k, v] of Object.entries(r.value)) {
+        layerOverridesIn[k] = v;
+      }
     }
 
-    const layerOverridesIn = parsed.layerOverrides;
-    if (!layerOverridesIn || typeof layerOverridesIn !== "object" || Array.isArray(layerOverridesIn)) {
-      res.status(502).json({ error: "AI response missing layerOverrides object." });
+    if (failedBatches === batches.length) {
+      res.status(502).json({ error: `All ${batches.length} narrate batches failed upstream.` });
       return;
     }
 
@@ -644,15 +703,17 @@ router.post("/companies/narrate", narrateRateLimit, async (req, res) => {
     res.json({
       layerOverrides,
       _meta: {
-        model:             payload.model ?? "claude-sonnet-4-6",
+        model:             "claude-sonnet-4-6",
         durationMs:        Date.now() - tStart,
-        inputTokens:       payload.usage?.input_tokens  ?? null,
-        outputTokens:      payload.usage?.output_tokens ?? null,
-        bytesReturned:     Buffer.byteLength(text, "utf8"),
+        inputTokens:       usageAvailable ? aggInputTokens  : null,
+        outputTokens:      usageAvailable ? aggOutputTokens : null,
+        bytesReturned:     aggBytes,
         layersRequested:   skeleton.length,
         layersGenerated:   acceptedLayers,
-        // Visibility into how often the model drifted on numbers. Non-zero
-        // counts here are a quality regression signal worth investigating.
+        // Visibility into batching + drift. Non-zero failedBatches /
+        // numericRejections are quality/regression signals worth tracking.
+        batches:           batches.length,
+        failedBatches,
         numericRejections,
       },
     });
