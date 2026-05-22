@@ -31,6 +31,32 @@ const BRIEF_CACHE_MAX = 200;
 function cacheKey(parts: Array<string | number | undefined>): string {
   return parts.map(p => (p ?? "").toString().toLowerCase().trim()).join("\u0001");
 }
+
+// Single source of truth for the brief cache key. BOTH /intelligence/brief
+// and /intelligence/brief/invalidate must derive the key identically — any
+// drift in clamps or `founded` validation here means invalidation silently
+// misses and stale briefs survive a profile delete.
+interface BriefIdentity {
+  name?: string; url?: string; sector?: string; hqCity?: string; hqState?: string;
+  revenueBand?: string; ownership?: string; founded?: number; tagline?: string;
+}
+function normaliseBriefIdentity(raw: Record<string, unknown>): BriefIdentity {
+  return {
+    name:        clamp(raw.name,        120),
+    url:         clamp(raw.url,         200),
+    sector:      clamp(raw.sector,      160),
+    hqCity:      clamp(raw.hqCity,      120),
+    hqState:     clamp(raw.hqState,     80),
+    revenueBand: clamp(raw.revenueBand, 80),
+    ownership:   clamp(raw.ownership,   200),
+    tagline:     clamp(raw.tagline,     280),
+    founded:     typeof raw.founded === "number" && Number.isInteger(raw.founded)
+                   && raw.founded >= 1700 && raw.founded <= 2100 ? raw.founded : undefined,
+  };
+}
+function deriveBriefKey(id: BriefIdentity): string {
+  return cacheKey([id.name, id.url, id.sector, id.hqCity, id.hqState, id.revenueBand, id.ownership, id.founded, id.tagline]);
+}
 function cacheGet(key: string): unknown | null {
   const hit = briefCache.get(key);
   if (!hit) return null;
@@ -92,16 +118,10 @@ Critical rules:
 router.post("/intelligence/brief", briefRateLimit, async (req, res) => {
   const raw = (req.body ?? {}) as Record<string, unknown>;
   // Clamp every user-supplied prompt input to a sane length before assembly.
-  const name        = clamp(raw.name,        120);
-  const url         = clamp(raw.url,         200);
-  const sector      = clamp(raw.sector,      160);
-  const hqCity      = clamp(raw.hqCity,      120);
-  const hqState     = clamp(raw.hqState,     80);
-  const revenueBand = clamp(raw.revenueBand, 80);
-  const ownership   = clamp(raw.ownership,   200);
-  const tagline     = clamp(raw.tagline,     280);
-  const founded = typeof raw.founded === "number" && Number.isInteger(raw.founded)
-    && raw.founded >= 1700 && raw.founded <= 2100 ? raw.founded : undefined;
+  // `normaliseBriefIdentity` is shared with the invalidate endpoint so both
+  // paths produce byte-identical cache keys.
+  const id = normaliseBriefIdentity(raw);
+  const { name, url, sector, hqCity, hqState, revenueBand, ownership, founded, tagline } = id;
   if (!name) {
     res.status(400).json({ error: "Company name is required." });
     return;
@@ -110,7 +130,7 @@ router.post("/intelligence/brief", briefRateLimit, async (req, res) => {
   // Cache-first: same inputs → return the previously generated brief
   // instantly. `?refresh=1` skips the cache for forced regeneration.
   const forceRefresh = req.query.refresh === "1" || req.query.refresh === "true";
-  const key = cacheKey([name, url, sector, hqCity, hqState, revenueBand, ownership, founded, tagline]);
+  const key = deriveBriefKey(id);
   if (!forceRefresh) {
     const cached = cacheGet(key);
     if (cached) {
@@ -303,14 +323,10 @@ function normaliseBrief(raw: unknown): NormResult<NormalisedBrief> {
 // Body shape matches POST /intelligence/brief exactly so the same cacheKey
 // derivation is reused.
 router.post("/intelligence/brief/invalidate", async (req, res) => {
-  const r = (req.body ?? {}) as Record<string, unknown>;
-  const key = cacheKey([
-    clamp(r.name, 200),  clamp(r.url, 200),
-    clamp(r.sector, 200), clamp(r.hqCity, 100), clamp(r.hqState, 80),
-    clamp(r.revenueBand, 80), clamp(r.ownership, 80),
-    typeof r.founded === "number" ? r.founded : undefined,
-    clamp(r.tagline, 240),
-  ]);
+  // Use the SAME identity normalisation as the generate route so the derived
+  // key matches whatever was stored. Any drift here silently breaks delete.
+  const id = normaliseBriefIdentity((req.body ?? {}) as Record<string, unknown>);
+  const key = deriveBriefKey(id);
   const existed = briefCache.delete(key);
   res.json({ ok: true, evicted: existed });
 });

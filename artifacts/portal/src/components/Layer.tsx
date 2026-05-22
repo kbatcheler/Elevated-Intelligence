@@ -249,11 +249,17 @@ export default function Layer({
           Narrative + actions paired at the top, then committed next steps.
          ──────────────────────────────────────────────────────────────── */}
       <SectionHeading index="§1" label="Recommendation" sub="What to do — the call, with dollars attached" />
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2">{narrativeCard}</div>
+      {/* Left column stacks narrative + the prescriptive-steps grid so it fills
+          the height of the actions list on the right. Previously NextSteps sat
+          below the whole grid, which left a large dead-space wedge under the
+          narrative whenever actions had 4+ commit cards (the common case). */}
+      <div className="grid grid-cols-3 gap-6 items-start">
+        <div className="col-span-2 space-y-6">
+          {narrativeCard}
+          <NextSteps layerKey={layer.key} layerTitle={layer.title} />
+        </div>
         <div>{actionsCard}</div>
       </div>
-      <NextSteps layerKey={layer.key} layerTitle={layer.title} />
 
       {/* ────────────────────────────────────────────────────────────────
           §2 SITUATION — descriptive: where we stand right now

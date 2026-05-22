@@ -31,16 +31,19 @@ export default function NextSteps({ layerKey, layerTitle }: { layerKey: string; 
         <span className="font-sans text-[11px] opacity-70 italic">Tap commit to land any step in the action tray</span>
       </div>
 
-      <div className="grid grid-cols-3">
+      {/* Stack on narrow widths — this block now sits in a 2/3-width column on
+          the recommendation page, so a hard `grid-cols-3` would cram the copy
+          and the commit buttons. Switch to a single column under ~1100px. */}
+      <div className="grid grid-cols-1 lg:grid-cols-3">
         {HORIZONS.map((h, i) => {
           const step = block[h.key as keyof typeof block] as NextStep;
           const Icon = h.icon;
           const isCommitted = committed.some(c => c.layer === layerKey && c.title === step.title);
           return (
-            <div key={h.key} className="p-5 relative"
+            <div key={h.key}
+                 className={"p-5 relative " + (i > 0 ? "border-t lg:border-t-0 lg:border-l border-[var(--cream-dark)]" : "")}
                  style={{
                    background: i === 0 ? "var(--coral-faint)" : i === 1 ? "var(--amber-faint)" : "var(--teal-faint)",
-                   borderLeft: i > 0 ? "1px solid var(--cream-dark)" : undefined,
                  }}>
               {/* Header */}
               <div className="flex items-center gap-2 mb-2">
