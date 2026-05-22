@@ -88,7 +88,15 @@ Return STRICT JSON only — no prose, no code fences. Conform exactly to this Ty
 Critical rules:
 - The vocab map is the most important field. Every value must be a real, sector-appropriate entity for THIS company — research-grounded if you know it, plausibly invented if not.
 - All Mercer-shaped operational scaffolding (a troubled DC, a stockout category, a bottleneck supplier, an overspending marketing channel) must map to something that makes sense for this company's actual operating model.
-- Numbers should reflect the company's actual revenue band scaled down to a single quarter.
+- Headline numbers MUST reflect this company's ACTUAL operating scale. The "$498M" example above is JSON-shape illustration, NOT a scale target — do not anchor on it. Use this guide for quarterly (Q3) revenueActual:
+    · ~$10M annual    → quarterly revenue ~$2–3M
+    · ~$100M annual   → quarterly revenue ~$22–28M
+    · ~$500M annual   → quarterly revenue ~$110–140M
+    · ~$2B annual     → quarterly revenue ~$450–550M
+    · ~$10B annual    → quarterly revenue ~$2.2–2.8B
+    · ~$100B annual   → quarterly revenue ~$22–28B
+    · ~$400B annual   → quarterly revenue ~$90–110B
+  Format compactly: "$95B", "$2.4B", "$340M", "$23M". revenuePlan, revenueVarDollars, cashActual must use the same units/magnitude as revenueActual. marginActual stays a percentage regardless of company size.
 - Tone: editorial, precise. No marketing fluff. Specific over generic.
 - Output JSON ONLY. No \`\`\` fences. No commentary.`;
 
@@ -396,9 +404,9 @@ You will receive an array of LAYER objects. Each contains:
   - causes: array of 3 root-cause objects { title, impact, detail }
   - actions: array of 4 recommended-action objects { title, detail, impact }
 
-Your job, for EACH layer, is to rewrite narrative + causes + actions so they:
-1. PRESERVE all numeric values verbatim (revenue $, %, bps, dollar impacts, recovery $). Static charts elsewhere in the report are anchored to these numbers — drift will create internal contradiction.
-2. PRESERVE the structural shape: 3 causes, 4 actions per layer, same field names.
+Your job, for EACH layer, is to rewrite narrative + metrics + causes + actions so they:
+1. RESCALE all numeric values to this company's actual operating scale. The skeleton numbers were authored for a ~$500M-annual company (~$127M quarterly revenue) — those are NOT the target scale. Use the COMPANY block's "Headlines" (revenueActual, marginActual, cashActual) as your anchor for the right magnitude, then derive every other dollar figure (cause impacts, action recoveries, KPI tile values, narrative mentions) proportionally. A ~$95B-quarter company should show variance, recovery, and KPI values in billions, not millions. Percentages and basis points generally stay similar across scales unless they're sector-specific. NPS and counts stay sector-realistic.
+2. PRESERVE the structural shape: exactly the same number of metrics, 3 causes, 4 actions per layer, same field names, same ordering, same tones.
 3. REPLACE generic Mercer-shaped operating cues with this company's actual operating reality:
    - Channel names (e.g. "DIY channel" → whatever channel mix this company actually runs)
    - Product/category labels (e.g. "cordless tools" → this company's real headline category)
@@ -415,8 +423,9 @@ Return STRICT JSON only. No prose, no code fences. Exact shape:
   "layerOverrides": {
     "<layerKey>": {
       "narrative": string,
-      "causes":  [{ "title": string, "impact": string, "detail": string }, ...3 entries],
-      "actions": [{ "title": string, "detail": string, "impact": string }, ...4 entries]
+      "metrics":  [{ "label": string, "value": string, "sub": string, "tone": "good"|"bad"|"warn"|"neutral" }, ...same count as input],
+      "causes":   [{ "title": string, "impact": string, "detail": string }, ...3 entries],
+      "actions":  [{ "title": string, "detail": string, "impact": string }, ...4 entries]
     },
     ...one entry per layer in the input...
   }
@@ -424,8 +433,9 @@ Return STRICT JSON only. No prose, no code fences. Exact shape:
 
 Rules:
 - Every input layer key MUST appear in layerOverrides.
+- metrics MUST be the exact same count and ordering as the input metrics for that layer. Preserve each entry's "tone" exactly. You may rename labels semantically (e.g. "DIY channel revenue" → "iPhone segment revenue") and rescale values to company magnitude.
 - causes must be length 3, actions must be length 4, in the same order as input.
-- "impact" strings must preserve original numeric values verbatim ($X, Y%, Zbps).
+- All dollar amounts in narrative, metrics.value/sub, and impact strings must reflect the company's actual scale. Be consistent within a layer (don't mix M and B units unless magnitudes genuinely warrant it).
 - Output JSON ONLY. No \`\`\` fences. No commentary.`;
 
 router.post("/companies/narrate", narrateRateLimit, async (req, res) => {
@@ -459,7 +469,8 @@ router.post("/companies/narrate", narrateRateLimit, async (req, res) => {
     res.status(400).json({ error: "layerSkeleton is required (array of {key, question, narrative, causes, actions})." });
     return;
   }
-  type SkelLayer = { key: string; question: string; narrative: string; causes: Array<{title: string; impact: string; detail: string}>; actions: Array<{title: string; detail: string; impact: string}>; };
+  type SkelMetric = { label: string; value: string; sub: string; tone: string };
+  type SkelLayer = { key: string; question: string; narrative: string; metrics: SkelMetric[]; causes: Array<{title: string; impact: string; detail: string}>; actions: Array<{title: string; detail: string; impact: string}>; };
   const skeleton: SkelLayer[] = [];
   for (const item of skelIn) {
     if (!item || typeof item !== "object") continue;
@@ -468,8 +479,18 @@ router.post("/companies/narrate", narrateRateLimit, async (req, res) => {
     const question = typeof obj.question === "string" ? obj.question.slice(0, 240) : "";
     const narrative = typeof obj.narrative === "string" ? obj.narrative.slice(0, 1600) : "";
     if (!key || !narrative) continue;
+    const metricsArr = Array.isArray(obj.metrics) ? obj.metrics.slice(0, 8) : [];
     const causesArr = Array.isArray(obj.causes) ? obj.causes.slice(0, 3) : [];
     const actionsArr = Array.isArray(obj.actions) ? obj.actions.slice(0, 4) : [];
+    const metrics: SkelMetric[] = metricsArr.map(m => {
+      const mm = (m && typeof m === "object") ? m as Record<string, unknown> : {};
+      return {
+        label: typeof mm.label === "string" ? mm.label.slice(0, 80) : "",
+        value: typeof mm.value === "string" ? mm.value.slice(0, 40) : "",
+        sub:   typeof mm.sub   === "string" ? mm.sub.slice(0, 120)  : "",
+        tone:  typeof mm.tone  === "string" ? mm.tone.slice(0, 16)  : "neutral",
+      };
+    }).filter(m => m.label && m.value);
     const causes = causesArr.map(c => {
       const cc = (c && typeof c === "object") ? c as Record<string, unknown> : {};
       return {
@@ -487,7 +508,7 @@ router.post("/companies/narrate", narrateRateLimit, async (req, res) => {
       };
     });
     if (causes.length !== 3 || actions.length !== 4) continue;
-    skeleton.push({ key, question, narrative, causes, actions });
+    skeleton.push({ key, question, narrative, metrics, causes, actions });
   }
   if (skeleton.length === 0) {
     res.status(400).json({ error: "No valid layer skeletons after sanitisation (each needs 3 causes + 4 actions)." });
@@ -510,6 +531,26 @@ router.post("/companies/narrate", narrateRateLimit, async (req, res) => {
     .map(([k, v]) => `  "${k}" → "${v}"`)
     .join("\n");
 
+  // Headlines block — the magnitude anchor. The LLM uses these to derive
+  // proportional numbers across every metric, cause, and action in every
+  // layer. Without this, layers would each invent their own scale and the
+  // report would feel internally inconsistent.
+  const ctxHeadlines = ctx.headlines && typeof ctx.headlines === "object" && !Array.isArray(ctx.headlines)
+    ? ctx.headlines as Record<string, unknown> : {};
+  const hdrField = (k: string, max: number) => {
+    const v = ctxHeadlines[k];
+    if (typeof v === "string") return v.slice(0, max);
+    if (typeof v === "number") return String(v);
+    return "—";
+  };
+  const headlinesBlock =
+    `\nHEADLINES (scale anchor — every layer's numbers must be derived proportionally from these):\n` +
+    `  Quarterly revenue (actual / plan):  ${hdrField("revenueActual", 24)} / ${hdrField("revenuePlan", 24)}\n` +
+    `  Revenue variance:                   ${hdrField("revenueVarPct", 16)} (${hdrField("revenueVarDollars", 24)})\n` +
+    `  Operating margin (actual / target): ${hdrField("marginActual", 16)} / ${hdrField("marginTarget", 16)}\n` +
+    `  Cash position:                      ${hdrField("cashActual", 24)} (${hdrField("cashVar", 24)})\n` +
+    `  NPS:                                ${hdrField("npsActual", 16)} (${hdrField("npsDelta", 24)})\n`;
+
   const promptHeader =
     `COMPANY\n` +
     `  Name:        ${ctxName}\n` +
@@ -518,6 +559,7 @@ router.post("/companies/narrate", narrateRateLimit, async (req, res) => {
     `  Revenue:     ${ctxRevBand || "(unspecified)"}\n` +
     `  Tagline:     ${ctxTagline || "(unspecified)"}\n` +
     (ctxExecRead ? `  Executive read (already adapted for this company — match this voice and operating frame):\n    ${ctxExecRead}\n` : "") +
+    headlinesBlock +
     `\nVOCAB MAP (Mercer-template entity → this company's actual entity — use the RIGHT side in all rewrites):\n${vocabLines || "  (empty)"}\n`;
 
   // Batch strategy. Generating all 13 layers in a single LLM call routinely
@@ -540,7 +582,7 @@ router.post("/companies/narrate", narrateRateLimit, async (req, res) => {
     const userPrompt =
       promptHeader +
       `\nLAYER SKELETON to rewrite (batch ${batchIdx + 1} of ${batches.length}, ${chunk.length} layers). ` +
-      `Numbers must be preserved. Rewrite narrative + causes + actions so each layer reads as if natively about ${ctxName}:\n` +
+      `Rescale every number in narrative + metrics + causes + actions to ${ctxName}'s actual operating magnitude (use the HEADLINES block as anchor). Same shape, same ordering, same tones:\n` +
       JSON.stringify(chunk, null, 2) +
       `\n\nReturn the JSON now. Every input layer key in THIS batch must appear in layerOverrides.`;
 
@@ -640,9 +682,11 @@ router.post("/companies/narrate", narrateRateLimit, async (req, res) => {
     // vocab-swapped Mercer text for that layer (logical filler, not a crash).
     const validKeys = new Set(skeleton.map(s => s.key));
     const skeletonByKey = new Map(skeleton.map(s => [s.key, s]));
-    const layerOverrides: Record<string, { narrative: string; causes: Array<{title:string;impact:string;detail:string}>; actions: Array<{title:string;detail:string;impact:string}> }> = {};
+    type MetricOut = { label: string; value: string; sub: string; tone: "good"|"bad"|"warn"|"neutral" };
+    const layerOverrides: Record<string, { narrative: string; metrics?: MetricOut[]; causes: Array<{title:string;impact:string;detail:string}>; actions: Array<{title:string;detail:string;impact:string}> }> = {};
     let acceptedLayers = 0;
-    let numericRejections = 0;
+    let metricsRejections = 0;
+    const validTones = new Set(["good", "bad", "warn", "neutral"]);
     for (const [k, v] of Object.entries(layerOverridesIn as Record<string, unknown>)) {
       if (!validKeys.has(k)) continue;
       if (!v || typeof v !== "object") continue;
@@ -670,28 +714,35 @@ router.post("/companies/narrate", narrateRateLimit, async (req, res) => {
       // Drop the override if any required string came back empty.
       if (causes.some(c => !c.title || !c.detail) || actions.some(a => !a.title || !a.detail)) continue;
 
-      // Numeric-preservation guard. The original narrative + each cause/action
-      // impact field is anchored to the static chart numbers elsewhere in the
-      // report. If the LLM drifted on any of those numbers we MUST drop the
-      // override for this layer — otherwise the rewritten prose contradicts
-      // the chart sitting right next to it. Falling back to the vocab-swapped
-      // skeleton is preferable to a confidently-wrong number.
+      // Metrics rebase. Optional but expected. If present, must match input
+      // count exactly (positional KPI tiles). If shape is wrong we keep the
+      // narrative/causes/actions and just skip the metrics override — better
+      // partial than nothing.
       const inSkel = skeletonByKey.get(k)!;
-      const numerics = extractNumerics(inSkel.narrative);
-      const outNums = extractNumerics(narrative);
-      const missing = [...numerics].filter(n => !outNums.has(n));
-      // Each cause/action impact is positional — same index in input/output
-      // must contain the same numeric token set. This catches both "drift" and
-      // "moved into a different cause" hallucinations.
-      const impactDrift =
-        inSkel.causes.some((c, i)  => !numericsContained(c.impact,  causes[i]?.impact))  ||
-        inSkel.actions.some((a, i) => !numericsContained(a.impact, actions[i]?.impact));
-      if (missing.length > 0 || impactDrift) {
-        numericRejections++;
-        continue;
+      let metricsOut: MetricOut[] | undefined;
+      const rawMetrics = Array.isArray(vv.metrics) ? vv.metrics : null;
+      if (rawMetrics) {
+        if (rawMetrics.length !== inSkel.metrics.length) {
+          metricsRejections++;
+        } else {
+          const candidate: MetricOut[] = rawMetrics.map((m, i) => {
+            const mm = (m && typeof m === "object") ? m as Record<string, unknown> : {};
+            const tone = typeof mm.tone === "string" && validTones.has(mm.tone)
+              ? mm.tone as MetricOut["tone"]
+              : (inSkel.metrics[i]?.tone as MetricOut["tone"]) ?? "neutral";
+            return {
+              label: typeof mm.label === "string" ? mm.label.slice(0, 80)  : "",
+              value: typeof mm.value === "string" ? mm.value.slice(0, 40)  : "",
+              sub:   typeof mm.sub   === "string" ? mm.sub.slice(0, 120)   : "",
+              tone,
+            };
+          });
+          if (candidate.every(c => c.label && c.value)) metricsOut = candidate;
+          else metricsRejections++;
+        }
       }
 
-      layerOverrides[k] = { narrative, causes, actions };
+      layerOverrides[k] = { narrative, ...(metricsOut ? { metrics: metricsOut } : {}), causes, actions };
       acceptedLayers++;
     }
 
@@ -710,11 +761,11 @@ router.post("/companies/narrate", narrateRateLimit, async (req, res) => {
         bytesReturned:     aggBytes,
         layersRequested:   skeleton.length,
         layersGenerated:   acceptedLayers,
-        // Visibility into batching + drift. Non-zero failedBatches /
-        // numericRejections are quality/regression signals worth tracking.
+        // Visibility into batching + per-layer rejections. Non-zero
+        // failedBatches / metricsRejections are quality/regression signals.
         batches:           batches.length,
         failedBatches,
-        numericRejections,
+        metricsRejections,
       },
     });
   } catch (e) {
@@ -722,61 +773,5 @@ router.post("/companies/narrate", narrateRateLimit, async (req, res) => {
     res.status(500).json({ error: "Narration failed unexpectedly." });
   }
 });
-
-// Numeric-token extractor for the narrate guard. Catches $-prefixed dollars,
-// percentages, basis points, percentage-points, and bare integers/decimals
-// with optional unit suffixes (M, K, B, x). Normalises by stripping commas
-// and lowercasing the unit so "$1,200M" and "$1200m" compare equal.
-function extractNumerics(s: string): Set<string> {
-  const out = new Set<string>();
-  if (!s) return out;
-  // Normalise Unicode minus (U+2212) → ASCII '-' so "−$6.2M" and "-$6.2M"
-  // compare equal. Both forms appear in the codebase (the static narrative
-  // uses U+2212 in places like "−8%" / "−380bps") and the LLM frequently
-  // swaps between them, which would otherwise cause spurious rejections.
-  // Also collapse human-readable unit phrases to canonical short forms so
-  // "380 basis points" (in the Mercer template narrative) and "380bps" (a
-  // common LLM rewrite) tokenize identically — without this, every layer
-  // that mentions "basis points" gets rejected by the numeric guard and
-  // falls back to template copy. Order matters: longer phrases first.
-  const norm = s
-    .replace(/\u2212/g, "-")
-    .replace(/(\d)\s*basis\s*points?\b/gi,        "$1bps")
-    .replace(/(\d)\s*percentage\s*points?\b/gi,   "$1pp")
-    .replace(/(\d)\s*percent\b/gi,                "$1%")
-    .replace(/(\d)\s*(?:million|mn)\b/gi,         "$1M")
-    .replace(/(\d)\s*(?:billion|bn)\b/gi,         "$1B")
-    .replace(/(\d)\s*thousand\b/gi,               "$1K");
-  // Match comma-grouped digit runs (1,234,567) OR plain digit runs (1234567),
-  // each with optional decimal and optional unit suffix. The previous regex
-  // restricted to \d{1,3}(?:,\d{3})*, which split ungrouped 4+ digit values
-  // like "1200M" into "120" + "0M" and broke containment checks.
-  // Require a word boundary after letter suffixes (M/K/B/x/bps/pp) so the
-  // "B" of "basis points" doesn't get gobbled as a suffix — without this,
-  // "380 basis points" extracts as "380b" but "380bps" extracts as "380bps",
-  // causing spurious mismatches when the model normalises one form to the
-  // other. Optional whitespace before the suffix accepts "$11M" and "$11 M".
-  const re = /-?\$?\s*(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:\s*(?:bps|pp|%|M|K|B|x)\b)?/gi;
-  for (const m of norm.matchAll(re)) {
-    const raw = m[0].replace(/\s+/g, "").replace(/,/g, "").toLowerCase();
-    // Skip bare small integers — they're almost always counting noise
-    // ("3 causes", "two layers"), not anchored chart values.
-    const bareNum = raw.replace(/[^0-9.]/g, "");
-    if (!/[a-z%$]/i.test(raw) && Number(bareNum) < 5) continue;
-    out.add(raw);
-  }
-  return out;
-}
-
-// Compact predicate: does the output string contain every numeric token from
-// the input string? Used for positional impact-field checks (cause/action).
-function numericsContained(input: string, output: string | undefined): boolean {
-  if (!output) return false;
-  const inNums = extractNumerics(input);
-  if (inNums.size === 0) return true;
-  const outNums = extractNumerics(output);
-  for (const n of inNums) if (!outNums.has(n)) return false;
-  return true;
-}
 
 export default router;

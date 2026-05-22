@@ -287,8 +287,9 @@ export default function CompanyPicker() {
         key:       l.key,
         question:  resolve(l.question),
         narrative: resolve(l.narrative),
-        causes:    deepResolveWith(l.causes,  resolve),
-        actions:   deepResolveWith(l.actions, resolve),
+        metrics:   deepResolveWith(l.metrics,  resolve),
+        causes:    deepResolveWith(l.causes,   resolve),
+        actions:   deepResolveWith(l.actions,  resolve),
       }));
       const nRes = await fetch("/api/companies/narrate", {
         method: "POST",
@@ -303,6 +304,9 @@ export default function CompanyPicker() {
             revenueBand:   seeded.revenueBand,
             executiveRead: seeded.executiveRead,
             vocab:         seeded.vocab,
+            // Headlines are the magnitude anchor — every layer's rebased
+            // numbers derive proportionally from these.
+            headlines:     seeded.headlines,
           },
           layerSkeleton: skeleton,
         }),

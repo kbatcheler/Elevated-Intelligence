@@ -24,6 +24,57 @@ import { SUGGESTED as RAW_SUGGESTED, PATTERNS as RAW_PATTERNS } from "../data/ch
 const STORAGE_KEY_ACTIVE = "differentday.activeProfileId.v1";
 const STORAGE_KEY_CUSTOM = "differentday.customProfiles.v1";
 
+// Mercer's quarterly revenue (from MERCER.headlines.revenueActual = "$127M").
+// Charts in data/layers.ts are drawn at this scale; the rescale factor below
+// normalises to the seeded company's actual operating magnitude.
+const MERCER_QUARTERLY_REVENUE_M = 127;
+
+// Parse a headline-style string like "$95B", "$2.4B", "$340M", "$23M",
+// "$1,200M" into a number of millions. Returns null on failure.
+function parseHeadlineToMillions(s: string | undefined | null): number | null {
+  if (!s || typeof s !== "string") return null;
+  const cleaned = s.replace(/[\$\s,]/g, "");
+  const m = cleaned.match(/^([0-9]+(?:\.[0-9]+)?)([KMB])?$/i);
+  if (!m) return null;
+  const value = parseFloat(m[1]);
+  if (!Number.isFinite(value)) return null;
+  const unit = (m[2] ?? "M").toUpperCase();
+  if (unit === "K") return value * 0.001;
+  if (unit === "M") return value;
+  if (unit === "B") return value * 1000;
+  return null;
+}
+
+// Derive a single multiplicative factor that scales Mercer-shaped chart
+// values into the seeded company's magnitude. Defaults to 1 (no-op) for the
+// Mercer profile or when revenueActual is missing/unparseable.
+function computeRevenueScaleFactor(profile: CompanyProfile): number {
+  const revM = parseHeadlineToMillions(profile.headlines?.revenueActual);
+  if (revM == null || revM <= 0) return 1;
+  const factor = revM / MERCER_QUARTERLY_REVENUE_M;
+  if (!Number.isFinite(factor) || factor <= 0) return 1;
+  return factor;
+}
+
+// Only rescale charts that are denominated in dollars. Charts measured in
+// percentages, basis points, counts, or scores stay numerically untouched
+// regardless of company size.
+function isDollarChart(yLabel: string | undefined): boolean {
+  if (!yLabel) return false;
+  const l = yLabel.toLowerCase();
+  return l.includes("usd") || l.includes("$") || l.includes("dollar") || l.includes("revenue");
+}
+
+// Round to N significant figures so scaled chart values render cleanly
+// (e.g. 44.1 * 750 = 33075 → 33100, not 33074.99999).
+function roundToSig(n: number, sig: number): number {
+  if (n === 0) return 0;
+  const d = Math.ceil(Math.log10(Math.abs(n)));
+  const power = sig - d;
+  const mag = Math.pow(10, power);
+  return Math.round(n * mag) / mag;
+}
+
 export interface NarrativeBundle {
   LAYERS: typeof RAW_LAYERS;
   NARRATOR: typeof RAW_NARRATOR;
@@ -132,10 +183,11 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     // 1. Vocab-swap every dataset (no-op for the default Mercer profile).
     let layersOut = swap(RAW_LAYERS);
     // 2. For seeded profiles, overlay per-layer LLM-rewritten narrative /
-    //    causes / actions on top of the vocab swap. Missing layers fall
-    //    through to the vocab-swapped Mercer copy (logical filler). This is
-    //    what makes the Executive narrative on each layer ACTUALLY about the
-    //    seeded company instead of Mercer-with-word-substitutions.
+    //    metrics / causes / actions on top of the vocab swap. Missing layers
+    //    fall through to the vocab-swapped Mercer copy (logical filler).
+    //    This is what makes the Executive narrative on each layer ACTUALLY
+    //    about the seeded company at the right operating scale, instead of
+    //    Mercer-with-word-substitutions.
     const overrides = profile.layerOverrides;
     if (overrides) {
       layersOut = layersOut.map(layer => {
@@ -144,8 +196,35 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         return {
           ...layer,
           ...(ov.narrative ? { narrative: ov.narrative } : {}),
+          ...(ov.metrics && ov.metrics.length === layer.metrics.length ? { metrics: ov.metrics } : {}),
           ...(ov.causes  && ov.causes.length  === layer.causes.length  ? { causes:  ov.causes  } : {}),
           ...(ov.actions && ov.actions.length === layer.actions.length ? { actions: ov.actions } : {}),
+        };
+      });
+    }
+    // 3. Chart-data rescale. Charts are hardcoded at Mercer's ~$127M-quarter
+    //    scale; for a seeded company we scale every numeric value in dollar-
+    //    denominated charts proportionally so the bars/lines/areas match the
+    //    rebased headlines. Percentage / count charts are left untouched
+    //    (detected via yLabel — only "USD"/"$" charts get rescaled).
+    const scaleFactor = computeRevenueScaleFactor(profile);
+    if (scaleFactor !== 1) {
+      layersOut = layersOut.map(layer => {
+        if (!isDollarChart(layer.chart.yLabel)) return layer;
+        return {
+          ...layer,
+          chart: {
+            ...layer.chart,
+            data: layer.chart.data.map((row: Record<string, unknown>) => {
+              const next: Record<string, unknown> = { ...row };
+              for (const [k, v] of Object.entries(row)) {
+                if (typeof v === "number" && Number.isFinite(v)) {
+                  next[k] = roundToSig(v * scaleFactor, 3);
+                }
+              }
+              return next;
+            }),
+          },
         };
       });
     }
@@ -167,7 +246,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       SUGGESTED:       swap(RAW_SUGGESTED),
       PATTERNS:        swap(RAW_PATTERNS),
     };
-  }, [resolve, profile.layerOverrides]);
+  }, [resolve, profile.layerOverrides, profile.headlines]);
 
   const setProfileId = useCallback((id: string) => {
     const next = [...LIBRARY, ...customProfiles].find(p => p.id === id);

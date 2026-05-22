@@ -112,13 +112,17 @@ export interface CompanyProfile {
   datasets?: Record<string, unknown>;
 
   // Per-layer LLM-rewritten copy. The seed call gives identity/vocab/headlines;
-  // a second narrate call rewrites each layer's narrative + 3 causes + 4
-  // actions in the company's authentic voice (real competitor, supplier,
-  // metro, operating model). Numbers are preserved so static charts stay
-  // self-consistent. Missing keys fall through to vocab-swapped Mercer text
-  // (logical filler). Keyed by LAYERS[i].key.
+  // a second narrate call rewrites each layer's narrative + metrics (KPI
+  // tiles) + 3 causes + 4 actions in the company's authentic voice (real
+  // competitor, supplier, metro, operating model) AND rescales every number
+  // to the company's actual operating magnitude (e.g. Apple's $95B/quarter
+  // instead of Mercer's $127M). Chart data is rescaled separately by a
+  // proportional factor derived from headlines.revenueActual. Missing keys
+  // fall through to vocab-swapped Mercer text (logical filler). Keyed by
+  // LAYERS[i].key.
   layerOverrides?: Partial<Record<string, {
     narrative?: string;
+    metrics?: Array<{ label: string; value: string; sub: string; tone: "good"|"bad"|"warn"|"neutral" }>;
     causes?:  Array<{ title: string; impact: string; detail: string }>;
     actions?: Array<{ title: string; detail: string; impact: string }>;
   }>>;
