@@ -43,6 +43,37 @@ export interface NarrativeBundle {
   PATTERNS: typeof RAW_PATTERNS;
 }
 
+// Per-step state of the live seed flow. Each entry corresponds to a real
+// unit of work — homepage fetch, identify call, seed call, brief prefetch,
+// vocabulary indexing — and is updated by the orchestrator as that work
+// actually completes. NO fake setTimeout ticks: every status change here is
+// tied to a network round-trip resolving or a sync computation finishing.
+export type SeedStepKind = "ground" | "identify" | "disambiguate" | "seed" | "prefetch" | "indexing";
+export type SeedStepStatus = "pending" | "running" | "done" | "skipped" | "failed";
+export interface SeedStep {
+  kind: SeedStepKind;
+  status: SeedStepStatus;
+  label: string;
+  detail?: string;
+  // Tiny inline receipts shown below the step — e.g. "Source · humanco.com",
+  // "Round-trip · 4.2s", "Tokens in/out · 1,694 → 191". These are the proof
+  // that real work happened.
+  stats?: Array<{ label: string; value: string }>;
+  errorReason?: string;
+}
+
+export interface BootSplashState {
+  open: boolean;
+  profileName: string;
+  meta?: CompanyProfile["_meta"];
+  // When present, splash renders the real seed flow with per-step receipts.
+  // When null, splash renders the simple library-switch view (no work in flight).
+  seedFlow: SeedStep[] | null;
+  // While the flow is in-flight we MUST NOT auto-dismiss — the work isn't done.
+  // Flipped to true by endSeedFlow / failSeedFlow once everything resolves.
+  autoDismiss: boolean;
+}
+
 interface CompanyContextValue {
   profile: CompanyProfile;
   library: CompanyProfile[];
@@ -53,8 +84,14 @@ interface CompanyContextValue {
   resetToDefault: () => void;
   resolve: (text: string) => string;
   narrative: NarrativeBundle;
-  bootSplash: { open: boolean; profileName: string; meta?: CompanyProfile["_meta"] } | null;
+  bootSplash: BootSplashState | null;
   triggerBootSplash: (profileName: string) => void;
+  // Seed-flow orchestration — called by CompanyPicker as real work progresses.
+  beginSeedFlow: (profileName: string, initialSteps: SeedStep[]) => void;
+  updateSeedStep: (kind: SeedStepKind, patch: Partial<Omit<SeedStep, "kind">>) => void;
+  endSeedFlow: (meta?: CompanyProfile["_meta"]) => void;
+  failSeedFlow: (kind: SeedStepKind, reason: string) => void;
+  dismissBootSplash: () => void;
   pickerOpen: boolean;
   setPickerOpen: (open: boolean) => void;
 }
@@ -77,7 +114,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     } catch { return DEFAULT_PROFILE_ID; }
   });
 
-  const [bootSplash, setBootSplash] = useState<{ open: boolean; profileName: string; meta?: CompanyProfile["_meta"] } | null>(null);
+  const [bootSplash, setBootSplash] = useState<BootSplashState | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const allProfiles = useMemo(() => [...LIBRARY, ...customProfiles], [customProfiles]);
@@ -118,11 +155,17 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     setActiveId(id);
     try { window.localStorage.setItem(STORAGE_KEY_ACTIVE, id); } catch { /* ignore */ }
     if (id !== DEFAULT_PROFILE_ID) {
-      setBootSplash({ open: true, profileName: next.name, meta: next._meta });
+      // Library switch — no live work in flight, so seedFlow is null and the
+      // splash renders the simplified "loaded saved profile" view.
+      setBootSplash({ open: true, profileName: next.name, meta: next._meta, seedFlow: null, autoDismiss: true });
     }
     setPickerOpen(false);
   }, [customProfiles]);
 
+  // Save the newly seeded profile and make it active. The boot splash is
+  // NOT opened here — for the seed-from-name+URL path the splash is already
+  // open (driven by the orchestrator in CompanyPicker). For the library
+  // path setProfileId opens the splash itself.
   const addCustomProfile = useCallback((p: CompanyProfile) => {
     setCustomProfiles(prev => {
       const next = [...prev.filter(x => x.id !== p.id), p];
@@ -131,8 +174,6 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     });
     setActiveId(p.id);
     try { window.localStorage.setItem(STORAGE_KEY_ACTIVE, p.id); } catch { /* ignore */ }
-    // Pass the fresh _meta so the boot splash shows real timings/tokens just now.
-    setBootSplash({ open: true, profileName: p.name, meta: p._meta });
     setPickerOpen(false);
   }, []);
 
@@ -192,14 +233,57 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const triggerBootSplash = useCallback((profileName: string) => {
-    setBootSplash({ open: true, profileName });
+    setBootSplash({ open: true, profileName, seedFlow: null, autoDismiss: true });
   }, []);
 
-  // Auto-dismiss the boot splash. Splash linger is longer when we have real
-  // receipts to show (~4.6s) — short enough not to drag, long enough to read.
+  // ─── Seed-flow orchestration ─────────────────────────────────────────────
+  // CompanyPicker calls these as the real identify → seed → prefetch pipeline
+  // progresses. The splash subscribes and renders each step's live status.
+  const beginSeedFlow = useCallback((profileName: string, initialSteps: SeedStep[]) => {
+    setBootSplash({ open: true, profileName, seedFlow: initialSteps, autoDismiss: false });
+    setPickerOpen(false);
+  }, []);
+
+  const updateSeedStep = useCallback((kind: SeedStepKind, patch: Partial<Omit<SeedStep, "kind">>) => {
+    setBootSplash(prev => {
+      if (!prev?.seedFlow) return prev;
+      const next = prev.seedFlow.map(s => s.kind === kind ? { ...s, ...patch } : s);
+      return { ...prev, seedFlow: next };
+    });
+  }, []);
+
+  const endSeedFlow = useCallback((meta?: CompanyProfile["_meta"]) => {
+    // Flow finished cleanly. Flip autoDismiss so the splash lingers ~3s
+    // (long enough to read the final receipts) then disappears on its own.
+    setBootSplash(prev => prev ? { ...prev, meta: meta ?? prev.meta, autoDismiss: true } : prev);
+  }, []);
+
+  const failSeedFlow = useCallback((kind: SeedStepKind, reason: string) => {
+    setBootSplash(prev => {
+      if (!prev?.seedFlow) return prev;
+      // Mark the named step failed, AND terminalize any OTHER step still
+      // marked "running" — otherwise an early identify failure can leave
+      // the "ground" step spinning forever, which keeps `anyRunning` true
+      // and prevents the splash from being dismissed.
+      const next = prev.seedFlow.map(s => {
+        if (s.kind === kind) return { ...s, status: "failed" as const, errorReason: reason };
+        if (s.status === "running") return { ...s, status: "skipped" as const, detail: s.detail ?? "Not reached — earlier step failed" };
+        return s;
+      });
+      return { ...prev, seedFlow: next, autoDismiss: false };
+    });
+  }, []);
+
+  const dismissBootSplash = useCallback(() => setBootSplash(null), []);
+
+  // Auto-dismiss only when autoDismiss is true. For library switches that's
+  // immediate (no work to wait on); for seed flows it flips to true once the
+  // orchestrator calls endSeedFlow or the user explicitly dismisses. In-flight
+  // flows can't be ripped away by a timer.
   useEffect(() => {
-    if (!bootSplash?.open) return undefined;
-    const t = setTimeout(() => setBootSplash(null), bootSplash.meta ? 4600 : 2800);
+    if (!bootSplash?.open || !bootSplash.autoDismiss) return undefined;
+    const lingerMs = bootSplash.seedFlow ? 3000 : (bootSplash.meta ? 4600 : 2800);
+    const t = setTimeout(() => setBootSplash(null), lingerMs);
     return () => clearTimeout(t);
   }, [bootSplash]);
 
@@ -215,6 +299,11 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     narrative,
     bootSplash,
     triggerBootSplash,
+    beginSeedFlow,
+    updateSeedStep,
+    endSeedFlow,
+    failSeedFlow,
+    dismissBootSplash,
     pickerOpen,
     setPickerOpen,
   };

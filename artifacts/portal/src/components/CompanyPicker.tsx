@@ -1,7 +1,31 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Globe, Sparkles, RotateCcw, ChevronRight, Loader2, AlertCircle, ArrowLeft, Check, Trash2 } from "lucide-react";
-import { useCompany } from "../context/CompanyContext";
+import { useCompany, type SeedStep } from "../context/CompanyContext";
 import { DEFAULT_PROFILE_ID, type CompanyProfile } from "../data/companies";
+
+// Initial step plan for the live seed splash. Steps progress through
+// pending → running → done|skipped|failed as the orchestrator (below)
+// drives real API calls. NO setTimeout sequencing anywhere.
+function initialSeedSteps(): SeedStep[] {
+  return [
+    { kind: "ground",        status: "running", label: "Fetching homepage + extracting ground truth" },
+    { kind: "identify",      status: "pending", label: "Cross-checking identity with DifferentDay AI" },
+    { kind: "disambiguate",  status: "pending", label: "Confirming there's only one match" },
+    { kind: "seed",          status: "pending", label: "Generating company profile + 13 intelligence layers" },
+    { kind: "indexing",      status: "pending", label: "Indexing vocabulary into the narrative bundle" },
+    { kind: "prefetch",      status: "pending", label: "Pre-warming the Executive intelligence brief" },
+  ];
+}
+
+function fmtMs(ms: number): string {
+  return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)}s`;
+}
+function fmtBytes(n: number): string {
+  return n < 1024 ? `${n} B` : `${(n / 1024).toFixed(1)} KB`;
+}
+function fmtInt(n: number): string {
+  return n.toLocaleString();
+}
 
 interface Candidate {
   name: string;
@@ -19,7 +43,23 @@ type Stage = "input" | "identifying" | "disambiguate" | "seeding";
 const AUTO_PROCEED_CONFIDENCE = 0.92;
 
 export default function CompanyPicker() {
-  const { pickerOpen, setPickerOpen, library, customProfiles, profile, setProfileId, resetToDefault, addCustomProfile, removeCustomProfile } = useCompany();
+  const {
+    pickerOpen, setPickerOpen, library, customProfiles, profile,
+    setProfileId, resetToDefault, addCustomProfile, removeCustomProfile,
+    bootSplash, beginSeedFlow, updateSeedStep, endSeedFlow, failSeedFlow,
+  } = useCompany();
+
+  // Close the picker AND cancel any parked seed flow waiting on a
+  // disambiguation pick. Without this, the user can close the picker mid-
+  // disambiguation and strand the splash with `disambiguate=running` forever
+  // (nothing in flight to wait on, but `anyRunning=true` blocks dismiss).
+  const closePicker = () => {
+    const disambigStep = bootSplash?.seedFlow?.find(s => s.kind === "disambiguate");
+    if (disambigStep?.status === "running") {
+      failSeedFlow("disambiguate", "Cancelled — picker closed before a candidate was confirmed.");
+    }
+    setPickerOpen(false);
+  };
   const [tab, setTab] = useState<"library" | "generate">("library");
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -49,8 +89,11 @@ export default function CompanyPicker() {
     setStage("input"); setCandidates([]); setError(null);
   };
 
-  // Step 1: ask the server to identify the company. If unambiguous + high
-  // confidence, skip straight to seed; otherwise show the disambiguation list.
+  // Step 1: ask the server to identify the company. The "ground" + "identify"
+  // splash steps both resolve from this single round-trip — the server fetches
+  // the homepage and runs the LLM identify in one shot. If verdict is
+  // unambiguous + high confidence, we proceed straight to seed; otherwise we
+  // close the splash and route to disambiguation in the picker.
   const identify = async () => {
     const trimmedName = name.trim();
     const trimmedUrl  = url.trim();
@@ -65,6 +108,10 @@ export default function CompanyPicker() {
     }
     setError(null);
     setStage("identifying");
+    // Open the splash with the real work plan. Ground+identify start
+    // running together because they're served by the same endpoint.
+    beginSeedFlow(trimmedName, initialSeedSteps());
+    updateSeedStep("identify", { status: "running" });
     try {
       const res = await fetch("/api/companies/identify", {
         method: "POST",
@@ -75,38 +122,106 @@ export default function CompanyPicker() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.error ?? `Identification failed (HTTP ${res.status})`);
       }
-      const data = await res.json() as { candidates: Candidate[]; verdict: string };
+      const data = await res.json() as {
+        candidates: Candidate[];
+        verdict: string;
+        _meta?: {
+          durationMs: number;
+          inputTokens: number | null;
+          outputTokens: number | null;
+          grounding?: { ok: boolean; domain: string; bytesFetched: number; bytesExtracted: number; fetchMs: number; status: number };
+        };
+      };
       const cands = data.candidates ?? [];
       if (cands.length === 0) {
+        failSeedFlow("identify", "AI returned no candidates.");
         throw new Error("AI returned no candidates.");
       }
-      // Persist candidates BEFORE auto-proceeding so a downstream seed
-      // failure can fall back to a usable disambiguation picker.
+      // Stamp the real grounding receipt onto the "ground" step.
+      const g = data._meta?.grounding;
+      if (g?.ok) {
+        updateSeedStep("ground", {
+          status: "done",
+          stats: [
+            { label: "Source",         value: g.domain },
+            { label: "HTML fetched",   value: fmtBytes(g.bytesFetched) },
+            { label: "Text extracted", value: fmtBytes(g.bytesExtracted) },
+            { label: "Fetch time",     value: fmtMs(g.fetchMs) },
+          ],
+        });
+      } else {
+        updateSeedStep("ground", {
+          status: "failed",
+          errorReason: g ? `homepage returned HTTP ${g.status}` : "no grounding receipt returned",
+          detail: "Proceeding from training-data memory only — review the brief before sending.",
+        });
+      }
+      // Stamp the identify receipt with REAL timing + token counts.
+      const topName = cands[0].name;
+      const topConf = cands[0].confidence;
+      updateSeedStep("identify", {
+        status: "done",
+        stats: [
+          { label: "Round-trip",   value: data._meta ? fmtMs(data._meta.durationMs) : "—" },
+          { label: "Tokens in/out", value: data._meta && data._meta.inputTokens != null && data._meta.outputTokens != null
+                                          ? `${fmtInt(data._meta.inputTokens)} → ${fmtInt(data._meta.outputTokens)}` : "—" },
+          { label: "Candidates",   value: cands.length === 1 ? "1 (unambiguous)" : `${cands.length} (verdict: ${data.verdict})` },
+          { label: "Top match",    value: `${topName} · ${Math.round(topConf * 100)}%` },
+        ],
+      });
+
       setCandidates(cands);
-      // Auto-proceed only when the server explicitly says "unambiguous"
-      // AND there's a single dominant candidate. Belt-and-braces: an
-      // inconsistent verdict (e.g. "ambiguous" with one high-confidence
-      // entry) always shows the picker — wrong-company risk wins.
       const top = cands[0];
       if (
         data.verdict === "unambiguous" &&
         cands.length === 1 &&
         top.confidence >= AUTO_PROCEED_CONFIDENCE
       ) {
-        await seedConfirmed(top);
+        // Auto-confirmed — disambiguate step is skipped honestly.
+        updateSeedStep("disambiguate", {
+          status: "skipped",
+          detail: `Auto-confirmed at ${Math.round(top.confidence * 100)}% confidence (threshold ${Math.round(AUTO_PROCEED_CONFIDENCE * 100)}%)`,
+        });
+        await seedConfirmed(top, { fromAutoProceed: true });
         return;
       }
+      // Ambiguous — pause the splash and route the user back to the picker
+      // disambiguation list. The splash stays open in a paused state until
+      // the user picks (or dismisses).
+      updateSeedStep("disambiguate", {
+        status: "running",
+        detail: `${cands.length} possible matches — pick one in the picker`,
+      });
+      setPickerOpen(true);
       setStage("disambiguate");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Identification failed.");
+      const msg = e instanceof Error ? e.message : "Identification failed.";
+      setError(msg);
+      failSeedFlow("identify", msg);
       setStage("input");
+      setPickerOpen(true);
     }
   };
 
-  // Step 2: seed with a confirmed identity (locks the model to this entity).
-  const seedConfirmed = async (c: Candidate) => {
+  // Step 2: seed with a confirmed identity. Drives the "seed" → "indexing"
+  // → "prefetch" splash steps with real receipts as each call resolves.
+  const seedConfirmed = async (c: Candidate, opts?: { fromAutoProceed?: boolean }) => {
     setError(null);
     setStage("seeding");
+    if (!opts?.fromAutoProceed) {
+      // User-picked disambiguation — close the picker, mark disambiguate done.
+      updateSeedStep("disambiguate", {
+        status: "done",
+        detail: `Picked ${c.name} (${Math.round(c.confidence * 100)}% confidence)`,
+        stats: [
+          { label: "Picked",  value: c.name },
+          { label: "Source",  value: c.canonicalUrl || url.trim() },
+        ],
+      });
+      setPickerOpen(false);
+    }
+    updateSeedStep("seed", { status: "running" });
+    let seeded: CompanyProfile;
     try {
       const res = await fetch("/api/companies/seed", {
         method: "POST",
@@ -129,22 +244,109 @@ export default function CompanyPicker() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.error ?? `Seeding failed (HTTP ${res.status})`);
       }
-      const seeded = await res.json() as CompanyProfile;
-      addCustomProfile(seeded);
-      setName(""); setUrl(""); setSector("");
-      setCandidates([]);
-      setStage("input");
+      seeded = await res.json() as CompanyProfile;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not seed the profile.");
+      const msg = e instanceof Error ? e.message : "Could not seed the profile.";
+      setError(msg);
+      failSeedFlow("seed", msg);
       setStage("disambiguate");
+      setPickerOpen(true);
+      return;
     }
+    const meta = seeded._meta;
+    updateSeedStep("seed", {
+      status: "done",
+      stats: meta ? [
+        { label: "Round-trip",     value: fmtMs(meta.durationMs) },
+        { label: "Tokens in/out",  value: meta.inputTokens != null && meta.outputTokens != null
+                                          ? `${fmtInt(meta.inputTokens)} → ${fmtInt(meta.outputTokens)}` : "—" },
+        { label: "Payload",        value: fmtBytes(meta.bytesReturned) },
+        { label: "Layers seeded",  value: `${fmtInt(meta.headlinesCount)} headline metrics across 13 layers` },
+      ] : [],
+    });
+
+    // Indexing step — real but instant. We measure the wall-clock cost of the
+    // narrative deep-swap that happens as a side-effect of activating the
+    // profile (the useMemo in CompanyContext re-runs on the next render).
+    updateSeedStep("indexing", { status: "running" });
+    const idxStart = performance.now();
+    addCustomProfile(seeded);
+    // Allow React to flush the re-render so the swap actually happens before
+    // we stop the timer. requestAnimationFrame is the cheapest way to defer.
+    await new Promise<void>(r => requestAnimationFrame(() => r()));
+    const idxMs = Math.max(1, Math.round(performance.now() - idxStart));
+    updateSeedStep("indexing", {
+      status: "done",
+      stats: [
+        { label: "Vocab tokens",      value: meta ? fmtInt(meta.vocabCount) : "—" },
+        { label: "Indexed in",        value: fmtMs(idxMs) },
+        { label: "Narrative modules", value: "16" },
+      ],
+    });
+
+    // Prefetch step — the real Executive intelligence brief. This is a
+    // genuine LLM round-trip that returns the same payload the report page
+    // will display. It also primes the server-side brief cache so the first
+    // layer view comes back from cache instead of waiting another 10-15s.
+    updateSeedStep("prefetch", { status: "running" });
+    const pfStart = performance.now();
+    try {
+      const briefRes = await fetch("/api/intelligence/brief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name:        seeded.name,
+          url:         seeded.url,
+          sector:      seeded.sector,
+          hqCity:      seeded.hqCity,
+          hqState:     seeded.hqState,
+          revenueBand: seeded.revenueBand,
+          ownership:   seeded.ownership,
+          founded:     seeded.founded,
+          tagline:     seeded.tagline,
+        }),
+      });
+      const pfMs = Math.round(performance.now() - pfStart);
+      if (!briefRes.ok) {
+        const body = await briefRes.json().catch(() => ({}));
+        updateSeedStep("prefetch", {
+          status: "failed",
+          errorReason: body?.error ?? `HTTP ${briefRes.status}`,
+          detail: "The Executive brief will generate on first open instead of being pre-warmed.",
+        });
+      } else {
+        const text = await briefRes.text();
+        const cacheHdr = briefRes.headers.get("X-Cache") ?? "MISS";
+        updateSeedStep("prefetch", {
+          status: "done",
+          stats: [
+            { label: "Round-trip", value: fmtMs(pfMs) },
+            { label: "Payload",    value: fmtBytes(text.length) },
+            { label: "Layer",      value: "Executive · Business performance" },
+            { label: "Cache",      value: cacheHdr === "HIT" ? "warm (cached)" : "primed (fresh)" },
+          ],
+        });
+      }
+    } catch (e) {
+      const pfMs = Math.round(performance.now() - pfStart);
+      updateSeedStep("prefetch", {
+        status: "failed",
+        errorReason: `${e instanceof Error ? e.message : String(e)} after ${fmtMs(pfMs)}`,
+        detail: "The Executive brief will generate on first open instead of being pre-warmed.",
+      });
+    }
+
+    endSeedFlow(meta);
+    setName(""); setUrl(""); setSector("");
+    setCandidates([]);
+    setStage("input");
   };
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Company picker"
-         className="fixed inset-0 z-[55] flex items-center justify-center px-6"
+         className="fixed inset-0 z-[80] flex items-center justify-center px-6"
          style={{ background: "rgba(15,26,51,0.65)" }}
-         onClick={() => setPickerOpen(false)}>
+         onClick={closePicker}>
       <div className="w-[860px] max-w-full max-h-[88vh] flex flex-col rounded-sm overflow-hidden"
            style={{ background: "var(--paper)", border: "1px solid var(--gold)", boxShadow: "0 24px 80px rgba(15,26,51,0.45)" }}
            onClick={(e) => e.stopPropagation()}>
@@ -155,7 +357,7 @@ export default function CompanyPicker() {
             <Sparkles size={15} strokeWidth={1.8} className="text-[var(--gold-light)]" />
             <span className="font-serif font-semibold text-[14px]">Switch company · seed a new framework</span>
           </div>
-          <button onClick={() => setPickerOpen(false)} aria-label="Close picker"
+          <button onClick={closePicker} aria-label="Close picker"
                   className="text-[var(--gold-light)] hover:text-white">
             <X size={18} strokeWidth={1.5} />
           </button>
