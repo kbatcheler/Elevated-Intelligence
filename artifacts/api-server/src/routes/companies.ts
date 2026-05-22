@@ -734,7 +734,19 @@ function extractNumerics(s: string): Set<string> {
   // compare equal. Both forms appear in the codebase (the static narrative
   // uses U+2212 in places like "−8%" / "−380bps") and the LLM frequently
   // swaps between them, which would otherwise cause spurious rejections.
-  const norm = s.replace(/\u2212/g, "-");
+  // Also collapse human-readable unit phrases to canonical short forms so
+  // "380 basis points" (in the Mercer template narrative) and "380bps" (a
+  // common LLM rewrite) tokenize identically — without this, every layer
+  // that mentions "basis points" gets rejected by the numeric guard and
+  // falls back to template copy. Order matters: longer phrases first.
+  const norm = s
+    .replace(/\u2212/g, "-")
+    .replace(/(\d)\s*basis\s*points?\b/gi,        "$1bps")
+    .replace(/(\d)\s*percentage\s*points?\b/gi,   "$1pp")
+    .replace(/(\d)\s*percent\b/gi,                "$1%")
+    .replace(/(\d)\s*(?:million|mn)\b/gi,         "$1M")
+    .replace(/(\d)\s*(?:billion|bn)\b/gi,         "$1B")
+    .replace(/(\d)\s*thousand\b/gi,               "$1K");
   // Match comma-grouped digit runs (1,234,567) OR plain digit runs (1234567),
   // each with optional decimal and optional unit suffix. The previous regex
   // restricted to \d{1,3}(?:,\d{3})*, which split ungrouped 4+ digit values
