@@ -31,10 +31,11 @@ export default function NextSteps({ layerKey, layerTitle }: { layerKey: string; 
         <span className="font-sans text-[11px] opacity-70 italic">Tap commit to land any step in the action tray</span>
       </div>
 
-      {/* Stack on narrow widths — this block now sits in a 2/3-width column on
-          the recommendation page, so a hard `grid-cols-3` would cram the copy
-          and the commit buttons. Switch to a single column under ~1100px. */}
-      <div className="grid grid-cols-1 lg:grid-cols-3">
+      {/* Three time horizons. Stacks to one column on tablet and below so
+          card copy never gets squeezed to one word per line. NextSteps now
+          renders full-width below the recommendation grid, so the lg
+          breakpoint reliably gives each horizon ~300+ px of room. */}
+      <div className="grid grid-cols-1 md:grid-cols-3">
         {HORIZONS.map((h, i) => {
           const step = block[h.key as keyof typeof block] as NextStep;
           const Icon = h.icon;
@@ -108,11 +109,20 @@ export default function NextSteps({ layerKey, layerTitle }: { layerKey: string; 
 }
 
 function Meta({ icon, label, value, italic }: { icon: React.ReactNode; label: string; value: string; italic?: boolean }) {
+  // Two-line layout: tiny eyebrow row (icon + LABEL) above the value. This
+  // beats the prior single-row "icon · LABEL · value" layout because long
+  // values like "Pricing layer signs off margin floor (gross ≥ 18%)" no
+  // longer have to share horizontal space with the label — they get the
+  // full card width and break at word boundaries, not character by character.
   return (
-    <div className="flex items-baseline gap-2">
-      <span className="text-[var(--slate-light)] shrink-0 mt-0.5">{icon}</span>
-      <span className="eyebrow text-[var(--slate-light)] shrink-0">{label}</span>
-      <span className={"font-sans text-[11px] text-[var(--navy)] flex-1 " + (italic ? "italic text-[var(--slate)]" : "font-semibold")}>{value}</span>
+    <div className="leading-snug">
+      <div className="flex items-center gap-1.5">
+        <span className="text-[var(--slate-light)] shrink-0">{icon}</span>
+        <span className="eyebrow text-[var(--slate-light)]">{label}</span>
+      </div>
+      <div className={"font-sans text-[12px] text-[var(--navy)] mt-0.5 break-words " + (italic ? "italic text-[var(--slate)]" : "font-semibold")}>
+        {value}
+      </div>
     </div>
   );
 }
