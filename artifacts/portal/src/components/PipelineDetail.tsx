@@ -1,6 +1,6 @@
 import { Database, ChevronRight } from "lucide-react";
 import { type DeepTable, type DeepRow } from "../data/pipelineDeep";
-import { useNarrative } from "../context/CompanyContext";
+import { useNarrative, useIsDefaultProfile } from "../context/CompanyContext";
 
 const toneColor = (t?: DeepRow["tone"]) =>
   t === "bad"  ? "var(--coral)"
@@ -10,8 +10,13 @@ const toneColor = (t?: DeepRow["tone"]) =>
 
 export default function PipelineDetail({ layerKey }: { layerKey: string }) {
   const { PIPELINE_DEEP } = useNarrative();
+  const isDefault = useIsDefaultProfile();
   const deep = PIPELINE_DEEP[layerKey];
   if (!deep) return null;
+  // Pipeline-deep fixtures are entirely Mercer-shaped (SKU codes, supplier
+  // names, DC cities, "match Home Depot" copy). Suppress for any seeded
+  // profile so we don't claim e.g. Apple is selling cordless drills.
+  if (!isDefault) return null;
 
   return (
     <div className="card card-accent-gold !p-0 overflow-hidden">

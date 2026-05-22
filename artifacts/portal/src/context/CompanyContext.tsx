@@ -422,6 +422,28 @@ export function useNarrative(): NarrativeBundle {
 }
 
 /**
+ * True when the active profile is the built-in Mercer baseline.
+ *
+ * Many deep-dive panels (PipelineDetail, the Hero blocks for non-business-
+ * performance layers, every Extras block) are populated from hardcoded
+ * Mercer-shaped fixtures: SKU rows like "Cordless drill 18V", supplier names,
+ * DC city names, competitor brands like "Home Depot" / "Lowe's", etc. The
+ * vocab-swap layer can only do substring substitution; it cannot translate
+ * "Cordless drill" into an iPhone SKU. When a seeded profile lands without a
+ * matching dataset/layer override, the raw Mercer copy leaks through and the
+ * dashboard claims (e.g.) that Apple sells power tools.
+ *
+ * Components that render Mercer-shaped fixtures gate themselves on this flag
+ * so that for any non-default profile the leaking block is hidden rather than
+ * rendered with wrong-brand content. The rest of the layer (header, narrative,
+ * metric tiles, chart, causes, actions, counter-args, gaps) is driven by the
+ * LLM-overridden `layerOverrides` and remains correct for the seeded company.
+ */
+export function useIsDefaultProfile(): boolean {
+  return useCompany().profile.id === DEFAULT_PROFILE_ID;
+}
+
+/**
  * Deep-swap an arbitrary value through the active profile's vocab. Intended
  * for module-level "_RAW" constants embedded inside view components (chart
  * labels, hero data, tour copy) so they re-skin with the rest of the report.

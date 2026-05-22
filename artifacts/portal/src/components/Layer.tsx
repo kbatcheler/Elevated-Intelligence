@@ -17,7 +17,7 @@ import PipelineDetail from "./PipelineDetail";
 import PeerBenchmark from "./PeerBenchmark";
 import DemandLink from "./DemandLink";
 import { useApp } from "../context/AppContext";
-import { useNarrative, useSwap } from "../context/CompanyContext";
+import { useNarrative, useSwap, useIsDefaultProfile } from "../context/CompanyContext";
 import { TIMELINES as TIMELINES_RAW } from "../data/timetravel";
 
 const toneColor = (t: Tone) =>
@@ -212,8 +212,16 @@ export default function Layer({
     </div>
   );
 
-  const Extra = EXTRAS[layer.key];
-  const Hero  = HEROES[layer.key];
+  // Heroes + Extras are populated from hardcoded Mercer fixtures (named
+  // suppliers, DC cities, competitor brands, SKUs etc). For any non-default
+  // profile we hide them rather than render wrong-brand copy — see
+  // useIsDefaultProfile for the full rationale. BusinessPerformanceHero is
+  // the lone exception: it reads only `layer.metrics`, which is overridden
+  // per seeded company, so it stays universal.
+  const isDefault = useIsDefaultProfile();
+  const Extra = isDefault ? EXTRAS[layer.key] : undefined;
+  const RawHero = HEROES[layer.key];
+  const Hero = (isDefault || layer.key === "business-performance") ? RawHero : undefined;
 
   return (
     <div className="space-y-6 pb-12">
