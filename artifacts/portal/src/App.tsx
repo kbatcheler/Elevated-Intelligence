@@ -3,9 +3,11 @@ import {
   BarChart3, TrendingUp, Crosshair, Users, Megaphone,
   Truck, Tag, GitBranch, Target, UserCog, Cpu, ChevronDown, Briefcase,
   Banknote, Receipt, UserPlus, Network, Newspaper, CheckSquare, Lock,
-  Sliders, Award, FileText, Sparkles,
+  Sliders, Award, FileText, Sparkles, HelpCircle,
 } from "lucide-react";
 import { useNarrative } from "./context/CompanyContext";
+import CoachmarkTour from "./components/CoachmarkTour";
+import PersonaLensToggle, { usePersistedPersona, PERSONAS } from "./components/PersonaLens";
 import Layer from "./components/Layer";
 import Narrator from "./narrator/Narrator";
 import Architecture from "./architecture/Architecture";
@@ -14,6 +16,7 @@ import EngagementPipeline from "./pipeline/EngagementPipeline";
 import SignalTicker from "./components/SignalTicker";
 import AnomalyInbox from "./components/AnomalyInbox";
 import EvidencePanel from "./components/EvidencePanel";
+import WhyInspector from "./components/WhyInspector";
 import CommittedTray from "./components/CommittedTray";
 import DependencyGraph from "./dependency/DependencyGraph";
 import MorningBrief from "./brief/MorningBrief";
@@ -65,6 +68,12 @@ export default function App() {
   const [clientOpen, setClientOpen] = useState(false);
   const [boardPackOpen, setBoardPackOpen] = useState(false);
   const [intelOpen, setIntelOpen] = useState(false);
+  // Coachmark tour: forced-open flag flips when the user clicks the "?".
+  // CoachmarkTour itself also auto-opens on first visit via localStorage.
+  const [tourForceOpen, setTourForceOpen] = useState(false);
+  // Persona lens: persisted across sessions. null means "All views" — no
+  // re-ordering of the sidebar.
+  const [persona, setPersona] = usePersistedPersona();
   const {
     setActiveLayer, openInbox, openBrief, briefOpen, committed,
   } = useApp();
@@ -159,6 +168,7 @@ export default function App() {
 
         <div className="flex items-center gap-3">
           <button onClick={openBrief}
+                  data-tour="brief"
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm font-sans text-[12px] text-[var(--cream)] hover:bg-white/10 transition-colors"
                   style={{ border: "1px solid var(--gold)" }}>
             <Newspaper size={14} strokeWidth={1.5} className="text-[var(--gold-light)]" />
@@ -178,11 +188,20 @@ export default function App() {
             Intelligence
           </button>
           <button onClick={() => setPickerOpen(true)}
+                  data-tour="switch"
                   title="Switch company / seed a prospect"
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm font-sans text-[11px] uppercase tracking-wider text-[var(--cream)] hover:bg-white/10 transition-colors"
                   style={{ border: "1px solid rgba(212,175,55,0.4)" }}>
             <Sparkles size={12} strokeWidth={1.8} className="text-[var(--gold-light)]" />
             Switch
+          </button>
+          <PersonaLensToggle value={persona} onChange={setPersona} />
+          <button onClick={() => setTourForceOpen(true)}
+                  title="Replay product tour"
+                  aria-label="Replay product tour"
+                  className="flex items-center justify-center h-7 w-7 rounded-full text-[var(--cream)] hover:bg-white/10 transition-colors"
+                  style={{ border: "1px solid rgba(212,175,55,0.4)" }}>
+            <HelpCircle size={13} strokeWidth={1.8} className="text-[var(--gold-light)]" />
           </button>
           <span className="font-sans text-[12px] text-[var(--cream)] opacity-70">{profile.analyst}</span>
           <span className="h-8 w-8 rounded-full flex items-center justify-center font-sans font-semibold text-[12px]"
@@ -195,7 +214,54 @@ export default function App() {
 
       <div className="flex flex-1 min-h-0">
         {/* Left nav */}
-        <nav className="w-[240px] shrink-0 border-r border-[var(--border)] bg-[var(--cream-light)] overflow-y-auto scroll-area">
+        <nav data-tour="sidebar"
+             className="w-[240px] shrink-0 border-r border-[var(--border)] bg-[var(--cream-light)] overflow-y-auto scroll-area">
+          {/* Persona lens: when active, prepend a "For you" group surfacing
+              this persona's top layer keys. We filter the keys against NAV so
+              an unknown key from PERSONAS just no-ops instead of crashing. */}
+          {persona && (() => {
+            const def = PERSONAS[persona];
+            const tops = def.topLayerKeys
+              .map(k => NAV.find(n => n.key === k))
+              .filter((n): n is NavItem => n !== undefined);
+            if (tops.length === 0) return null;
+            return (
+              <div className="pt-5 px-3">
+                <div className="flex items-baseline justify-between px-3 mb-2">
+                  <div className="eyebrow text-[var(--gold)]">For you · {def.label}</div>
+                  <button onClick={() => setPersona(null)}
+                          title="Clear persona lens"
+                          className="font-sans text-[9px] uppercase tracking-wider text-[var(--slate-light)] hover:text-[var(--slate)] transition-colors">
+                    clear
+                  </button>
+                </div>
+                <ul>
+                  {tops.map(n => {
+                    const isActive = active === n.key;
+                    const Icon = n.icon;
+                    return (
+                      <li key={`persona-${n.key}`}>
+                        <button onClick={() => handleNavigate(n.key)}
+                                className={"w-full flex items-center justify-between gap-2 pl-3 pr-3 py-2 text-left transition-colors " +
+                                  (isActive ? "bg-[var(--cream-dark)]/60" : "hover:bg-[var(--cream-dark)]/40")}
+                                style={isActive
+                                  ? { borderLeft: "3px solid var(--gold)", paddingLeft: 9 }
+                                  : { borderLeft: "3px solid transparent" }}>
+                          <span className="flex items-center gap-2.5">
+                            <Icon size={16} strokeWidth={1.5} style={{ color: isActive ? "var(--navy)" : "var(--slate)" }} />
+                            <span className={"font-sans text-[13px] " + (isActive ? "text-[var(--navy)] font-semibold" : "text-[var(--slate)]")}>
+                              {n.label}
+                            </span>
+                          </span>
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ background: statusColor(n.status) }} />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })()}
           {GROUPS.map(group => (
             <div key={group} className="pt-5 px-3">
               <div className="eyebrow text-[var(--slate-light)] px-3 mb-2">{group}</div>
@@ -276,10 +342,14 @@ export default function App() {
       {/* Global overlays */}
       <AnomalyInbox onNavigate={handleNavigate} />
       <EvidencePanel />
+      <WhyInspector onNavigate={handleNavigate} />
       {briefOpen && <MorningBrief />}
       {boardPackOpen && <BoardPack onClose={() => setBoardPackOpen(false)} />}
       {intelOpen && <IntelligenceBrief onClose={() => setIntelOpen(false)} />}
       <ChatAssistant onNavigate={handleNavigate} />
+      {/* Coachmark tour — self-mounts on first visit (localStorage flag) and
+          can be replayed from the "?" button in the header. */}
+      <CoachmarkTour forceOpen={tourForceOpen} onClose={() => setTourForceOpen(false)} />
       <Tour />
       <CompanyPicker />
       <CompanyBootSplash />

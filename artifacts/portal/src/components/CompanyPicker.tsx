@@ -1,8 +1,31 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Globe, Sparkles, RotateCcw, ChevronRight, Loader2, AlertCircle, ArrowLeft, Check, Trash2 } from "lucide-react";
+import { X, Globe, Sparkles, RotateCcw, ChevronRight, Loader2, AlertCircle, ArrowLeft, Check, Trash2, Zap } from "lucide-react";
 import { useCompany, type SeedStep } from "../context/CompanyContext";
 import { DEFAULT_PROFILE_ID, makeResolver, deepResolveWith, type CompanyProfile } from "../data/companies";
 import { LAYERS as RAW_LAYERS } from "../data/layers";
+
+// Curated showcase companies offered as one-click chips on the seed tab.
+// These are the fastest path for new users / live demos to see the system
+// work on a company they actually recognise. Each chip pre-fills the form
+// AND triggers identify+seed immediately — no typing required. We pick a
+// deliberately diverse spread (mega-cap tech, payments, DTC, retail,
+// software, regional bank) so demos can show the framework adapting across
+// very different operating shapes.
+interface ShowcaseChip {
+  name: string;
+  url: string;
+  sector: string;
+  emoji: string;
+  hint: string;
+}
+const SHOWCASE_COMPANIES: ShowcaseChip[] = [
+  { name: "Apple",       url: "apple.com",      sector: "consumer electronics",     emoji: "", hint: "Mega-cap, hardware + services" },
+  { name: "Stripe",      url: "stripe.com",     sector: "payments infrastructure",  emoji: "", hint: "Platform fintech" },
+  { name: "Shopify",     url: "shopify.com",    sector: "commerce software",        emoji: "", hint: "Multi-product SaaS" },
+  { name: "Patagonia",   url: "patagonia.com",  sector: "outdoor apparel",          emoji: "", hint: "DTC + wholesale, values-led" },
+  { name: "Sweetgreen",  url: "sweetgreen.com", sector: "fast-casual restaurants",  emoji: "", hint: "Multi-unit food service" },
+  { name: "Notion",      url: "notion.so",      sector: "productivity software",    emoji: "", hint: "Bottoms-up SaaS" },
+];
 
 // Initial step plan for the live seed splash. Steps progress through
 // pending → running → done|skipped|failed as the orchestrator (below)
@@ -96,9 +119,14 @@ export default function CompanyPicker() {
   // the homepage and runs the LLM identify in one shot. If verdict is
   // unambiguous + high confidence, we proceed straight to seed; otherwise we
   // close the splash and route to disambiguation in the picker.
-  const identify = async () => {
-    const trimmedName = name.trim();
-    const trimmedUrl  = url.trim();
+  // Accepts optional explicit values so the showcase chips can trigger
+  // identify with the chip's values directly — without waiting for the
+  // setState-induced re-render that would normally update name/url/sector
+  // closures. Falls back to component state for the normal typed-input flow.
+  const identify = async (explicit?: { name: string; url: string; sector?: string }) => {
+    const trimmedName = (explicit?.name ?? name).trim();
+    const trimmedUrl  = (explicit?.url  ?? url).trim();
+    const trimmedSec  = (explicit?.sector ?? sector).trim();
     if (!trimmedName) { setError("Company name is required."); return; }
     if (!trimmedUrl)  { setError("Homepage URL is required — it's the only way to disambiguate from same-named companies."); return; }
     // Light client-side domain shape check. The server enforces this strictly;
@@ -118,7 +146,7 @@ export default function CompanyPicker() {
       const res = await fetch("/api/companies/identify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmedName, url: trimmedUrl, sector: sector.trim() }),
+        body: JSON.stringify({ name: trimmedName, url: trimmedUrl, sector: trimmedSec }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -526,7 +554,14 @@ export default function CompanyPicker() {
               sector={sector} setSector={setSector}
               error={error}
               stage={stage}
-              onSubmit={identify}
+              onSubmit={() => { void identify(); }}
+              onPickShowcase={(c) => {
+                // Pre-fill the visible form so the user sees what got chosen,
+                // then trigger identify with the chip's explicit values (we
+                // can't wait on setState to flush into the identify closure).
+                setName(c.name); setUrl(c.url); setSector(c.sector);
+                void identify({ name: c.name, url: c.url, sector: c.sector });
+              }}
               elapsedMs={elapsedMs}
             />
           )}
@@ -537,7 +572,7 @@ export default function CompanyPicker() {
 }
 
 function SeedInputView({
-  name, setName, url, setUrl, sector, setSector, error, stage, onSubmit, elapsedMs,
+  name, setName, url, setUrl, sector, setSector, error, stage, onSubmit, onPickShowcase, elapsedMs,
 }: {
   name: string; setName: (v: string) => void;
   url: string; setUrl: (v: string) => void;
@@ -545,13 +580,14 @@ function SeedInputView({
   error: string | null;
   stage: Stage;
   onSubmit: () => void;
+  onPickShowcase: (c: ShowcaseChip) => void;
   elapsedMs: number;
 }) {
   const busy = stage === "identifying" || stage === "seeding";
   const elapsedLabel = `${(elapsedMs / 1000).toFixed(1)}s`;
   return (
     <div className="max-w-[560px] mx-auto pt-4">
-      <div className="text-center mb-7">
+      <div className="text-center mb-6">
         <div className="eyebrow text-[var(--coral)] mb-2">Sales tool · seed a prospect</div>
         <h2 className="font-serif font-semibold text-[28px] leading-tight text-[var(--navy)] mb-3">
           Walk in with a finished implementation.
@@ -559,6 +595,37 @@ function SeedInputView({
         <p className="font-serif italic text-[14px] text-[var(--slate)] leading-relaxed">
           Type the prospect's name <strong>and</strong> their homepage URL. The URL is the authoritative identifier — both are required and the framework is seeded directly from that domain.
         </p>
+      </div>
+
+      {/* One-click showcase chips. Bypasses typing for first-time users and
+          gives demos a fast, predictable on-ramp. Each chip triggers the
+          same live identify+seed flow as the typed form below. */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-2.5">
+          <Zap size={11} strokeWidth={2} className="text-[var(--gold)]" />
+          <span className="eyebrow text-[var(--slate)]">Or try one of these · one-click seed</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {SHOWCASE_COMPANIES.map(c => (
+            <button
+              key={c.name}
+              onClick={() => onPickShowcase(c)}
+              disabled={busy}
+              title={`${c.hint} · ${c.url}`}
+              className="group inline-flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-sm font-sans text-[12px] text-[var(--navy)] transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:border-[var(--gold)] hover:bg-[var(--gold-faint)]"
+              style={{ background: "var(--cream-light)", border: "1px solid var(--cream-dark)" }}
+            >
+              <span className="text-[14px] leading-none">{c.emoji}</span>
+              <span className="font-semibold">{c.name}</span>
+              <span className="text-[10px] text-[var(--slate-light)] group-hover:text-[var(--slate)]">{c.url}</span>
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-3 my-5">
+          <div className="flex-1 h-px bg-[var(--cream-dark)]" />
+          <span className="font-sans italic text-[10px] uppercase tracking-wider text-[var(--slate-light)]">or seed your own</span>
+          <div className="flex-1 h-px bg-[var(--cream-dark)]" />
+        </div>
       </div>
 
       <div className="space-y-4">

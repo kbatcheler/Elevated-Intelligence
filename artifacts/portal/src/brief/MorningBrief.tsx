@@ -1,6 +1,64 @@
-import { X, Printer } from "lucide-react";
+import { X, Printer, TrendingUp, TrendingDown, AlertCircle } from "lucide-react";
 import { useNarrative, useCompany } from "../context/CompanyContext";
 import { useApp } from "../context/AppContext";
+
+// ----- "What changed since yesterday" deltas ---------------------------------
+// Deterministic-per-company deltas to put a daily-pulse ribbon at the top of
+// the brief. Reseed the same company → same deltas; switch companies → a
+// different set. This makes the synthetic refresh cadence feel like a feature
+// ("Different Day"), not a static mock.
+
+// Fast non-crypto string hash (FNV-1a 32-bit). Stable across reloads.
+function hash32(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+// Mulberry32 — small, fast, well-distributed seeded PRNG. We don't need
+// cryptographic strength; we need "same input → same sequence" for stability.
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+interface Delta { trend: "up" | "down" | "watch"; text: string; }
+
+// Each template is a function of a seeded RNG so numbers vary per company
+// but stay stable for the same company. Templates use generic vocabulary
+// (margin, pipeline, sentiment) that fits any seeded operating shape.
+const DELTA_TEMPLATES: Array<(rng: () => number) => Delta> = [
+  rng => ({ trend: "down",  text: `Margin gap widened ${15 + Math.floor(rng() * 35)}bps overnight — Pricing thesis strengthens.` }),
+  rng => ({ trend: "up",    text: `Pipeline coverage ticked up to ${(2.5 + rng() * 0.8).toFixed(1)}× from ${(2.2 + rng() * 0.3).toFixed(1)}× yesterday.` }),
+  rng => ({ trend: "watch", text: `Two new anomalies surfaced in Demand · variance now concentrated in ${3 + Math.floor(rng() * 5)} SKU families.` }),
+  rng => ({ trend: "up",    text: `Sentiment recovered ${1 + Math.floor(rng() * 4)} points in the regional cluster after support team intervention.` }),
+  rng => ({ trend: "down",  text: `DSO drifted ${1 + Math.floor(rng() * 3)}d further from target — ${1 + Math.floor(rng() * 3)} new credit holds recommended.` }),
+  rng => ({ trend: "watch", text: `${4 + Math.floor(rng() * 6)} new evidence cards attached to the Pricing thesis · confidence band tightened.` }),
+  rng => ({ trend: "up",    text: `Win rate ticked up ${1 + Math.floor(rng() * 3)}pp on the SMB segment overnight.` }),
+  rng => ({ trend: "down",  text: `Attrition signal in DC Operations spiked ${2 + Math.floor(rng() * 4)}pp — third consecutive day above target.` }),
+  rng => ({ trend: "watch", text: `Competitor promotional depth widened in ${2 + Math.floor(rng() * 3)} markets — Pricing layer requires review.` }),
+  rng => ({ trend: "up",    text: `Working capital lockup released $${(0.4 + rng() * 0.8).toFixed(1)}M from receivables · cash position improved.` }),
+];
+
+function deriveDeltas(companyName: string): Delta[] {
+  const rng = mulberry32(hash32(companyName));
+  // Knuth shuffle a copy of the index array, take the first 3.
+  const ix = DELTA_TEMPLATES.map((_, i) => i);
+  for (let i = ix.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [ix[i], ix[j]] = [ix[j], ix[i]];
+  }
+  // Each template call advances rng, so its internal numbers are also seeded.
+  return ix.slice(0, 3).map(i => DELTA_TEMPLATES[i](rng));
+}
 
 // Composed top-finding-per-layer brief. Hard-coded copy because this is a
 // curated editorial product, not an auto-summary of the layer data.
@@ -36,6 +94,8 @@ export default function MorningBrief() {
   const layerByKey = Object.fromEntries(LAYERS.map(l => [l.key, l]));
   // Merge: profile overrides take precedence, falling back to the default Mercer copy.
   const mergedFindings = TOP_FINDINGS.map(f => ({ ...f, ...(profile.topFindings?.[f.layer] ?? {}) }));
+  // Deterministic per-company deltas for the "Since yesterday" ribbon.
+  const deltas = deriveDeltas(profile.name);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "rgba(15,26,51,0.55)" }} onClick={closeBrief}>
@@ -76,6 +136,29 @@ export default function MorningBrief() {
                 {profile.name} · {profile.period} close-out · the one page the executive committee needs before 7am.
               </p>
             </header>
+
+            {/* "What changed since yesterday" ribbon — leans into the
+                 product's name. Deterministic per company; same company on
+                 re-open shows the same deltas. */}
+            <section className="mb-7 px-4 py-3 rounded-sm"
+                     style={{ background: "var(--cream-light)", border: "1px solid var(--cream-dark)", borderLeft: "3px solid var(--gold)" }}>
+              <div className="flex items-baseline gap-3 mb-2">
+                <span className="eyebrow text-[var(--gold)]">Since yesterday</span>
+                <span className="font-serif italic text-[12px] text-[var(--slate-light)]">overnight signal pulse · 3 of {DELTA_TEMPLATES.length} deltas surfaced</span>
+              </div>
+              <ul className="space-y-1.5">
+                {deltas.map((d, i) => {
+                  const Icon = d.trend === "up" ? TrendingUp : d.trend === "down" ? TrendingDown : AlertCircle;
+                  const color = d.trend === "up" ? "var(--teal)" : d.trend === "down" ? "var(--coral)" : "var(--gold)";
+                  return (
+                    <li key={i} className="flex items-start gap-2.5 font-sans text-[13px] text-[var(--ink)] leading-snug">
+                      <Icon size={13} strokeWidth={2} className="shrink-0 mt-[3px]" style={{ color }} />
+                      <span>{d.text}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
 
             {/* Lede */}
             <section className="mb-7">

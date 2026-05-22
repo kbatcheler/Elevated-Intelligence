@@ -43,7 +43,7 @@ export default function Layer({
   onNavigate?: (key: string, field?: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const { openEvidence, pulse, timeOffsetByLayer } = useApp();
+  const { openEvidence, openWhy, pulse, timeOffsetByLayer } = useApp();
   const { PEERS, EVIDENCE } = useNarrative();
   const TIMELINES = useSwap(TIMELINES_RAW);
   const isHi = (field: string) => highlight === field;
@@ -113,12 +113,18 @@ export default function Layer({
         const evKey = `${layer.key}/${m.label}`;
         const hasEvidence = !!EVIDENCE[evKey];
         const isPulsing = pulse?.layer === layer.key && pulse.metric === m.label;
-        const cls = "card " +
-          (isHi(`metric:${i}`) || isPulsing ? "pulse-coral " : "") +
-          (hasEvidence ? "cursor-pointer hover:border-[var(--navy)] transition-colors" : "");
+        // Every metric tile now opens the "Why this number?" inspector,
+        // which itself routes to the raw evidence panel when available.
+        // Keeps the existing "evidence dot" affordance but consolidates
+        // the click to a single, more powerful drill-down.
+        const cls = "card cursor-pointer hover:border-[var(--navy)] transition-colors " +
+          (isHi(`metric:${i}`) || isPulsing ? "pulse-coral " : "");
         return (
           <div key={i}
-               onClick={hasEvidence ? () => openEvidence(layer.key, m.label) : undefined}
+               onClick={() => openWhy(layer.key, m.label)}
+               role="button"
+               tabIndex={0}
+               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openWhy(layer.key, m.label); } }}
                className={cls}>
             <div className="flex items-start justify-between">
               <div className="eyebrow text-[var(--slate-light)]">
@@ -137,11 +143,10 @@ export default function Layer({
               <Sparkline data={makeSeries(seedBase + i * 17, 14, m.tone === "bad" ? -0.6 : m.tone === "good" ? 0.4 : 0)}
                          color={toneColor(m.tone)} />
             </div>
-            {hasEvidence && (
-              <div className="mt-2 pt-2 border-t border-[var(--cream-dark)] eyebrow text-[var(--slate-light)] flex items-center gap-1">
-                Click for evidence <ArrowRight size={10} strokeWidth={1.8} />
-              </div>
-            )}
+            <div className="mt-2 pt-2 border-t border-[var(--cream-dark)] eyebrow text-[var(--slate-light)] flex items-center justify-between gap-1">
+              <span className="flex items-center gap-1">Why this number? <ArrowRight size={10} strokeWidth={1.8} /></span>
+              {hasEvidence && <span className="font-sans text-[9px] text-[var(--gold)] uppercase tracking-wider">+ evidence</span>}
+            </div>
           </div>
         );
       })}

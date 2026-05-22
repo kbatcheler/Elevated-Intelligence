@@ -1,9 +1,36 @@
-import { useEffect, useRef, useState } from "react";
-import { X, Send, Sparkles, ArrowRight, ExternalLink } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { X, Send, Sparkles, ArrowRight, ExternalLink, Lightbulb } from "lucide-react";
 import { answer, type ChatResponse } from "../data/chatBrain";
 import { useApp } from "../context/AppContext";
 import { useCompany } from "../context/CompanyContext";
 import { deepResolveWith } from "../data/companies";
+import type { LayerData } from "../data/layers";
+
+// Build a set of suggested chat prompts grounded in the actually-seeded
+// company's layer data — metric movers, top causes, top recommended actions.
+// Unlike static SUGGESTED (which is just vocab-swapped Mercer copy), these
+// reference the seeded company's real signals so they feel like "questions
+// the system already has answers to."
+function buildGroundedSuggestions(layers: LayerData[]): string[] {
+  const out: string[] = [];
+  // Walk through 4-5 layers and pull one prompt each, alternating prompt
+  // shapes (why / what-if / cause-drill / action-impact) to keep variety.
+  const pickLayers = layers.slice(0, 6);
+  pickLayers.forEach((layer, i) => {
+    const shape = i % 4;
+    if (shape === 0 && layer.metrics?.[0]) {
+      out.push(`Why is ${layer.metrics[0].label.toLowerCase()} where it is?`);
+    } else if (shape === 1 && layer.actions?.[0]) {
+      out.push(`What would happen if we acted on: "${layer.actions[0].title}"?`);
+    } else if (shape === 2 && layer.causes?.[0]) {
+      out.push(`What's really driving ${layer.causes[0].title.toLowerCase()}?`);
+    } else {
+      out.push(`Where should we start in ${layer.title}?`);
+    }
+  });
+  // De-dupe while preserving order.
+  return Array.from(new Set(out)).slice(0, 6);
+}
 
 interface Message {
   id: number;
@@ -39,7 +66,7 @@ function rich(text: string) {
 export default function ChatAssistant({ onNavigate }: { onNavigate: (key: string) => void }) {
   const { activeLayer, openInbox, openBrief } = useApp();
   const { profile, resolve, narrative } = useCompany();
-  const { SUGGESTED, LAYERS } = narrative;
+  const { LAYERS } = narrative;
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -49,6 +76,28 @@ export default function ChatAssistant({ onNavigate }: { onNavigate: (key: string
   const launcherRef = useRef<HTMLButtonElement>(null);
   const idCounter = useRef(0);
   const pendingTimeouts = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Suggestions grounded in the seeded company's actual layer signals.
+  // Rebuilt whenever the active profile changes so a new company brings
+  // a new set immediately.
+  const groundedSuggestions = useMemo(() => buildGroundedSuggestions(LAYERS), [LAYERS]);
+
+  // Two-of-six rotating window shown above the input field. Advances every
+  // ~6s while the chat is open and the user isn't actively typing so the
+  // suggestions don't feel static and demos can stand in front of the chat
+  // panel with something visibly moving.
+  const [rotationIdx, setRotationIdx] = useState(0);
+  useEffect(() => {
+    if (!open || input.length > 0) return;
+    const id = window.setInterval(() => {
+      setRotationIdx(i => (i + 2) % Math.max(1, groundedSuggestions.length));
+    }, 6000);
+    return () => window.clearInterval(id);
+  }, [open, input.length, groundedSuggestions.length]);
+  const visibleSuggestions = groundedSuggestions.length === 0 ? [] : [
+    groundedSuggestions[rotationIdx % groundedSuggestions.length],
+    groundedSuggestions[(rotationIdx + 1) % groundedSuggestions.length],
+  ];
 
   // Reset the assistant session when the active company profile changes.
   // Cancel pending fake-network timeouts, clear chat history and draft input
@@ -93,7 +142,7 @@ export default function ChatAssistant({ onNavigate }: { onNavigate: (key: string
             "I'm the **Different Day** assistant. I can answer the questions an executive actually asks of this portal — diagnosis, recovery, risk, what-if, where to start. " +
             "Try one of the suggestions below, or just type.",
           citations: [],
-          followups: SUGGESTED.slice(0, 6),
+          followups: groundedSuggestions,
         },
         ts: now(),
       }]);
@@ -134,6 +183,7 @@ export default function ChatAssistant({ onNavigate }: { onNavigate: (key: string
       {!open && (
         <button
           ref={launcherRef}
+          data-tour="chat"
           onClick={() => setOpen(true)}
           aria-label="Open Different Day assistant"
           className="fixed bottom-6 right-6 z-40 flex items-center gap-2 pl-4 pr-5 py-3 rounded-full font-sans font-semibold text-[13px] transition-all"
@@ -189,6 +239,34 @@ export default function ChatAssistant({ onNavigate }: { onNavigate: (key: string
               </div>
             )}
           </div>
+
+          {/* Rotating grounded suggestions — visible whenever the chat is
+              open and the user isn't actively typing. Two chips at a time,
+              cycling every 6s through the 6 suggestions derived from the
+              seeded company's actual layer signals. Click → fires the
+              question through the same ask() pipeline as typed input. */}
+          {visibleSuggestions.length > 0 && input.length === 0 && (
+            <div className="px-4 pt-2 pb-1 border-t border-[var(--cream-dark)] shrink-0"
+                 style={{ background: "var(--cream-light)" }}>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Lightbulb size={10} strokeWidth={2} className="text-[var(--gold)]" />
+                <span className="font-sans text-[9px] uppercase tracking-wider text-[var(--slate-light)]">
+                  Try asking about {profile.name}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {visibleSuggestions.map((s, i) => (
+                  <button
+                    key={`${rotationIdx}-${i}`}
+                    onClick={() => ask(s)}
+                    className="text-left px-2.5 py-1 rounded-sm font-sans italic text-[11px] text-[var(--slate)] hover:text-[var(--navy)] hover:bg-[var(--gold-faint)] border border-[var(--cream-dark)] hover:border-[var(--gold)] transition-colors"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Input */}
           <form className="px-4 py-3 border-t border-[var(--cream-dark)] flex items-center gap-2 shrink-0"

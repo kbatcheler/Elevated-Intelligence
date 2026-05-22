@@ -43,6 +43,11 @@ interface AppContextValue {
   evidence: EvidenceSpec | null;
   openEvidence: (layer: string, metric: string) => void;
   closeEvidence: () => void;
+  // "Why this number?" inspector — references a layer key + metric label
+  // and resolves into causes / cross-layer context inside the panel.
+  why: { layer: string; metric: string } | null;
+  openWhy: (layer: string, metric: string) => void;
+  closeWhy: () => void;
   // committed actions
   committed: CommittedAction[];
   commitAction: (a: Omit<CommittedAction, "id" | "status" | "committedAt">) => void;
@@ -82,6 +87,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [inboxOpen, setInboxOpen] = useState(false);
   const [briefOpen, setBriefOpen] = useState(false);
   const [evidence, setEvidence] = useState<EvidenceSpec | null>(null);
+  const [why, setWhy] = useState<{ layer: string; metric: string } | null>(null);
   const [committed, setCommitted] = useState<CommittedAction[]>([]);
   const [timeOffsetByLayer, setTimeOffsetByLayer] = useState<Record<string, number>>({});
   const [activeLayer, setActiveLayer] = useState("business-performance");
@@ -104,6 +110,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setInboxOpen(false);
     setBriefOpen(false);
     setEvidence(null);
+    setWhy(null);
     setCommitted([]);
     setTimeOffsetByLayer({});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -150,6 +157,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   const closeEvidence = useCallback(() => setEvidence(null), []);
 
+  const openWhy  = useCallback((layer: string, metric: string) => setWhy({ layer, metric }), []);
+  const closeWhy = useCallback(() => setWhy(null), []);
+
   const commitAction = useCallback((a: Omit<CommittedAction, "id" | "status" | "committedAt">) => {
     setCommitted(prev => {
       // de-dupe by layer+title
@@ -179,6 +189,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     tick, signals, latest: signals[0] ?? null, pulse,
     inboxOpen, openInbox, closeInbox,
     evidence, openEvidence, closeEvidence,
+    why, openWhy, closeWhy,
     committed, commitAction, advanceAction, removeCommitted,
     timeOffsetByLayer, setTimeOffset,
     briefOpen, openBrief, closeBrief,
@@ -187,6 +198,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     tick, signals, pulse,
     inboxOpen, openInbox, closeInbox,
     evidence, openEvidence, closeEvidence,
+    why, openWhy, closeWhy,
     committed, commitAction, advanceAction, removeCommitted,
     timeOffsetByLayer, setTimeOffset,
     briefOpen, openBrief, closeBrief,
