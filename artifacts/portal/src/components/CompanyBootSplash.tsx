@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, Loader2, Zap } from "lucide-react";
+import { CheckCircle2, Loader2, Zap, Globe } from "lucide-react";
 import { useCompany } from "../context/CompanyContext";
 
 // Boot splash played after a profile is switched. When the profile was just
@@ -9,7 +9,7 @@ import { useCompany } from "../context/CompanyContext";
 // library switches there's no meta, and we fall back to the simpler animation.
 
 const STEPS = [
-  { ms: 200,  label: "Pulling homepage + recent filings" },
+  { ms: 200,  label: "Fetching homepage + extracting ground truth" },
   { ms: 600,  label: "Resolving competitor set + peer benchmarks" },
   { ms: 1000, label: "Mapping operational geography + named distribution centres" },
   { ms: 1500, label: "Threading recent news into anomaly inbox" },
@@ -109,6 +109,34 @@ export default function CompanyBootSplash() {
               <Stat label="Vocab tokens"   value={formatInt(meta.vocabCount)} mono />
               <Stat label="Headline metrics" value={formatInt(meta.headlinesCount)} mono />
             </div>
+
+            {/* Grounding receipt — proves the seed was anchored on real homepage
+                text, not just training-data memory. Hidden if grounding never
+                ran (older cached profiles) or failed (degraded but honest). */}
+            {meta.grounding && (
+              <div className="mt-3 pt-3 border-t" style={{ borderColor: "rgba(212,175,55,0.20)" }}>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Globe size={11} strokeWidth={2}
+                         style={{ color: meta.grounding.ok ? "var(--gold-light)" : "rgba(255,255,255,0.45)" }} />
+                  <span className="font-sans text-[10px] uppercase tracking-wider"
+                        style={{ color: meta.grounding.ok ? "var(--gold-light)" : "rgba(255,255,255,0.50)" }}>
+                    {meta.grounding.ok ? "Grounded on live homepage fetch" : "Homepage fetch unavailable · proceeded from memory"}
+                  </span>
+                </div>
+                {meta.grounding.ok ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1.5">
+                    <Stat label="Source"        value={meta.grounding.domain} mono />
+                    <Stat label="HTML fetched"  value={formatBytes(meta.grounding.bytesFetched)} mono />
+                    <Stat label="Text extracted" value={formatBytes(meta.grounding.bytesExtracted)} mono />
+                    <Stat label="Fetch time"    value={formatDuration(meta.grounding.fetchMs)} mono />
+                  </div>
+                ) : (
+                  <div className="font-sans text-[11px] text-[var(--cream)]/55 italic">
+                    {meta.grounding.domain} returned no usable content — the brief leans on training-data knowledge and should be reviewed before the meeting.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

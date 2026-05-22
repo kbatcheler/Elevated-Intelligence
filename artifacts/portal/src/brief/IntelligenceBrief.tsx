@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, Printer, Sparkles, Building2, Users2, LineChart, Lightbulb, RefreshCw } from "lucide-react";
+import { X, Printer, Sparkles, Building2, Users2, LineChart, Lightbulb, RefreshCw, Globe } from "lucide-react";
 import { useCompany } from "../context/CompanyContext";
 
 interface Brief {
@@ -15,6 +15,22 @@ interface Brief {
   }>;
   narrative: string;
   generatedAt: string;
+  // Receipt from the live homepage fetch that grounded this brief. May be
+  // null when the server didn't attempt a fetch, or `ok:false` when the
+  // fetch failed — the UI shows different copy in each case so the reader
+  // knows whether the brief is empirically anchored or memory-based.
+  grounding?: {
+    ok: boolean;
+    domain: string;
+    bytesFetched: number;
+    bytesExtracted: number;
+    fetchMs: number;
+    status: number;
+  } | null;
+  // True when the server returned a previously-generated brief from cache.
+  // The grounding receipt is then provenance from THAT earlier fetch, not a
+  // live one — the UI downgrades the badge copy accordingly.
+  cached?: boolean;
 }
 
 const CACHE_PREFIX = "differentday.intelligenceBrief.v1.";
@@ -136,6 +152,24 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
             </div>
             {profile.tagline && (
               <div className="font-sans text-[13px] text-[var(--slate)] mt-1">{profile.tagline}</div>
+            )}
+            {brief?.grounding && (
+              <div className="mt-3 inline-flex items-center gap-2 px-2.5 py-1 rounded-sm font-sans text-[11px]"
+                   style={{
+                     background: brief.grounding.ok ? "var(--teal-faint)" : "var(--cream-light)",
+                     color:      brief.grounding.ok ? "var(--teal)"      : "var(--slate)",
+                     border:     `1px solid ${brief.grounding.ok ? "var(--teal)" : "var(--cream-dark)"}`,
+                   }}
+                   title={brief.grounding.ok
+                     ? `${brief.cached ? "Previously" : "Just now"}: fetched ${(brief.grounding.bytesFetched/1024).toFixed(1)}KB of HTML from ${brief.grounding.domain}; ${(brief.grounding.bytesExtracted/1024).toFixed(1)}KB of extracted text passed to the model as ground truth. ${brief.cached ? "Click Regenerate to re-fetch." : ""}`
+                     : `We tried to fetch ${brief.grounding.domain} (HTTP ${brief.grounding.status}) and didn't get usable content — this brief leans on training-data knowledge and should be reviewed before sending.`}>
+                <Globe size={11} strokeWidth={2} />
+                {brief.grounding.ok
+                  ? <span>
+                      {brief.cached ? "Grounded on previous fetch" : "Grounded on live fetch"} · {brief.grounding.domain} · {(brief.grounding.bytesExtracted/1024).toFixed(1)} KB extracted
+                    </span>
+                  : <span>Homepage fetch unavailable · brief is memory-based — review before sending</span>}
+              </div>
             )}
           </div>
 

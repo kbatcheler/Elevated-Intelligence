@@ -48,6 +48,18 @@ export interface CompanyProfileMeta {
   bytesReturned: number;
   vocabCount: number;
   headlinesCount: number;
+  // Provenance from the live homepage fetch that grounded the LLM call.
+  // Optional because (a) older cached profiles in localStorage won't have it
+  // and (b) the fetch may have failed (ok=false). UI components must tolerate
+  // a missing grounding object.
+  grounding?: {
+    ok: boolean;
+    domain: string;
+    bytesFetched: number;
+    bytesExtracted: number;
+    fetchMs: number;
+    status: number;
+  };
 }
 
 export interface CompanyProfile {
