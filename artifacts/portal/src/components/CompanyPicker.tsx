@@ -369,6 +369,15 @@ export default function CompanyPicker() {
     // layer view comes back from cache instead of waiting another 10-15s.
     updateSeedStep("prefetch", { status: "running" });
     const pfStart = performance.now();
+    // Client-side timeout. Replit's proxy 502s long-running requests at 120s
+    // but the browser fetch can still appear "in flight" with no error
+    // surfacing — which is exactly the symptom that left the splash hanging
+    // on "Pre-warming the Executive intelligence brief" for 20+ minutes.
+    // Abort at 115s so we surface a real "failed" step inside the proxy
+    // window and the splash can complete. Non-fatal: the brief will just
+    // generate on first open instead of being pre-warmed.
+    const pfCtrl = new AbortController();
+    const pfTimer = setTimeout(() => pfCtrl.abort(), 115_000);
     try {
       const briefRes = await fetch("/api/intelligence/brief", {
         method: "POST",
@@ -384,7 +393,9 @@ export default function CompanyPicker() {
           founded:     seeded.founded,
           tagline:     seeded.tagline,
         }),
+        signal: pfCtrl.signal,
       });
+      clearTimeout(pfTimer);
       const pfMs = Math.round(performance.now() - pfStart);
       if (!briefRes.ok) {
         const body = await briefRes.json().catch(() => ({}));
@@ -407,10 +418,14 @@ export default function CompanyPicker() {
         });
       }
     } catch (e) {
+      clearTimeout(pfTimer);
       const pfMs = Math.round(performance.now() - pfStart);
+      const reason = e instanceof Error && e.name === "AbortError"
+        ? `Timed out after ${fmtMs(pfMs)} (proxy ceiling is 120s)`
+        : `${e instanceof Error ? e.message : String(e)} after ${fmtMs(pfMs)}`;
       updateSeedStep("prefetch", {
         status: "failed",
-        errorReason: `${e instanceof Error ? e.message : String(e)} after ${fmtMs(pfMs)}`,
+        errorReason: reason,
         detail: "The Executive brief will generate on first open instead of being pre-warmed.",
       });
     }

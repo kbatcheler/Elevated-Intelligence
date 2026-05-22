@@ -186,21 +186,36 @@ router.post("/intelligence/brief", briefRateLimit, async (req, res) => {
   lines.push("", "Produce the briefing JSON now.");
   const userPrompt = lines.join("\n");
 
+  // Hard budget for the upstream LLM call. Replit's proxy will cut the
+  // client connection at 120s, returning a 502 to the browser — and the
+  // browser fetch has no way to recover. Fail fast at 100s server-side so
+  // the route returns a real JSON error inside the proxy window and the
+  // splash can render a "failed" step instead of hanging forever.
+  const BRIEF_TIMEOUT_MS = 100_000;
+  const briefCtrl = new AbortController();
+  const briefTimer = setTimeout(() => briefCtrl.abort(), BRIEF_TIMEOUT_MS);
+
   try {
-    const apiRes = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/messages`, {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 8192,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: userPrompt }],
-      }),
-    });
+    let apiRes: Response;
+    try {
+      apiRes = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/messages`, {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 8192,
+          system: SYSTEM_PROMPT,
+          messages: [{ role: "user", content: userPrompt }],
+        }),
+        signal: briefCtrl.signal,
+      });
+    } finally {
+      clearTimeout(briefTimer);
+    }
 
     if (!apiRes.ok) {
       const errBody = await apiRes.text();
@@ -251,6 +266,13 @@ router.post("/intelligence/brief", briefRateLimit, async (req, res) => {
     res.setHeader("X-Cache", "MISS");
     res.json({ ...payloadOut, cached: false });
   } catch (e) {
+    clearTimeout(briefTimer);
+    const aborted = (e instanceof Error && e.name === "AbortError") || briefCtrl.signal.aborted;
+    if (aborted) {
+      req.log.warn("Intelligence brief upstream timed out after 100s");
+      res.status(504).json({ error: "AI briefing took too long. Try again in a moment." });
+      return;
+    }
     req.log.error({ err: String(e) }, "Intelligence brief route failed");
     res.status(500).json({ error: "Briefing generation failed unexpectedly." });
   }
