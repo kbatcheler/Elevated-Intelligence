@@ -1,4 +1,15 @@
 import { useState } from "react";
+import {
+  DATA_GAPS,
+  DIFFDAY_PRODUCTS,
+  PRODUCT_BY_ID,
+  ACCESS_PRODUCT_IDS,
+  gapsForLayer,
+  totalLayerUplift,
+  topGaps,
+  type DataGap,
+  type ProductCategory,
+} from "../data/deficiencies";
 
 // Each node is a layer; edges express "X feeds the diagnosis in Y, weighted W"
 // Positions are laid out in a clustered, hand-tuned 4-band arrangement so it
@@ -69,8 +80,20 @@ const statusColor = (s: Node["status"]) =>
 const statusFill = (s: Node["status"]) =>
   s === "bad" ? "var(--coral-faint)" : s === "warn" ? "var(--amber-faint)" : "var(--teal-faint)";
 
+// Pastel chip color per product category — keeps the side panel readable when
+// many product chips appear together.
+const categoryStyle = (c: ProductCategory): { bg: string; border: string; fg: string } => {
+  switch (c) {
+    case "intelligence":   return { bg: "var(--coral-faint)",  border: "var(--coral)",  fg: "var(--coral)"  };
+    case "orchestration":  return { bg: "var(--amber-faint)",  border: "var(--amber)",  fg: "var(--navy)"   };
+    case "access":         return { bg: "var(--teal-faint)",   border: "var(--teal)",   fg: "var(--navy)"   };
+    case "infrastructure": return { bg: "var(--cream-dark)",   border: "var(--slate-light)", fg: "var(--navy)" };
+  }
+};
+
 export default function DependencyGraph({ onNavigate }: { onNavigate: (key: string) => void }) {
   const [hover, setHover] = useState<string | null>(null);
+  const [showGaps, setShowGaps] = useState(true);
 
   const nodeMap = Object.fromEntries(NODES.map(n => [n.key, n]));
 
@@ -82,6 +105,11 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
   const focused = hover ? nodeMap[hover] : null;
   const focusedIn  = focused ? EDGES.filter(e => e.to === focused.key) : [];
   const focusedOut = focused ? EDGES.filter(e => e.from === focused.key) : [];
+  const focusedGaps = focused ? gapsForLayer(focused.key) : [];
+  const focusedUplift = focused ? totalLayerUplift(focused.key) : 0;
+
+  const totalGapCount = DATA_GAPS.length;
+  const totalUplift = DATA_GAPS.reduce((s, g) => s + g.confidenceUplift, 0);
 
   return (
     <div className="space-y-6 pb-12">
@@ -89,10 +117,27 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
         <div>
           <div className="eyebrow text-[var(--coral)] mb-2">Intelligence layer · System</div>
           <h1 className="font-serif text-[40px] leading-[1.05] text-[var(--navy)] font-semibold">Cross-layer dependency graph</h1>
-          <p className="font-serif italic text-[20px] text-[var(--slate-light)] mt-1.5">How a diagnosis in one layer feeds the next.</p>
+          <p className="font-serif italic text-[20px] text-[var(--slate-light)] mt-1.5">
+            How a diagnosis in one layer feeds the next — and where missing data feeds bound its confidence.
+          </p>
           <div className="mt-4 flex items-center gap-4 text-[12px] text-[var(--slate-light)]">
-            <span>13 nodes · {EDGES.length} weighted dependencies · hover to isolate</span>
+            <span>{NODES.length} nodes · {EDGES.length} weighted dependencies · hover to isolate</span>
+            {showGaps && <span>· {totalGapCount} data gaps · +{totalUplift}pp recoverable confidence</span>}
           </div>
+        </div>
+        <div className="flex items-center gap-2 bg-[var(--cream-light)] border border-[var(--cream-dark)] rounded-full p-1">
+          <button
+            onClick={() => setShowGaps(false)}
+            className={`font-sans text-[11px] font-semibold px-3 py-1.5 rounded-full transition-colors ${!showGaps ? "bg-[var(--navy)] text-[var(--cream)]" : "text-[var(--slate)] hover:text-[var(--navy)]"}`}
+          >
+            Causal
+          </button>
+          <button
+            onClick={() => setShowGaps(true)}
+            className={`font-sans text-[11px] font-semibold px-3 py-1.5 rounded-full transition-colors ${showGaps ? "bg-[var(--coral)] text-white" : "text-[var(--slate)] hover:text-[var(--navy)]"}`}
+          >
+            + Data gaps
+          </button>
         </div>
       </div>
 
@@ -153,6 +198,7 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
               {NODES.map(n => {
                 const lit = isNodeLit(n.key);
                 const isHover = hover === n.key;
+                const nodeGaps = gapsForLayer(n.key);
                 return (
                   <g key={n.key}
                      style={{ cursor: "pointer", opacity: lit ? 1 : 0.25 }}
@@ -167,6 +213,16 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
                           className="font-sans" style={{ fontSize: 12, fontWeight: 600, fill: "var(--navy)" }}>
                       {n.label}
                     </text>
+                    {/* Data-gap badge — only when overlay is on and node has gaps */}
+                    {showGaps && nodeGaps.length > 0 && (
+                      <g>
+                        <circle cx={n.x + 56} cy={n.y - 16} r={9} fill="var(--coral)" stroke="white" strokeWidth={1.5} />
+                        <text x={n.x + 56} y={n.y - 13} textAnchor="middle"
+                              className="font-sans" style={{ fontSize: 10, fontWeight: 700, fill: "white" }}>
+                          +{nodeGaps.length}
+                        </text>
+                      </g>
+                    )}
                   </g>
                 );
               })}
@@ -211,37 +267,138 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
                     </div>
                   ))}
                 </div>
+
+                {showGaps && (
+                  <div className="mt-5 pt-4 border-t border-[var(--cream-dark)]">
+                    <div className="flex items-baseline justify-between mb-2">
+                      <div className="eyebrow text-[var(--coral)]">Unmet data feeds ({focusedGaps.length})</div>
+                      {focusedUplift > 0 && (
+                        <span className="font-sans tabular-nums text-[10px] font-bold text-[var(--coral)]">+{focusedUplift}pp</span>
+                      )}
+                    </div>
+                    {focusedGaps.length === 0 && (
+                      <div className="font-sans italic text-[11px] text-[var(--slate-light)]">No mapped gaps. Diagnosis is well-fed here.</div>
+                    )}
+                    {focusedGaps.map(g => <GapCard key={g.id} gap={g} />)}
+                  </div>
+                )}
               </div>
             ) : (
               <div>
                 <div className="eyebrow text-[var(--coral)] mb-2">Reading the graph</div>
                 <p className="font-serif italic text-[13px] text-[var(--slate)] leading-snug">
                   Hover any layer to isolate its dependencies. Edge thickness shows the share of one layer's diagnosis that traces to another.
+                  {showGaps && " Coral badges count unmet data feeds; the side panel shows which DiffDay product would close each one."}
                 </p>
                 <div className="mt-5 space-y-2.5">
                   <Legend color="var(--coral)" label="Critical state" />
                   <Legend color="var(--amber)" label="Warning state" />
                   <Legend color="var(--teal)"  label="Healthy state" />
                 </div>
-                <div className="mt-5 pt-4 border-t border-[var(--cream-dark)]">
-                  <div className="eyebrow text-[var(--slate-light)] mb-2">Top traces (this quarter)</div>
-                  {[
-                    { txt: "60% of revenue gap → Demand",  to: "demand-intelligence" },
-                    { txt: "65% of EBITDA gap → Pricing",  to: "pricing-margin" },
-                    { txt: "55% of Demand drag → Competitive", to: "competitive-intelligence" },
-                    { txt: "55% of People stress → Talent", to: "talent-hr" },
-                  ].map((t, i) => (
-                    <button key={i} onClick={() => setHover(t.to)}
-                            className="block w-full text-left font-sans text-[11px] text-[var(--navy)] hover:text-[var(--coral)] py-1">
-                      → {t.txt}
-                    </button>
-                  ))}
-                </div>
+
+                {showGaps ? (
+                  <>
+                    <div className="mt-5 pt-4 border-t border-[var(--cream-dark)]">
+                      <div className="eyebrow text-[var(--slate-light)] mb-2">Top data gaps · product fit</div>
+                      <div className="font-sans text-[10px] text-[var(--slate-light)] mb-2 leading-snug">
+                        Highest-leverage feed gaps and the DiffDay product that closes each.
+                      </div>
+                      {topGaps(5).map(g => <GapCard key={g.id} gap={g} compact />)}
+                    </div>
+
+                    <div className="mt-5 pt-4 border-t border-[var(--cream-dark)]">
+                      <div className="eyebrow text-[var(--slate-light)] mb-2">Cross-cutting access layer</div>
+                      <div className="font-sans text-[10px] text-[var(--slate-light)] mb-2 leading-snug">
+                        How analysts consume everything above.
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {ACCESS_PRODUCT_IDS.map(id => {
+                          const p = PRODUCT_BY_ID[id];
+                          if (!p) return null;
+                          return <ProductChip key={id} name={p.name} category={p.category} />;
+                        })}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-5 pt-4 border-t border-[var(--cream-dark)]">
+                    <div className="eyebrow text-[var(--slate-light)] mb-2">Top traces (this quarter)</div>
+                    {[
+                      { txt: "60% of revenue gap → Demand",  to: "demand-intelligence" },
+                      { txt: "65% of EBITDA gap → Pricing",  to: "pricing-margin" },
+                      { txt: "55% of Demand drag → Competitive", to: "competitive-intelligence" },
+                      { txt: "55% of People stress → Talent", to: "talent-hr" },
+                    ].map((t, i) => (
+                      <button key={i} onClick={() => setHover(t.to)}
+                              className="block w-full text-left font-sans text-[11px] text-[var(--navy)] hover:text-[var(--coral)] py-1">
+                        → {t.txt}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Product catalog footer — visible when overlay is on. Makes the
+          full 13-product map legible without forcing the user to hover every
+          node. Acts as the legend for chip colors above. */}
+      {showGaps && (
+        <div className="card">
+          <div className="flex items-baseline justify-between mb-3">
+            <div>
+              <div className="eyebrow text-[var(--coral)] mb-1">Product surface</div>
+              <div className="font-serif text-[20px] text-[var(--navy)] font-semibold leading-tight">
+                {DIFFDAY_PRODUCTS.length} DiffDay products, mapped to feed gaps in the graph above
+              </div>
+            </div>
+            <div className="flex items-center gap-3 text-[10px]">
+              {(["intelligence", "orchestration", "access", "infrastructure"] as ProductCategory[]).map(c => {
+                const s = categoryStyle(c);
+                return (
+                  <div key={c} className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full" style={{ background: s.border }} />
+                    <span className="font-sans uppercase tracking-wider text-[var(--slate-light)]">{c}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {DIFFDAY_PRODUCTS.map(p => {
+              const s = categoryStyle(p.category);
+              const usedBy = DATA_GAPS.filter(g => g.productFit.includes(p.id));
+              const uplift = usedBy.reduce((a, g) => a + g.confidenceUplift, 0);
+              return (
+                <div key={p.id}
+                     className="p-3 rounded border bg-[var(--cream-light)]"
+                     style={{ borderColor: "var(--cream-dark)" }}>
+                  <div className="flex items-baseline justify-between gap-2 mb-1">
+                    <div className="font-sans text-[12px] font-semibold text-[var(--navy)] leading-tight">{p.name}</div>
+                    <span className="font-sans uppercase tracking-wider text-[9px] px-1.5 py-0.5 rounded"
+                          style={{ background: s.bg, color: s.fg, border: `1px solid ${s.border}` }}>
+                      {p.category}
+                    </span>
+                  </div>
+                  <div className="font-sans italic text-[11px] text-[var(--slate)] leading-snug mb-2">{p.oneLiner}</div>
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="font-sans text-[var(--slate-light)]">
+                      {usedBy.length === 0
+                        ? "Cross-cutting · consumption surface"
+                        : `Plugs ${usedBy.length} ${usedBy.length === 1 ? "gap" : "gaps"}`}
+                    </span>
+                    {uplift > 0 && (
+                      <span className="font-sans tabular-nums font-bold text-[var(--coral)]">+{uplift}pp</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -252,5 +409,36 @@ function Legend({ color, label }: { color: string; label: string }) {
       <span className="h-2 w-2 rounded-full" style={{ background: color }} />
       <span className="font-sans text-[var(--slate)]">{label}</span>
     </div>
+  );
+}
+
+function GapCard({ gap, compact = false }: { gap: DataGap; compact?: boolean }) {
+  return (
+    <div className={`py-2 border-b border-[var(--cream-dark)] last:border-0 ${compact ? "" : ""}`}>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="font-sans text-[11px] font-semibold text-[var(--navy)] leading-snug">{gap.feed}</span>
+        <span className="font-sans tabular-nums text-[10px] font-bold text-[var(--coral)] shrink-0">+{gap.confidenceUplift}pp</span>
+      </div>
+      {!compact && (
+        <div className="font-sans italic text-[10px] text-[var(--slate)] mt-0.5 leading-snug">Blocks: {gap.blocks}</div>
+      )}
+      <div className="flex flex-wrap gap-1 mt-1.5">
+        {gap.productFit.map(pid => {
+          const p = PRODUCT_BY_ID[pid];
+          if (!p) return null;
+          return <ProductChip key={pid} name={p.name} category={p.category} />;
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ProductChip({ name, category }: { name: string; category: ProductCategory }) {
+  const s = categoryStyle(category);
+  return (
+    <span className="font-sans text-[10px] font-semibold px-1.5 py-0.5 rounded"
+          style={{ background: s.bg, color: s.fg, border: `1px solid ${s.border}` }}>
+      {name}
+    </span>
   );
 }
