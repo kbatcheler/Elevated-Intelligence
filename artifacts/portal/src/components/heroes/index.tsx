@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import Sparkline, { makeSeries } from "../Sparkline";
 import AnimatedNumber from "../AnimatedNumber";
-import { useCompany, useSwap, useDataset } from "../../context/CompanyContext";
+import { useCompany, useSwap, useDataset, useIsDefaultProfile } from "../../context/CompanyContext";
 
 type HeroProps = { layer: LayerData };
 
@@ -27,6 +27,7 @@ const toneBg = (t: string) =>
 
 export function BusinessPerformanceHero({ layer }: HeroProps) {
   const seedBase = layer.key.charCodeAt(0);
+  const isDefault = useIsDefaultProfile();
   return (
     <div className="card card-accent-coral !p-0 overflow-hidden">
       <div className="flex items-center justify-between px-6 py-3 border-b border-[var(--cream-dark)]"
@@ -36,11 +37,17 @@ export function BusinessPerformanceHero({ layer }: HeroProps) {
           <span className="eyebrow text-[var(--coral)]">EXECUTIVE SCORECARD</span>
           <span className="font-sans text-[12px] text-[var(--slate)]">Q3 2026 · 14 sources</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="pill pill-coral">8% behind plan</span>
-          <span className="pill pill-amber">380bps margin gap</span>
-          <span className="pill pill-teal">Cash +$3.8M</span>
-        </div>
+        {/* These three pills carry Mercer-specific scorecard numbers (8%
+            behind plan, 380bps margin gap, Cash +$3.8M). For non-default
+            profiles we suppress them — the per-metric "% vs plan" tags below
+            are derived from each metric's tone and remain valid. */}
+        {isDefault && (
+          <div className="flex items-center gap-2">
+            <span className="pill pill-coral">8% behind plan</span>
+            <span className="pill pill-amber">380bps margin gap</span>
+            <span className="pill pill-teal">Cash +$3.8M</span>
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-2">
         {layer.metrics.map((m, i) => {

@@ -1,12 +1,15 @@
 import { Clock, RotateCcw } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { TIMELINES as TIMELINES_RAW, type Timeline } from "../data/timetravel";
-import { useSwap } from "../context/CompanyContext";
+import { useSwap, useIsDefaultProfile } from "../context/CompanyContext";
 
 export default function TimeTravel({ layerKey }: { layerKey: string }) {
   const { timeOffsetByLayer, setTimeOffset } = useApp();
+  const isDefault = useIsDefaultProfile();
   const TIMELINES = useSwap(TIMELINES_RAW);
-  const timeline: Timeline | undefined = TIMELINES[layerKey];
+  // Suppress timeline UI entirely for non-default profiles — the rewound
+  // snap headlines are Mercer-shaped and can't be safely vocab-swapped.
+  const timeline: Timeline | undefined = isDefault ? TIMELINES[layerKey] : undefined;
   if (!timeline) return null;
   const offset = timeOffsetByLayer[layerKey] ?? 0;
   // offset: 0 = now (timeline[2]), 1 = -3d (timeline[1]), 2 = -7d (timeline[0])

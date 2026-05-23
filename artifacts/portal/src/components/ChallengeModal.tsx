@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, RotateCw, ShieldCheck, AlertTriangle, Send, ChevronRight } from "lucide-react";
 import type { LayerData } from "../data/layers";
-import { useCompany, useSwap } from "../context/CompanyContext";
+import { useCompany, useSwap, useIsDefaultProfile } from "../context/CompanyContext";
 
 type Tab = "counter" | "criteria" | "submit";
 
@@ -38,7 +38,14 @@ export default function ChallengeModal({ layer, onClose }: { layer: LayerData; o
 
   const CHANGE_CRITERIA = useSwap(CHANGE_CRITERIA_RAW);
   const { resolve } = useCompany();
-  const criteria = CHANGE_CRITERIA[layer.key] ?? CHANGE_CRITERIA.default;
+  const isDefault = useIsDefaultProfile();
+  // The default falsification criteria are Mercer-shaped (Tractor Supply, HD,
+  // OOS days top 5 SKUs). For non-default profiles, show an empty list so the
+  // wrong-brand criteria can't render.
+  const criteria = isDefault ? (CHANGE_CRITERIA[layer.key] ?? CHANGE_CRITERIA.default) : [];
+  const challengePlaceholder = isDefault
+    ? resolve("e.g. The DIY variance is macro-driven, not Mercer-specific. Tractor Supply's Q3 print will show similar softness.")
+    : "e.g. The variance is macro-driven, not company-specific. Peer prints this quarter will show similar softness.";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center"
@@ -142,7 +149,7 @@ export default function ChallengeModal({ layer, onClose }: { layer: LayerData; o
                   <textarea
                     value={challengeText}
                     onChange={(e) => setChallengeText(e.target.value)}
-                    placeholder={resolve("e.g. The DIY variance is macro-driven, not Mercer-specific. Tractor Supply's Q3 print will show similar softness.")}
+                    placeholder={challengePlaceholder}
                     className="w-full h-32 p-3 rounded-sm font-serif italic text-[14px] leading-relaxed resize-none"
                     style={{ background: "var(--paper)", border: "1px solid var(--cream-dark)", color: "var(--ink)" }} />
                   <div className="flex items-center justify-between">

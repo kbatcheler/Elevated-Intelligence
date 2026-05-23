@@ -3,7 +3,7 @@ import { X, Send, Sparkles, ArrowRight, ExternalLink, Lightbulb } from "lucide-r
 import { answer, type ChatResponse } from "../data/chatBrain";
 import { useApp } from "../context/AppContext";
 import { useCompany } from "../context/CompanyContext";
-import { deepResolveWith } from "../data/companies";
+import { deepResolveWith, DEFAULT_PROFILE_ID } from "../data/companies";
 import type { LayerData } from "../data/layers";
 
 // Build a set of suggested chat prompts grounded in the actually-seeded
@@ -159,8 +159,14 @@ export default function ChatAssistant({ onNavigate }: { onNavigate: (key: string
     setMessages(m => [...m, userMsg]);
     setInput("");
     setThinking(true);
+    const isDefault = profile.id === DEFAULT_PROFILE_ID;
     const t = setTimeout(() => {
-      const rawResp = answer(q, activeLayer);
+      const rawResp: ChatResponse = isDefault
+        ? answer(q, activeLayer)
+        : {
+            text: `I don't have a grounded answer for ${profile.name} on that yet. Try one of the suggested prompts above, or open a specific layer for its narrative.`,
+            citations: [],
+          };
       const resp = deepResolveWith(rawResp, resolve);
       const sysMsg: Message = { id: idCounter.current++, from: "system", text: "", response: resp, ts: now() };
       setMessages(m => [...m, sysMsg]);

@@ -18,7 +18,7 @@ import PeerBenchmark from "./PeerBenchmark";
 import DemandLink from "./DemandLink";
 import { useApp } from "../context/AppContext";
 import { useNarrative, useSwap, useIsDefaultProfile } from "../context/CompanyContext";
-import { TIMELINES as TIMELINES_RAW } from "../data/timetravel";
+import { TIMELINES as TIMELINES_RAW, type Timeline } from "../data/timetravel";
 
 const toneColor = (t: Tone) =>
   t === "bad"  ? "var(--red)"
@@ -45,7 +45,14 @@ export default function Layer({
   const [open, setOpen] = useState(false);
   const { openEvidence, openWhy, pulse, timeOffsetByLayer } = useApp();
   const { PEERS, EVIDENCE } = useNarrative();
-  const TIMELINES = useSwap(TIMELINES_RAW);
+  const isDefaultProfile = useIsDefaultProfile();
+  // TIMELINES contains Mercer-shaped "Diagnosis timeline" headlines
+  // ("8% behind plan, 380bps margin gap …") that the vocab swap cannot
+  // translate. For non-default profiles we suppress the timeline entirely
+  // — TimeTravel below renders null when its layer key is absent, and
+  // `snap` below stays null so layer.narrative is used as-is.
+  const TIMELINES_SWAPPED = useSwap(TIMELINES_RAW);
+  const TIMELINES: Record<string, Timeline> = isDefaultProfile ? TIMELINES_SWAPPED : {};
   const isHi = (field: string) => highlight === field;
   const seedBase = layer.key.charCodeAt(0) + layer.key.charCodeAt(layer.key.length - 1);
 

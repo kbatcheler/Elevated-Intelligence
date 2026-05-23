@@ -24,6 +24,53 @@ import { SUGGESTED as RAW_SUGGESTED, PATTERNS as RAW_PATTERNS } from "../data/ch
 const STORAGE_KEY_ACTIVE = "differentday.activeProfileId.v1";
 const STORAGE_KEY_CUSTOM = "differentday.customProfiles.v1";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Neutral fallbacks for non-default profiles
+// ─────────────────────────────────────────────────────────────────────────────
+// The raw bulk collections (SIGNAL_POOL, ACTIVITY_STREAM, FEEDS, NARRATOR,
+// PEERS, EVIDENCE, ANOMALIES, LEVERS, PATTERNS, ...) are written entirely in
+// Mercer-shaped language with brand-specific tokens (Home Depot, Phoenix DC,
+// Greater Plains Co., Kelly Services, cordless drill, ...). The vocab swap
+// layer cannot translate those — it can only substring-replace mapped vocab.
+//
+// For any non-default profile we substitute these collections with neutral
+// generic equivalents below. SIGNAL_POOL and ACTIVITY_STREAM MUST stay
+// non-empty (their consumers index into [0] / use idx % length and would
+// crash on an empty array). Everything else is safe to leave empty — the
+// consuming renderers all handle empty record/array gracefully.
+const NEUTRAL_SIGNAL_POOL: typeof RAW_SIGNAL_POOL = [
+  { ts: "04:18", source: "ERP",                 layer: "business-performance",    text: "General ledger refresh complete — quarter close window updated.",                       tone: "info" },
+  { ts: "04:25", source: "POS aggregator",      layer: "demand-intelligence",     text: "Hourly demand signals refreshed against the current weekly plan.",                     tone: "info" },
+  { ts: "04:33", source: "CRM",                 layer: "sales-pipeline",          text: "Pipeline coverage ratio refreshed against the current quarter commit.",                tone: "info" },
+  { ts: "04:40", source: "WMS",                 layer: "supply-chain",            text: "Inventory snapshot updated across the fulfilment network.",                            tone: "info" },
+  { ts: "04:46", source: "Service platform",    layer: "customer-intelligence",   text: "Customer support volume tracked against the rolling weekly baseline.",                 tone: "info" },
+  { ts: "04:52", source: "Pricing engine",      layer: "pricing-margin",          text: "Margin position refreshed against the current price index.",                            tone: "info" },
+  { ts: "04:58", source: "Marketing analytics", layer: "marketing-performance",   text: "Campaign attribution model refreshed for the trailing 24-hour window.",                tone: "info" },
+  { ts: "05:05", source: "Survey platform",     layer: "brand-social",            text: "Brand sentiment pulse updated against the rolling 7-day window.",                      tone: "info" },
+  { ts: "05:11", source: "Receivables ledger",  layer: "receivables",             text: "AR ageing buckets refreshed against the current close cycle.",                          tone: "info" },
+  { ts: "05:18", source: "HRIS",                layer: "people-operations",       text: "Workforce headcount and attrition snapshot updated.",                                   tone: "info" },
+  { ts: "05:24", source: "FP&A",                layer: "finance",                 text: "Plan-to-actual variance computation refreshed for the trailing period.",                tone: "info" },
+  { ts: "05:31", source: "Competitive scraper", layer: "competitive-intelligence",text: "Competitive intelligence feed refreshed against the named peer set.",                   tone: "info" },
+];
+
+const NEUTRAL_ACTIVITY_STREAM: typeof RAW_ACTIVITY_STREAM = [
+  { ts: "06:42", layer: "business-performance",     text: "Financial close window refreshed for the current period.",                tone: "info" },
+  { ts: "06:38", layer: "demand-intelligence",      text: "Demand signals refreshed against the active plan.",                       tone: "info" },
+  { ts: "06:33", layer: "sales-pipeline",           text: "Pipeline movements logged for the trading day.",                          tone: "info" },
+  { ts: "06:27", layer: "supply-chain",             text: "Inventory positions refreshed across the network.",                       tone: "info" },
+  { ts: "06:21", layer: "customer-intelligence",    text: "Customer health scores recalculated against the latest activity.",       tone: "info" },
+  { ts: "06:14", layer: "pricing-margin",           text: "Pricing index refreshed across the active SKU range.",                    tone: "info" },
+  { ts: "06:08", layer: "marketing-performance",    text: "Marketing attribution refreshed for the trailing 24 hours.",              tone: "info" },
+  { ts: "06:02", layer: "brand-social",             text: "Brand sentiment refreshed against the rolling baseline.",                  tone: "info" },
+];
+
+// For layers that have no per-profile narrative override, replace the Mercer-
+// shaped baseline narrative + causes + actions with a neutral placeholder so
+// the wrong-brand story can't leak through. Charts and metric values are kept
+// because they're either LLM-overridden or numerically rescaled.
+const NEUTRAL_LAYER_NARRATIVE =
+  "The system has not yet generated a per-layer narrative for this company. The headline metrics, chart, and any LLM-generated executive summary above remain valid; the deeper story below populates once enough company-specific context has been ingested.";
+
 // Mercer's quarterly revenue (from MERCER.headlines.revenueActual = "$127M").
 // Charts in data/layers.ts are drawn at this scale; the rescale factor below
 // normalises to the seeded company's actual operating magnitude.
@@ -88,7 +135,7 @@ export interface NarrativeBundle {
   EVIDENCE: typeof RAW_EVIDENCE;
   TRACK_RECORD: typeof RAW_TRACK_RECORD;
   ARCH_COMPONENTS: typeof RAW_ARCH_COMPONENTS;
-  SAMPLE_QUESTION: typeof RAW_SAMPLE_QUESTION;
+  SAMPLE_QUESTION: string;
   LEVERS: typeof RAW_LEVERS;
   SUGGESTED: typeof RAW_SUGGESTED;
   PATTERNS: typeof RAW_PATTERNS;
@@ -179,29 +226,33 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   // map is empty so deepResolveWith is effectively a structural-clone no-op,
   // and Mercer copy stays bit-perfect. Memoised per profile.id.
   const narrative = useMemo<NarrativeBundle>(() => {
+    const isDefault = profile.id === DEFAULT_PROFILE_ID;
     const swap = <T,>(v: T): T => deepResolveWith(v, resolve);
     // 1. Vocab-swap every dataset (no-op for the default Mercer profile).
     let layersOut = swap(RAW_LAYERS);
     // 2. For seeded profiles, overlay per-layer LLM-rewritten narrative /
     //    metrics / causes / actions on top of the vocab swap. Missing layers
-    //    fall through to the vocab-swapped Mercer copy (logical filler).
-    //    This is what makes the Executive narrative on each layer ACTUALLY
-    //    about the seeded company at the right operating scale, instead of
-    //    Mercer-with-word-substitutions.
+    //    fall through — for the default profile that's vocab-swapped Mercer
+    //    copy (logical filler); for non-default profiles we replace the
+    //    narrative + causes + actions with neutral placeholders so the
+    //    wrong-brand Mercer story can't leak through.
     const overrides = profile.layerOverrides;
-    if (overrides) {
-      layersOut = layersOut.map(layer => {
-        const ov = overrides[layer.key];
-        if (!ov) return layer;
-        return {
-          ...layer,
-          ...(ov.narrative ? { narrative: ov.narrative } : {}),
-          ...(ov.metrics && ov.metrics.length === layer.metrics.length ? { metrics: ov.metrics } : {}),
-          ...(ov.causes  && ov.causes.length  === layer.causes.length  ? { causes:  ov.causes  } : {}),
-          ...(ov.actions && ov.actions.length === layer.actions.length ? { actions: ov.actions } : {}),
-        };
-      });
-    }
+    layersOut = layersOut.map(layer => {
+      const ov = overrides?.[layer.key];
+      const next = { ...layer };
+      if (ov?.narrative)                                                   next.narrative = ov.narrative;
+      else if (!isDefault)                                                  next.narrative = NEUTRAL_LAYER_NARRATIVE;
+      if (ov?.metrics && ov.metrics.length === layer.metrics.length)       next.metrics   = ov.metrics;
+      if (ov?.causes  && ov.causes.length  === layer.causes.length)        next.causes    = ov.causes;
+      else if (!isDefault)                                                  next.causes    = [];
+      if (ov?.actions && ov.actions.length === layer.actions.length)       next.actions   = ov.actions;
+      else if (!isDefault)                                                  next.actions   = [];
+      if (!isDefault) {
+        next.counterArgs = [];
+        next.gaps        = [];
+      }
+      return next;
+    });
     // 3. Chart-data rescale. Charts are hardcoded at Mercer's ~$127M-quarter
     //    scale; for a seeded company we scale every numeric value in dollar-
     //    denominated charts proportionally so the bars/lines/areas match the
@@ -228,6 +279,31 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         };
       });
     }
+    // For non-default profiles, substitute neutral fallbacks for every
+    // Mercer-shaped bulk collection. SIGNAL_POOL and ACTIVITY_STREAM use
+    // explicit neutral arrays (their consumers can't tolerate empty);
+    // everything else is safe to leave empty — the consuming renderers all
+    // handle empty record/array gracefully (see explorer notes).
+    if (!isDefault) {
+      return {
+        LAYERS:          layersOut,
+        NARRATOR:        {},
+        PEERS:           {},
+        FEEDS:           {},
+        ACTIVITY_STREAM: NEUTRAL_ACTIVITY_STREAM,
+        NEXT_STEPS:      {},
+        PIPELINE_DEEP:   {},
+        SIGNAL_POOL:     NEUTRAL_SIGNAL_POOL,
+        ANOMALIES:       [],
+        EVIDENCE:        {},
+        TRACK_RECORD:    [],
+        ARCH_COMPONENTS: swap(RAW_ARCH_COMPONENTS),
+        SAMPLE_QUESTION: "What is the biggest driver of this quarter's plan variance?",
+        LEVERS:          [],
+        SUGGESTED:       swap(RAW_SUGGESTED),
+        PATTERNS:        [],
+      };
+    }
     return {
       LAYERS:          layersOut,
       NARRATOR:        swap(RAW_NARRATOR),
@@ -246,7 +322,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       SUGGESTED:       swap(RAW_SUGGESTED),
       PATTERNS:        swap(RAW_PATTERNS),
     };
-  }, [resolve, profile.layerOverrides, profile.headlines]);
+  }, [resolve, profile.id, profile.layerOverrides, profile.headlines]);
 
   const setProfileId = useCallback((id: string) => {
     const next = [...LIBRARY, ...customProfiles].find(p => p.id === id);
