@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { X, Printer, Sparkles, Building2, Users2, LineChart, Lightbulb, RefreshCw, Globe, ArrowUp, ArrowDown, CircleDot, Activity } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { X, Printer, Sparkles, Building2, Users2, LineChart, Lightbulb, RefreshCw, Globe, ArrowUp, ArrowDown, CircleDot, Activity, Banknote, Calendar, Package, Swords, Truck, Cpu, Bot, Briefcase, ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
 import { useCompany } from "../context/CompanyContext";
 import type { LayerData } from "../data/layers";
 
@@ -141,16 +141,45 @@ function deriveDeltas(profileName: string, layers: LayerData[]): Delta[] {
   return deltas;
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// Brief shape — mirrors NormalisedBrief on the server. The renderer fails
+// soft on any missing section: arrays default to [] in the server validator,
+// so a section with empty data just collapses to its heading + a "Not
+// publicly disclosed" hint rather than crashing.
+// ───────────────────────────────────────────────────────────────────────────
 interface Brief {
-  company:  { snapshot: string; history: string; businessModel: string; differentiators: string[] };
+  company: {
+    snapshot: string; legalName: string; industry: string; valueProposition: string;
+    history: string; businessModel: string; differentiators: string[];
+    employeeCount: string; internalIT: string;
+  };
+  ownership: {
+    structure: string; summary: string;
+    fundingRounds: Array<{ date: string; round: string; amount: string; leadInvestor: string; valuation: string }>;
+    keyShareholders: string[]; boardSeats: string;
+  };
+  timeline: Array<{ year: string; event: string }>;
   leaders:  Array<{ name: string; role: string; background: string }>;
+  board:    Array<{ name: string; affiliation: string }>;
   financials: {
     scale: string; trajectory: string; capitalStructure: string;
     kpis: Array<{ label: string; value: string; note?: string }>;
   };
-  aiOpportunities: Array<{
-    title: string; where: string; problem: string; solution: string;
-    impact: string; horizon: "Now" | "6 months" | "12+ months";
+  products: {
+    productLines: string[]; brandPartnerships: string[];
+    revenueStreams: Array<{ stream: string; share: string; note: string }>;
+    channels: string[];
+  };
+  marketPosition: {
+    competitors: Array<{ name: string; note: string }>;
+    differentiators: string[]; marketShare: string;
+  };
+  operations: { warehouses: string; manufacturing: string; logistics: string; automationLevel: string };
+  techLandscape: { erp: string; wms: string; ecommerce: string; digitalMaturity: string; knownStack: string[] };
+  competitiveAI: string;
+  businessFunctions: Array<{
+    function: string; currentState: string;
+    useCases: Array<{ function: string; capabilities: string; businessImpact: string; timeToValue: string }>;
   }>;
   narrative: string;
   generatedAt: string;
@@ -172,7 +201,11 @@ interface Brief {
   cached?: boolean;
 }
 
-const CACHE_PREFIX = "differentday.intelligenceBrief.v1.";
+// Bumped from v1 → v2 when the schema expanded to the 12-section research
+// deliverable. Any v1 cache entry has the wrong shape (missing ownership,
+// timeline, products, etc) and would render as broken sections — bumping
+// the prefix forces a fresh server fetch instead of trying to migrate.
+const CACHE_PREFIX = "differentday.intelligenceBrief.v2.";
 
 function loadCached(profileId: string): Brief | null {
   try {
@@ -185,6 +218,27 @@ function saveCached(profileId: string, brief: Brief): void {
   try { window.localStorage.setItem(CACHE_PREFIX + profileId, JSON.stringify(brief)); } catch { /* ignore */ }
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// Triple-check verification — fires after the brief loads. Returns per-
+// section confidence (HIGH/MED/LOW from the reconciler) and a curated
+// dispute list (from the critic, arbitrated by the reconciler). Cached on
+// the server so re-opening the same brief is free.
+// ───────────────────────────────────────────────────────────────────────────
+type ConfidenceLevel = "HIGH" | "MED" | "LOW";
+type DisputeSeverity = "high" | "med" | "low";
+type SectionKey =
+  | "company" | "ownership" | "timeline" | "leaders" | "board" | "financials"
+  | "products" | "marketPosition" | "operations" | "techLandscape"
+  | "competitiveAI" | "businessFunctions";
+interface VerifyResponse {
+  confidence: Partial<Record<SectionKey, ConfidenceLevel>>;
+  disputes:   Array<{ section: string; claim: string; severity: DisputeSeverity; reason: string }>;
+  summary:    string;
+  verifiedAt: string;
+  model:      string;
+  cached?:    boolean;
+}
+
 export default function IntelligenceBrief({ onClose }: { onClose: () => void }) {
   const { profile, narrative } = useCompany();
   const [brief, setBrief] = useState<Brief | null>(() => loadCached(profile.id));
@@ -195,6 +249,19 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
   const [ribbonDismissed, setRibbonDismissed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Verification state — populated after a successful brief load. We never
+  // surface a "verification failed" error to the user; if the triple-check
+  // pipeline trips, the chips stay empty and the verification panel hides.
+  // The brief itself is still useful without verdicts.
+  const [verify, setVerify] = useState<VerifyResponse | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  // Race guard: profile.id at the moment a generate() or runVerify() call
+  // fires. We check against the LIVE profile.id when results arrive — if
+  // they differ, the user switched companies mid-flight and we must drop
+  // the response on the floor instead of overwriting state for the wrong
+  // company (a particularly nasty bug because the *correct* brief might
+  // already be cached and visible). useRef so re-renders don't reset it.
+  const activeRequestProfileId = useRef<string>(profile.id);
 
   // Rehydrate cache and clear stale state whenever the active profile
   // changes while the modal is open — otherwise the brief from the
@@ -204,10 +271,19 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
     setBrief(loadCached(profile.id));
     setError(null);
     setRibbonDismissed(false);
+    setVerify(null);
+    // Update the race-guard sentinel so any in-flight request from the
+    // previous profile is now considered stale and will be discarded
+    // when it returns.
+    activeRequestProfileId.current = profile.id;
   }, [profile.id]);
 
   async function generate(force = false): Promise<void> {
     if (!force && brief) return;
+    // Capture the profile id we're generating FOR. If the user switches to
+    // a different company before this request returns, we'll see the
+    // mismatch and discard the result instead of overwriting state.
+    const reqProfileId = profile.id;
     setLoading(true);
     setError(null);
     try {
@@ -232,19 +308,67 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
         const msg = (data as { error?: string }).error ?? `Request failed (HTTP ${resp.status})`;
         throw new Error(msg);
       }
+      // Race guard: drop the response if the user switched companies while
+      // we were waiting. The cache write is still safe (it's keyed by the
+      // ORIGINAL profile id), so re-opening that profile gets the brief
+      // for free — we just don't paint it over the current view.
+      if (activeRequestProfileId.current !== reqProfileId) {
+        saveCached(reqProfileId, data as Brief);
+        return;
+      }
       const b = data as Brief;
       setBrief(b);
-      saveCached(profile.id, b);
+      saveCached(reqProfileId, b);
+      // Brief just landed — kick off the triple-check verification in the
+      // background. Force-skip the server cache if the user clicked Regenerate
+      // (the cached verdicts would be against the OLD brief content).
+      void runVerify(force);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Brief generation failed.");
+      // Only surface the error if it's still relevant to the current view.
+      if (activeRequestProfileId.current === reqProfileId) {
+        setError(e instanceof Error ? e.message : "Brief generation failed.");
+      }
     } finally {
-      setLoading(false);
+      if (activeRequestProfileId.current === reqProfileId) setLoading(false);
     }
   }
 
-  // Auto-generate on first open if no cache for this profile
+  async function runVerify(_forceRefresh = false): Promise<void> {
+    // Same race guard as generate() — verify takes 25-40s, plenty of time
+    // for a profile switch to happen before we hear back.
+    const reqProfileId = profile.id;
+    setVerifying(true);
+    try {
+      const resp = await fetch(`${import.meta.env.BASE_URL}api/intelligence/brief/verify`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name:        profile.name,
+          url:         profile.url,
+          sector:      profile.sector,
+          hqCity:      profile.hqCity,
+          hqState:     profile.hqState,
+          revenueBand: profile.revenueBand,
+          ownership:   profile.ownership,
+          founded:     profile.founded,
+          tagline:     profile.tagline,
+        }),
+      });
+      if (!resp.ok) return; // Fail-soft: the brief is still readable without verdicts.
+      const data = await resp.json() as VerifyResponse;
+      if (activeRequestProfileId.current !== reqProfileId) return; // Profile switched mid-flight — discard.
+      setVerify(data);
+    } catch { /* fail-soft */ } finally {
+      if (activeRequestProfileId.current === reqProfileId) setVerifying(false);
+    }
+  }
+
+  // Auto-generate on first open if no cache for this profile. If the brief
+  // is already cached locally but verification hasn't run yet (e.g. user
+  // reloaded the page), trigger verify on its own.
   useEffect(() => {
     if (!brief && !loading && !error) void generate(false);
+    else if (brief && !verify && !verifying) void runVerify(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.id]);
 
@@ -367,8 +491,21 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
               </div>
 
               {/* Section: Company */}
-              <Section icon={Building2} title="Company" accent="var(--navy)">
+              <Section icon={Building2} title="Company" accent="var(--navy)" confidence={verify?.confidence.company}>
                 <Para>{brief.company.snapshot}</Para>
+                {brief.company.valueProposition && (
+                  <div className="mt-3 pl-3 border-l-2 border-[var(--cream-dark)] font-serif italic text-[14px] text-[var(--slate)] leading-relaxed">
+                    "{brief.company.valueProposition}"
+                  </div>
+                )}
+                {(brief.company.legalName || brief.company.industry || brief.company.employeeCount || brief.company.internalIT) && (
+                  <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2">
+                    {brief.company.legalName     && <Fact label="Legal name"     value={brief.company.legalName} />}
+                    {brief.company.industry      && <Fact label="Industry"       value={brief.company.industry} />}
+                    {brief.company.employeeCount && <Fact label="Employees"      value={brief.company.employeeCount} />}
+                    {brief.company.internalIT    && <Fact label="Internal IT"    value={brief.company.internalIT} />}
+                  </div>
+                )}
                 <SubHeader>History</SubHeader>
                 <Para>{brief.company.history}</Para>
                 <SubHeader>Business model</SubHeader>
@@ -388,9 +525,76 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
                 )}
               </Section>
 
+              {/* Section: Ownership & Investors */}
+              <Section icon={Banknote} title="Ownership & investors" accent="var(--gold)" confidence={verify?.confidence.ownership}>
+                {brief.ownership.structure && (
+                  <div className="mb-3"><span className="eyebrow text-[var(--slate-light)]">Structure</span>
+                    <div className="font-serif font-semibold text-[16px] text-[var(--navy)] mt-0.5">{brief.ownership.structure}</div></div>
+                )}
+                {brief.ownership.summary && <Para>{brief.ownership.summary}</Para>}
+                {brief.ownership.fundingRounds.length > 0 && (
+                  <>
+                    <SubHeader>Funding history</SubHeader>
+                    <div className="mt-2 overflow-hidden rounded-sm border border-[var(--cream-dark)]">
+                      <table className="w-full font-sans text-[12px]">
+                        <thead style={{ background: "var(--cream-light)" }}>
+                          <tr className="text-left">
+                            <th className="px-3 py-2 eyebrow text-[var(--slate-light)] text-[10px]">Date</th>
+                            <th className="px-3 py-2 eyebrow text-[var(--slate-light)] text-[10px]">Round</th>
+                            <th className="px-3 py-2 eyebrow text-[var(--slate-light)] text-[10px]">Amount</th>
+                            <th className="px-3 py-2 eyebrow text-[var(--slate-light)] text-[10px]">Lead</th>
+                            <th className="px-3 py-2 eyebrow text-[var(--slate-light)] text-[10px]">Valuation</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {brief.ownership.fundingRounds.map((r, i) => (
+                            <tr key={i} className="border-t border-[var(--cream-dark)]">
+                              <td className="px-3 py-2 tabular-nums text-[var(--slate)]">{r.date || "—"}</td>
+                              <td className="px-3 py-2 font-semibold text-[var(--navy)]">{r.round || "—"}</td>
+                              <td className="px-3 py-2 tabular-nums text-[var(--ink)]">{r.amount || "—"}</td>
+                              <td className="px-3 py-2 text-[var(--ink)]">{r.leadInvestor || "—"}</td>
+                              <td className="px-3 py-2 tabular-nums text-[var(--slate)]">{r.valuation || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+                {brief.ownership.keyShareholders.length > 0 && (
+                  <>
+                    <SubHeader>Key shareholders</SubHeader>
+                    <ul className="space-y-1.5 mt-2">
+                      {brief.ownership.keyShareholders.map((s, i) => (
+                        <li key={i} className="font-sans text-[13px] text-[var(--ink)] flex gap-2">
+                          <span className="text-[var(--gold)] font-bold">·</span><span>{s}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {brief.ownership.boardSeats && (<><SubHeader>Board composition</SubHeader><Para small>{brief.ownership.boardSeats}</Para></>)}
+              </Section>
+
+              {/* Section: Timeline */}
+              {brief.timeline.length > 0 && (
+                <Section icon={Calendar} title="History & evolution" accent="var(--coral)" confidence={verify?.confidence.timeline}>
+                  <ol className="relative border-l-2 border-[var(--cream-dark)] ml-3 space-y-3 mt-2">
+                    {brief.timeline.map((t, i) => (
+                      <li key={i} className="pl-5 relative">
+                        <span className="absolute -left-[7px] top-1.5 w-3 h-3 rounded-full" style={{ background: "var(--coral)" }} />
+                        <div className="font-serif font-bold text-[14px] text-[var(--coral)] tabular-nums">{t.year}</div>
+                        <div className="font-sans text-[13px] text-[var(--ink)] leading-snug mt-0.5">{t.event}</div>
+                      </li>
+                    ))}
+                  </ol>
+                </Section>
+              )}
+
               {/* Section: Leaders */}
-              <Section icon={Users2} title="Leaders" accent="var(--gold)">
-                <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+              <Section icon={Users2} title="Leadership" accent="var(--gold)" confidence={verify?.confidence.leaders}>
+                <SubHeader>Executive team</SubHeader>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-5 mt-2">
                   {brief.leaders.map((l, i) => (
                     <div key={i} className="border-l-2 border-[var(--cream-dark)] pl-4">
                       <div className="font-serif font-semibold text-[16px] text-[var(--navy)] leading-tight">{l.name}</div>
@@ -399,10 +603,23 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
                     </div>
                   ))}
                 </div>
+                {brief.board.length > 0 && (
+                  <>
+                    <SubHeader>Board</SubHeader>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 mt-2">
+                      {brief.board.map((b, i) => (
+                        <div key={i} className="font-sans text-[13px] text-[var(--ink)]">
+                          <span className="font-semibold text-[var(--navy)]">{b.name}</span>
+                          <span className="text-[var(--slate)]"> — {b.affiliation}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </Section>
 
               {/* Section: Financials */}
-              <Section icon={LineChart} title="Financials" accent="var(--teal)">
+              <Section icon={LineChart} title="Financials" accent="var(--teal)" confidence={verify?.confidence.financials}>
                 {brief.financials.kpis.length > 0 && (
                   <div className="grid grid-cols-4 gap-3 mb-5">
                     {brief.financials.kpis.map((k, i) => (
@@ -422,32 +639,156 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
                 <Para>{brief.financials.capitalStructure}</Para>
               </Section>
 
-              {/* Section: AI Opportunities */}
-              <Section icon={Lightbulb} title="Where AI moves the needle" accent="var(--coral)">
-                <div className="space-y-5">
-                  {brief.aiOpportunities.map((o, i) => (
-                    <div key={i} className="card card-accent-coral">
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <div>
-                          <div className="font-serif font-semibold text-[18px] text-[var(--navy)] leading-tight">{o.title}</div>
-                          <div className="font-sans text-[11px] text-[var(--slate)] uppercase tracking-wide mt-1">{o.where}</div>
+              {/* Section: Products & Business Model */}
+              <Section icon={Package} title="Products & business model" accent="var(--navy)" confidence={verify?.confidence.products}>
+                {brief.products.productLines.length > 0 && (
+                  <>
+                    <SubHeader>Product lines</SubHeader>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {brief.products.productLines.map((p, i) => (
+                        <span key={i} className="px-2.5 py-1 rounded-sm font-sans text-[12px] bg-[var(--cream-light)] border border-[var(--cream-dark)] text-[var(--navy)]">{p}</span>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {brief.products.brandPartnerships.length > 0 && (
+                  <>
+                    <SubHeader>Brand partnerships</SubHeader>
+                    <Para small>{brief.products.brandPartnerships.join(" · ")}</Para>
+                  </>
+                )}
+                {brief.products.revenueStreams.length > 0 && (
+                  <>
+                    <SubHeader>Revenue streams</SubHeader>
+                    <div className="space-y-2 mt-2">
+                      {brief.products.revenueStreams.map((s, i) => (
+                        <div key={i} className="flex items-baseline gap-3 font-sans text-[13px]">
+                          <span className="font-semibold text-[var(--navy)] shrink-0">{s.stream}</span>
+                          {s.share && <span className="tabular-nums text-[var(--coral)] font-bold shrink-0">{s.share}</span>}
+                          {s.note  && <span className="text-[var(--slate)] leading-snug">{s.note}</span>}
                         </div>
-                        <span className={`pill shrink-0 ${o.horizon === "Now" ? "pill-coral" : o.horizon === "6 months" ? "pill-amber" : "pill-teal"}`}>
-                          {o.horizon}
-                        </span>
-                      </div>
-                      <SubHeader compact>The problem</SubHeader>
-                      <Para small>{o.problem}</Para>
-                      <SubHeader compact>The AI play</SubHeader>
-                      <Para small>{o.solution}</Para>
-                      <div className="mt-3 pt-3 border-t border-[var(--cream-dark)] flex items-baseline gap-2">
-                        <span className="eyebrow text-[var(--teal)]">Impact</span>
-                        <span className="font-sans font-semibold text-[13px] text-[var(--ink)]">{o.impact}</span>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {brief.products.channels.length > 0 && (
+                  <>
+                    <SubHeader>Go-to-market channels</SubHeader>
+                    <ul className="space-y-1 mt-2">
+                      {brief.products.channels.map((c, i) => (
+                        <li key={i} className="font-sans text-[13px] text-[var(--ink)] flex gap-2">
+                          <span className="text-[var(--teal)] font-bold">·</span><span>{c}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </Section>
+
+              {/* Section: Market Position */}
+              <Section icon={Swords} title="Market position" accent="var(--coral)" confidence={verify?.confidence.marketPosition}>
+                {brief.marketPosition.marketShare && (<><SubHeader>Market share</SubHeader><Para>{brief.marketPosition.marketShare}</Para></>)}
+                {brief.marketPosition.competitors.length > 0 && (
+                  <>
+                    <SubHeader>Competitors</SubHeader>
+                    <div className="grid grid-cols-2 gap-x-5 gap-y-3 mt-2">
+                      {brief.marketPosition.competitors.map((c, i) => (
+                        <div key={i} className="border-l-2 border-[var(--coral)] pl-3">
+                          <div className="font-serif font-semibold text-[14px] text-[var(--navy)]">{c.name}</div>
+                          <div className="font-sans text-[12px] text-[var(--slate)] leading-snug mt-0.5">{c.note}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {brief.marketPosition.differentiators.length > 0 && (
+                  <>
+                    <SubHeader>What this company does that competitors don't</SubHeader>
+                    <ul className="space-y-1.5 mt-2">
+                      {brief.marketPosition.differentiators.map((d, i) => (
+                        <li key={i} className="font-sans text-[13px] text-[var(--ink)] flex gap-2">
+                          <span className="text-[var(--coral)] font-bold">·</span><span>{d}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </Section>
+
+              {/* Section: Operations & Supply Chain */}
+              <Section icon={Truck} title="Operations & supply chain" accent="var(--teal)" confidence={verify?.confidence.operations}>
+                <SubHeader>Warehouses & distribution</SubHeader><Para small>{brief.operations.warehouses || "Not publicly disclosed."}</Para>
+                <SubHeader>Manufacturing & sourcing</SubHeader><Para small>{brief.operations.manufacturing || "Not publicly disclosed."}</Para>
+                <SubHeader>Logistics</SubHeader><Para small>{brief.operations.logistics || "Not publicly disclosed."}</Para>
+                <SubHeader>Automation level</SubHeader><Para small>{brief.operations.automationLevel || "Not publicly disclosed."}</Para>
+              </Section>
+
+              {/* Section: Tech Landscape */}
+              <Section icon={Cpu} title="Technology landscape" accent="var(--gold)" confidence={verify?.confidence.techLandscape}>
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  {brief.techLandscape.erp       && <Fact label="ERP"        value={brief.techLandscape.erp} />}
+                  {brief.techLandscape.wms       && <Fact label="WMS"        value={brief.techLandscape.wms} />}
+                  {brief.techLandscape.ecommerce && <Fact label="E-commerce" value={brief.techLandscape.ecommerce} />}
+                </div>
+                {brief.techLandscape.digitalMaturity && (<><SubHeader>Digital maturity</SubHeader><Para>{brief.techLandscape.digitalMaturity}</Para></>)}
+                {brief.techLandscape.knownStack.length > 0 && (
+                  <>
+                    <SubHeader>Known stack</SubHeader>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {brief.techLandscape.knownStack.map((s, i) => (
+                        <span key={i} className="px-2 py-0.5 rounded-sm font-mono text-[11px] bg-[var(--navy)] text-[var(--cream-light)]">{s}</span>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </Section>
+
+              {/* Section: Competitive AI Landscape */}
+              {brief.competitiveAI && (
+                <Section icon={Bot} title="Competitive AI landscape" accent="var(--coral)" confidence={verify?.confidence.competitiveAI}>
+                  <Para>{brief.competitiveAI}</Para>
+                </Section>
+              )}
+
+              {/* Section: Business Function Analysis (Phase 3) */}
+              <Section icon={Briefcase} title="Business function analysis & AI use cases" accent="var(--navy)" confidence={verify?.confidence.businessFunctions}>
+                <div className="font-sans italic text-[12px] text-[var(--slate)] mb-5">
+                  For each function: how it operates today, then three bespoke agentic AI plays with capabilities, quantified business impact, and time to value.
+                </div>
+                <div className="space-y-8">
+                  {brief.businessFunctions.map((bf, i) => (
+                    <div key={i}>
+                      <div className="eyebrow text-[var(--coral)] mb-1">Function {i + 1}</div>
+                      <h3 className="font-serif font-semibold text-[22px] text-[var(--navy)] leading-tight mb-2">{bf.function}</h3>
+                      <SubHeader compact>Current state</SubHeader>
+                      <Para small>{bf.currentState}</Para>
+                      <div className="mt-4 grid grid-cols-1 gap-3">
+                        {bf.useCases.map((uc, j) => (
+                          <div key={j} className="card card-accent-coral">
+                            <div className="flex items-baseline justify-between gap-3 mb-2">
+                              <div>
+                                <div className="eyebrow text-[var(--slate-light)] text-[10px]">Use case {j + 1}</div>
+                                <div className="font-serif font-semibold text-[17px] text-[var(--navy)] leading-tight mt-0.5">{uc.function}</div>
+                              </div>
+                              <span className="pill pill-teal shrink-0">{uc.timeToValue}</span>
+                            </div>
+                            <SubHeader compact>Capabilities</SubHeader>
+                            <Para small>{uc.capabilities}</Para>
+                            <div className="mt-3 pt-3 border-t border-[var(--cream-dark)] flex items-baseline gap-2">
+                              <Lightbulb size={12} className="text-[var(--teal)] shrink-0" />
+                              <span className="eyebrow text-[var(--teal)]">Business impact</span>
+                              <span className="font-sans font-semibold text-[13px] text-[var(--ink)]">{uc.businessImpact}</span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ))}
                 </div>
               </Section>
+
+              {/* Verification panel — triple-check confidence summary + disputes. */}
+              <VerificationPanel verify={verify} verifying={verifying} />
 
               <div className="mt-10 pt-4 border-t border-[var(--cream-dark)] font-sans italic text-[11px] text-[var(--slate-light)]">
                 Generated by DifferentDay AI · {new Date(brief.generatedAt).toLocaleString()} · Briefing is illustrative and intended for internal sales preparation only.
@@ -460,18 +801,116 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
   );
 }
 
-function Section({ icon: Icon, title, accent, children }: {
+function Section({ icon: Icon, title, accent, children, confidence }: {
   icon: React.ComponentType<{ size?: number; className?: string }>;
   title: string; accent: string; children: React.ReactNode;
+  confidence?: ConfidenceLevel;
 }) {
   return (
     <section className="mb-10">
       <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--cream-dark)]">
         <Icon size={18} className="shrink-0" />
-        <h2 className="font-serif font-semibold text-[24px] text-[var(--navy)]" style={{ borderLeft: `4px solid ${accent}`, paddingLeft: 12 }}>{title}</h2>
+        <h2 className="font-serif font-semibold text-[24px] text-[var(--navy)] flex-1" style={{ borderLeft: `4px solid ${accent}`, paddingLeft: 12 }}>{title}</h2>
+        {confidence && <ConfidenceChip level={confidence} />}
       </div>
       {children}
     </section>
+  );
+}
+
+// Per-section confidence badge. Filled in by the triple-check verifier after
+// the brief lands; absent until the critic + reconciler complete (~25-40s
+// after the brief renders). Rubric:
+//   HIGH — all checkable claims supported or plausible.
+//   MED  — mix; at most one contradicted; section is broadly defensible.
+//   LOW  — multiple contradictions or named-entity/major-quantitative
+//          claim contradicted. Reader should treat as draft.
+function ConfidenceChip({ level }: { level: ConfidenceLevel }) {
+  const cfg =
+    level === "HIGH" ? { Icon: ShieldCheck,    color: "var(--teal)",  bg: "var(--teal-faint)",  label: "Verified" } :
+    level === "MED"  ? { Icon: ShieldQuestion, color: "var(--amber)", bg: "rgba(255,193,7,0.1)", label: "Partial" } :
+                       { Icon: ShieldAlert,    color: "var(--coral)", bg: "rgba(229,90,84,0.1)", label: "Disputed" };
+  return (
+    <span title={`Triple-check confidence: ${level}`}
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm font-sans text-[10px] uppercase tracking-wider font-bold shrink-0"
+          style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.color}` }}>
+      <cfg.Icon size={11} strokeWidth={2.2} /> {cfg.label}
+    </span>
+  );
+}
+
+// Tight key/value pair used in the company + tech-landscape facts grids.
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="eyebrow text-[var(--slate-light)] text-[10px]">{label}</div>
+      <div className="font-sans text-[13px] text-[var(--ink)] leading-snug mt-0.5">{value}</div>
+    </div>
+  );
+}
+
+// Bottom-of-brief panel summarising the triple-check verification (brief →
+// critic → reconciler). Renders the reconciler's overall summary + any
+// curated disputes grouped by severity. Hidden entirely if verification
+// failed silently; shows a quiet "running" hint while the pipeline is in
+// flight so the reader knows verdicts are coming.
+function VerificationPanel({ verify, verifying }: { verify: VerifyResponse | null; verifying: boolean }) {
+  if (!verify) {
+    if (!verifying) return null;
+    return (
+      <div className="mt-10 p-4 rounded-sm border border-dashed border-[var(--cream-dark)] font-sans text-[12px] text-[var(--slate)] flex items-center gap-2">
+        <ShieldQuestion size={13} className="animate-pulse" />
+        Running triple-check verification (critic + reconciler)…
+      </div>
+    );
+  }
+  const high = verify.disputes.filter(d => d.severity === "high");
+  const med  = verify.disputes.filter(d => d.severity === "med");
+  const low  = verify.disputes.filter(d => d.severity === "low");
+  return (
+    <section className="mt-12 pt-6 border-t-2 border-[var(--navy)]">
+      <div className="flex items-center gap-2 mb-3">
+        <ShieldCheck size={18} className="text-[var(--teal)]" />
+        <h2 className="font-serif font-semibold text-[20px] text-[var(--navy)]">Verification</h2>
+        <span className="font-sans text-[11px] italic text-[var(--slate-light)] ml-1">{verify.model}</span>
+      </div>
+      <Para small>{verify.summary}</Para>
+      {verify.disputes.length === 0 ? (
+        <div className="mt-3 p-3 rounded-sm font-sans text-[12px] flex items-center gap-2"
+             style={{ background: "var(--teal-faint)", color: "var(--teal)", border: "1px solid var(--teal)" }}>
+          <ShieldCheck size={13} /> No disputed claims surfaced by the critic.
+        </div>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {high.length > 0 && <DisputeGroup label="Contradicted" tone="coral" items={high} />}
+          {med.length > 0  && <DisputeGroup label="Unverified — high stakes" tone="amber" items={med} />}
+          {low.length > 0  && <DisputeGroup label="Worth checking" tone="slate" items={low} />}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function DisputeGroup({ label, tone, items }: {
+  label: string; tone: "coral" | "amber" | "slate";
+  items: Array<{ section: string; claim: string; reason: string }>;
+}) {
+  const color = tone === "coral" ? "var(--coral)" : tone === "amber" ? "var(--amber)" : "var(--slate)";
+  return (
+    <div>
+      <div className="eyebrow mb-1.5" style={{ color }}>{label} · {items.length}</div>
+      <ul className="space-y-2">
+        {items.map((d, i) => (
+          <li key={i} className="border-l-2 pl-3" style={{ borderColor: color }}>
+            <div className="font-sans text-[12px] text-[var(--navy)]">
+              <span className="font-semibold uppercase tracking-wide text-[10px] text-[var(--slate)] mr-2">{d.section}</span>
+              <span className="italic">"{d.claim}"</span>
+            </div>
+            <div className="font-sans text-[12px] text-[var(--slate)] leading-snug mt-1">{d.reason}</div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 function SubHeader({ children, compact }: { children: React.ReactNode; compact?: boolean }) {
