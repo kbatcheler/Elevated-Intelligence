@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "jApiKJwxZ-iAVvVuNyLyH"
+uri = "file://.local/screenshots/apple-leak.jpeg"
+type = "image"
+title = "Apple profile still leaking Mercer copy"
