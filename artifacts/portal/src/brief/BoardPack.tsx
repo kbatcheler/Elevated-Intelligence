@@ -1,6 +1,6 @@
 import { X, Printer } from "lucide-react";
 import { summary } from "../data/trackRecord";
-import { useNarrative, useCompany } from "../context/CompanyContext";
+import { useNarrative, useCompany, useIsDefaultProfile } from "../context/CompanyContext";
 
 // Eight-page board pack. Each section is a "page" with print-friendly CSS.
 // Order: Cover · Headline scorecard · Three root causes · Three recovery
@@ -9,10 +9,16 @@ import { useNarrative, useCompany } from "../context/CompanyContext";
 export default function BoardPack({ onClose }: { onClose: () => void }) {
   const { profile, resolve } = useCompany();
   const { LAYERS, TRACK_RECORD } = useNarrative();
+  const isDefault = useIsDefaultProfile();
   const meta = `${profile.name} · ${profile.period} close-out · 14 October 2026`;
   const s = summary();
   const h = profile.headlines;
-  const rootCauses = profile.rootCauses ?? [
+  // Mercer-specific fallback rootCauses/recoveryLevers (Home Depot promo depth,
+  // Phoenix DC, cordless-tools, Kelly Services MSA, etc.) only apply to the
+  // baseline. Seeded profiles that override these fields show their own copy;
+  // seeded profiles WITHOUT overrides get a generic neutral fallback so we
+  // never claim a non-Mercer company sells cordless tools out of Phoenix.
+  const mercerRootCauses = [
     { title: "Competitor promotional intensity", impact: "−$6.2M",
       body: "Home Depot ran a sustained 1.8× baseline promo depth across five SE markets for the last 14 days of Q3. Numerator panel confirms the depth; Mercer's match-not-beat policy locked us into matching every move. The cohort that hurt most: the 24 top cordless-tools SKUs where elasticity is highest." },
     { title: "Compound supply disruption", impact: "−$3.1M",
@@ -20,7 +26,15 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
     { title: "Margin defence via promotional matching", impact: "−$1.8M",
       body: "Margin compressed 240bps as the match policy was applied reflexively. Volume held; margin paid for it. This is the most reversible of the three causes — a single policy change closes the gap in two trading weeks." },
   ];
-  const recoveryLevers = profile.recoveryLevers ?? [
+  const genericRootCauses = [
+    { title: "Demand softness in core categories", impact: "—",
+      body: "Top-of-funnel demand fell behind plan in the categories carrying the most revenue weight. The shortfall is concentrated, not diffuse — a small number of buyer cohorts account for most of the gap." },
+    { title: "Compound operational disruption", impact: "—",
+      body: "Two simultaneous constraints on the operational side amplified the demand softness rather than absorbing it. Throughput and on-time delivery both slipped in the same window." },
+    { title: "Reflexive margin defence", impact: "—",
+      body: "Pricing was held flat against the competitive set rather than re-anchored to a margin floor. Volume was preserved at the cost of margin — the most reversible of the three causes." },
+  ];
+  const mercerRecoveryLevers = [
     { title: "Cap the cordless-tools promo match at 22%",
       horizon: "This week", recovery: "$1.2M annualised", owner: "Head of Pricing",
       body: "Currently matching Home Depot exactly (28% depth). A 22% cap restores 4pp gross margin on the 24 SKUs driving the slip. Reversible inside 5 trading days." },
@@ -31,8 +45,41 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
       horizon: "Monday, 14 days", recovery: "$1.45M Q4", owner: "Trade Marketing",
       body: "Targeted to Dallas/Phoenix/Atlanta where Home Depot is overweighted. Bounded to the 24 share-loss SKUs. Hard exit at day 14. Dependent on Pricing layer's margin floor sign-off (≥18% gross)." },
   ];
-  const combinedRecovery = profile.combinedRecovery ?? "$5.6M Q4";
-  const recoveryConfidence = profile.recoveryConfidence ?? "Confidence 87% on the first $3M, 64% on the rest.";
+  const genericRecoveryLevers = [
+    { title: "Cap reflexive price matching on the top elasticity cohort",
+      horizon: "This week", recovery: "Margin recovery", owner: "Head of Pricing",
+      body: "Move from match-the-leader to a margin-floor + elasticity rule on the SKUs carrying most of the margin slip. Reversible inside one trading week." },
+    { title: "Stabilise the most-constrained operational node",
+      horizon: "This week", recovery: "Throughput recovery", owner: "Operations",
+      body: "Fill the open shifts and unblock the inbound constraint that's compounding the demand softness. Cost is small relative to the throughput at risk." },
+    { title: "Launch a bounded, time-limited counter-play",
+      horizon: "Monday, 14 days", recovery: "Targeted lift", owner: "Marketing",
+      body: "Targeted to the regions and cohorts where the competitive pressure is concentrated. Hard exit at day 14 so the play stays reversible." },
+  ];
+  // Always render exactly three root causes / three recovery levers (the page
+  // layout assumes it). For the default profile we use the Mercer fallback if
+  // the override is absent. For seeded profiles we backfill any missing or
+  // malformed override entries with generic neutral copy, so a partial
+  // override array can never leave Mercer-specific copy in the remaining
+  // slots.
+  const pickThree = <T extends { title: string; body: string }>(
+    override: readonly T[] | undefined,
+    fallback: readonly T[],
+  ): T[] => Array.from({ length: 3 }, (_, i) => {
+    const o = override?.[i];
+    if (o && typeof o.title === "string" && typeof o.body === "string") return o;
+    return fallback[i]!;
+  });
+  const rootCauses = isDefault
+    ? (profile.rootCauses ?? mercerRootCauses)
+    : pickThree(profile.rootCauses, genericRootCauses);
+  const recoveryLevers = isDefault
+    ? (profile.recoveryLevers ?? mercerRecoveryLevers)
+    : pickThree(profile.recoveryLevers, genericRecoveryLevers);
+  const combinedRecovery = profile.combinedRecovery ?? (isDefault ? "$5.6M Q4" : "In-quarter recovery");
+  const recoveryConfidence = profile.recoveryConfidence ?? (isDefault
+    ? "Confidence 87% on the first $3M, 64% on the rest."
+    : "Confidence is highest on the bounded, reversible levers; lower on the structural plays.");
   const layerByKey = Object.fromEntries(LAYERS.map(l => [l.key, l]));
   const recentClosed = TRACK_RECORD.filter(t => t.status !== "in-flight").slice(-5).reverse();
 
@@ -84,17 +131,19 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
           <Page>
             <PageHeader number={2} title="Headline scorecard" eyebrow="Q3 2026 · against plan" />
             <div className="grid grid-cols-2 gap-6">
-              <Card label="Revenue"           value={h.revenueActual}  delta={`${h.revenueVarPct} vs plan`}        tone="bad"  detail={resolve(`${h.revenueVarDollars} behind plan; gap concentrated in DIY and Home Improvement categories.`)} />
-              <Card label="Operating margin"  value={h.marginActual}   delta={`${h.marginVarBps} vs target`}       tone="bad"  detail={resolve("Match-and-bleed pricing on top-50 cordless SKUs drove most of the slip.")} />
+              <Card label="Revenue"           value={h.revenueActual}  delta={`${h.revenueVarPct} vs plan`}        tone="bad"  detail={isDefault ? resolve(`${h.revenueVarDollars} behind plan; gap concentrated in DIY and Home Improvement categories.`) : `${h.revenueVarDollars} behind plan; gap concentrated in a small number of categories.`} />
+              <Card label="Operating margin"  value={h.marginActual}   delta={`${h.marginVarBps} vs target`}       tone="bad"  detail={isDefault ? resolve("Match-and-bleed pricing on top-50 cordless SKUs drove most of the slip.") : "Reflexive price matching against the competitive set drove most of the slip."} />
               <Card label="Cash position"     value={h.cashActual}     delta={h.cashVar}                            tone={h.cashTone} detail="Held only because working capital tightened — not because trading performed." />
-              <Card label="Customer NPS"      value={String(h.npsActual)} delta={h.npsDelta}                        tone="warn" detail={resolve("Detractor cluster localised to Phoenix metro, tied to service-call spike.")} />
+              <Card label="Customer NPS"      value={String(h.npsActual)} delta={h.npsDelta}                        tone="warn" detail={isDefault ? resolve("Detractor cluster localised to Phoenix metro, tied to service-call spike.") : "Detractor cluster localised to a single region, tied to a service-call spike."} />
             </div>
             <div className="mt-8 p-5 rounded-sm" style={{ background: "var(--cream-light)", border: "1px solid var(--cream-dark)" }}>
               <div className="eyebrow text-[var(--slate-light)] mb-2">Executive read</div>
               <p className="font-serif text-[16px] leading-snug text-[var(--ink)]">
                 {profile.executiveRead
                   ? profile.executiveRead
-                  : <>Q3 closed <strong>8% behind plan</strong> and <strong>380bps behind margin target</strong>. The variance is not diffuse — three layers (Demand, Pricing, Supply) account for almost the entire gap. The fastest reversible lever this quarter is in pricing, not demand or supply.</>}
+                  : isDefault
+                    ? <>Q3 closed <strong>8% behind plan</strong> and <strong>380bps behind margin target</strong>. The variance is not diffuse — three layers (Demand, Pricing, Supply) account for almost the entire gap. The fastest reversible lever this quarter is in pricing, not demand or supply.</>
+                    : <>The quarter closed behind plan, with the variance concentrated in a small number of layers. The diagnosis, the three reversible levers, and the named owners follow on the pages overleaf.</>}
               </p>
             </div>
           </Page>
@@ -126,28 +175,44 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
           </Page>
 
           {/* ─── Page 5: Track record ─── */}
+          {/* Track record entries are hand-authored Mercer history with no per-
+              profile override path; for non-default profiles we render an
+              empty-state page so the wrong-brand history can't leak in. */}
           <Page>
             <PageHeader number={5} title="System track record" eyebrow="Holding ourselves accountable" />
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <Card label="Recommendations closed" value={`${s.total - s.inFlight}`} delta={`${s.hitRate}% hit rate`} tone="good"
-                    detail="Met or beat predicted outcome." />
-              <Card label="Predicted dollars"     value={`$${s.totalPredictedDollar.toFixed(1)}M`} delta="across closed plays" tone="neutral" detail="Modelled at the moment each action was committed." />
-              <Card label="Delivered dollars"      value={`$${s.totalDeliveredDollar.toFixed(1)}M`} delta={`${((s.totalDeliveredDollar / s.totalPredictedDollar - 1) * 100).toFixed(0)}% vs predicted`} tone={s.totalDeliveredDollar >= s.totalPredictedDollar ? "good" : "warn"} detail="Audited actual outcome." />
-            </div>
-            <div className="eyebrow text-[var(--slate-light)] mb-3">Five most recent closed actions</div>
-            <div className="space-y-2">
-              {recentClosed.map(t => (
-                <div key={t.id} className="flex items-center gap-3 py-2 border-b border-[var(--cream-dark)] last:border-0">
-                  <span className="font-sans font-bold text-[10px] uppercase tracking-wider w-16"
-                        style={{ color: t.status === "beat" || t.status === "met" ? "var(--teal)" : t.status === "partial" ? "var(--amber)" : "var(--coral)" }}>
-                    {t.status.toUpperCase()}
-                  </span>
-                  <span className="font-sans text-[12px] text-[var(--slate)] w-20">{t.closedAt}</span>
-                  <span className="font-serif italic text-[13px] text-[var(--ink)] flex-1">{t.title}</span>
-                  <span className="font-sans text-[11px] text-[var(--slate)] italic">{t.variance}</span>
+            {isDefault ? (
+              <>
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <Card label="Recommendations closed" value={`${s.total - s.inFlight}`} delta={`${s.hitRate}% hit rate`} tone="good"
+                        detail="Met or beat predicted outcome." />
+                  <Card label="Predicted dollars"     value={`$${s.totalPredictedDollar.toFixed(1)}M`} delta="across closed plays" tone="neutral" detail="Modelled at the moment each action was committed." />
+                  <Card label="Delivered dollars"      value={`$${s.totalDeliveredDollar.toFixed(1)}M`} delta={`${((s.totalDeliveredDollar / s.totalPredictedDollar - 1) * 100).toFixed(0)}% vs predicted`} tone={s.totalDeliveredDollar >= s.totalPredictedDollar ? "good" : "warn"} detail="Audited actual outcome." />
                 </div>
-              ))}
-            </div>
+                <div className="eyebrow text-[var(--slate-light)] mb-3">Five most recent closed actions</div>
+                <div className="space-y-2">
+                  {recentClosed.map(t => (
+                    <div key={t.id} className="flex items-center gap-3 py-2 border-b border-[var(--cream-dark)] last:border-0">
+                      <span className="font-sans font-bold text-[10px] uppercase tracking-wider w-16"
+                            style={{ color: t.status === "beat" || t.status === "met" ? "var(--teal)" : t.status === "partial" ? "var(--amber)" : "var(--coral)" }}>
+                        {t.status.toUpperCase()}
+                      </span>
+                      <span className="font-sans text-[12px] text-[var(--slate)] w-20">{t.closedAt}</span>
+                      <span className="font-serif italic text-[13px] text-[var(--ink)] flex-1">{t.title}</span>
+                      <span className="font-sans text-[11px] text-[var(--slate)] italic">{t.variance}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="p-5 rounded-sm" style={{ background: "var(--cream-light)", border: "1px solid var(--cream-dark)" }}>
+                <div className="font-serif text-[18px] text-[var(--navy)] leading-snug">
+                  Track record will populate here once the system has closed its first quarter of recommendations for {profile.name}.
+                </div>
+                <p className="font-serif italic text-[14px] text-[var(--slate)] mt-3 leading-snug">
+                  Every recommendation issued — predicted dollar impact, named owner, time horizon — is recorded at the moment it's committed, then graded against the actual outcome when the window closes. The history is auditable end-to-end; what you'd see here is the receipts.
+                </p>
+              </div>
+            )}
           </Page>
 
           {/* ─── Page 6: Decisions log ─── */}
@@ -155,16 +220,16 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
             <PageHeader number={6} title="Decisions for the board" eyebrow="What we need from this meeting" />
             <ol className="space-y-4">
               <Decision n={1} ask="Endorse the three reversible levers in priority order"
-                what={resolve("Pricing match-cap, Phoenix DC shifts, SE counter-promo. Each layer has a named owner standing by.")}
+                what={isDefault ? resolve("Pricing match-cap, Phoenix DC shifts, SE counter-promo. Each layer has a named owner standing by.") : "Pricing reset, operational stabilisation, regional counter-play. Each layer has a named owner standing by."}
                 forfor="Decision required" />
               <Decision n={2} ask="Approve emergency 5% comp adjustment for DC Operations"
                 what="Annualised cost ~$1.2M; modelled retention lift 7–9pp; payback inside one quarter at current attrition cost."
                 forfor="Decision required" />
               <Decision n={3} ask="Note: FY27 share target re-baseline (16.5% → 15.0%)"
-                what={resolve("Two-channel concentration (Home Depot + Lowe's) is now structural. Growth narrative shifts to category-share-of-wallet within active accounts.")}
+                what={isDefault ? resolve("Two-channel concentration (Home Depot + Lowe's) is now structural. Growth narrative shifts to category-share-of-wallet within active accounts.") : "Channel concentration in the top two competitors is now structural. Growth narrative shifts to category-share-of-wallet within active accounts."}
                 forfor="For information" />
               <Decision n={4} ask="Note: Pricing policy reset proposed for Q4 close"
-                what={resolve("Replace 'match Home Depot' with margin-floor + elasticity rule. CFO and Pricing committee to sign off in November.")}
+                what={isDefault ? resolve("Replace 'match Home Depot' with margin-floor + elasticity rule. CFO and Pricing committee to sign off in November.") : "Replace match-the-leader with a margin-floor + elasticity rule. CFO and Pricing committee to sign off in November."}
                 forfor="For information" />
             </ol>
           </Page>
@@ -197,11 +262,15 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
                 <strong>Confidence calculation.</strong> Each metric carries a combined confidence band weighted by source completeness and recency, with a floor set by the lowest-confidence contributor on the critical path.
               </p>
               <p>
-                <strong>Sources.</strong> {resolve("SAP S/4HANA, NetSuite, Salesforce, Adaptive Planning, Manhattan WMS, Blue Yonder, Numerator panel, Brandwatch, Five9, Kronos, Workday, Adobe Analytics, Google Ads, NOAA weather feed, competitive pricing scraper.")} {profile.sourceSystems}.
+                <strong>Sources.</strong> {isDefault
+                  ? <>{resolve("SAP S/4HANA, NetSuite, Salesforce, Adaptive Planning, Manhattan WMS, Blue Yonder, Numerator panel, Brandwatch, Five9, Kronos, Workday, Adobe Analytics, Google Ads, NOAA weather feed, competitive pricing scraper.")} {profile.sourceSystems}.</>
+                  : <>{profile.sourceSystems}</>}
               </p>
-              <p>
-                <strong>Peer set.</strong> {resolve("Home Depot, Lowe's, Ace Hardware, Tractor Supply. Sourced from Numerator panel and quarterly 10-Q filings.")}
-              </p>
+              {isDefault && (
+                <p>
+                  <strong>Peer set.</strong> Home Depot, Lowe's, Ace Hardware, Tractor Supply. Sourced from Numerator panel and quarterly 10-Q filings.
+                </p>
+              )}
             </div>
           </Page>
         </div>

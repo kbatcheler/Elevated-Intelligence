@@ -1,7 +1,7 @@
 import { Clock, CalendarDays, CalendarRange, ArrowRight, User, Zap } from "lucide-react";
 import { type NextStep } from "../data/nextSteps";
 import { useApp } from "../context/AppContext";
-import { useNarrative } from "../context/CompanyContext";
+import { useNarrative, useIsDefaultProfile } from "../context/CompanyContext";
 
 // Prescriptive playbook — every layer answers "what do I do next?" at three
 // time horizons. Each step has an owner, an effort estimate, and a named
@@ -15,8 +15,16 @@ const HORIZONS = [
 
 export default function NextSteps({ layerKey, layerTitle }: { layerKey: string; layerTitle: string }) {
   const { NEXT_STEPS } = useNarrative();
+  const isDefault = useIsDefaultProfile();
   const block = NEXT_STEPS[layerKey];
   if (!block) return null;
+  // Every NEXT_STEPS entry is hand-authored Mercer copy (Home Depot promo,
+  // Phoenix DC shifts, Kelly Services MSA, Greater Plains Co. AR holds). The
+  // vocab swap layer cannot translate brand-specific entities, so for any
+  // non-default profile we suppress this block rather than render wrong-brand
+  // playbooks. The layer's recommended-actions card above is already LLM-
+  // overridden per seeded company, so the user still sees what to do.
+  if (!isDefault) return null;
   const { committed, commitAction } = useApp();
 
   return (

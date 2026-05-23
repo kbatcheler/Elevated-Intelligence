@@ -1,5 +1,5 @@
 import { X, Printer, TrendingUp, TrendingDown, AlertCircle } from "lucide-react";
-import { useNarrative, useCompany } from "../context/CompanyContext";
+import { useNarrative, useCompany, useIsDefaultProfile } from "../context/CompanyContext";
 import { useApp } from "../context/AppContext";
 
 // ----- "What changed since yesterday" deltas ---------------------------------
@@ -90,10 +90,32 @@ export default function MorningBrief() {
   const { closeBrief } = useApp();
   const { profile, resolve } = useCompany();
   const { LAYERS } = useNarrative();
+  const isDefault = useIsDefaultProfile();
   const today = "Tuesday, 14 October 2026 · 06:42 CT";
   const layerByKey = Object.fromEntries(LAYERS.map(l => [l.key, l]));
-  // Merge: profile overrides take precedence, falling back to the default Mercer copy.
-  const mergedFindings = TOP_FINDINGS.map(f => ({ ...f, ...(profile.topFindings?.[f.layer] ?? {}) }));
+  // Merge profile overrides with the Mercer baseline copy. For the Mercer
+  // baseline OR non-Mercer profiles with explicit per-layer overrides, we
+  // include the finding. For seeded profiles that don't override a given
+  // layer, we DROP the finding instead of leaking Mercer specifics (Home
+  // Depot promo depth, Dallas/Phoenix OOS, Greater Plains Co. credit hold).
+  // For non-default profiles we require the override to carry at least its
+  // own `finding` AND `impact` strings — otherwise we'd silently fall back to
+  // Mercer copy via the spread. Default profile keeps the original merge.
+  const mergedFindings = TOP_FINDINGS.flatMap(f => {
+    const ov = profile.topFindings?.[f.layer];
+    if (isDefault) return [{ ...f, ...(ov ?? {}) }];
+    if (ov && typeof ov.finding === "string" && typeof ov.impact === "string") {
+      // Build the entry from override-only fields so the Mercer baseline
+      // `lever` (and any future optional baseline field) cannot survive the
+      // spread for a non-default profile. `layer` is taken from the baseline
+      // row because it's just the key; `lever` is included only if the
+      // override declares one.
+      const entry: BriefItem = { layer: f.layer, finding: ov.finding, impact: ov.impact };
+      if (typeof ov.lever === "string") entry.lever = ov.lever;
+      return [entry];
+    }
+    return [];
+  });
   // Deterministic per-company deltas for the "Since yesterday" ribbon.
   const deltas = deriveDeltas(profile.name);
 
@@ -163,14 +185,20 @@ export default function MorningBrief() {
             {/* Lede */}
             <section className="mb-7">
               <p className="font-serif text-[20px] leading-[1.55] text-[var(--ink)] first-letter:font-serif first-letter:text-[64px] first-letter:font-semibold first-letter:float-left first-letter:leading-[0.85] first-letter:mr-2 first-letter:mt-1 first-letter:text-[var(--coral)]">
-                {profile.executiveRead ?? resolve("Q3 closed eight percent behind plan and three hundred and eighty basis points behind margin target. The variance is not diffuse: three layers — Demand, Pricing, and Supply — account for almost the entire gap. Cash held only because working capital tightened. Of the three, Pricing is the fastest reversible lever this quarter.")}
+                {profile.executiveRead
+                  ?? (isDefault
+                    ? resolve("Q3 closed eight percent behind plan and three hundred and eighty basis points behind margin target. The variance is not diffuse: three layers — Demand, Pricing, and Supply — account for almost the entire gap. Cash held only because working capital tightened. Of the three, Pricing is the fastest reversible lever this quarter.")
+                    : `${profile.name} closed the quarter behind plan, with the variance concentrated in a small number of layers. The full diagnostic — by layer, by cause, by lever — follows below.`)}
               </p>
             </section>
 
             {/* Pull-quote */}
             <section className="my-7 py-5 border-y border-[var(--cream-dark)]">
               <blockquote className="font-serif italic text-[24px] leading-[1.35] text-[var(--navy)] text-center">
-                "{profile.pullQuote ?? "Sixty percent of the revenue gap traces to Demand, sixty-five percent of the EBITDA gap traces to Pricing, and the system is ninety-seven percent confident those are the right two levers."}"
+                "{profile.pullQuote
+                  ?? (isDefault
+                    ? "Sixty percent of the revenue gap traces to Demand, sixty-five percent of the EBITDA gap traces to Pricing, and the system is ninety-seven percent confident those are the right two levers."
+                    : "The variance is concentrated, the levers are named, and each one has an owner standing by.")}"
               </blockquote>
             </section>
 

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Award, TrendingUp, TrendingDown, Clock, MinusCircle } from "lucide-react";
 import { summary, type TrackRecordEntry, type OutcomeStatus } from "../data/trackRecord";
-import { useNarrative } from "../context/CompanyContext";
+import { useNarrative, useIsDefaultProfile, useCompany } from "../context/CompanyContext";
 
 const STATUS_META: Record<OutcomeStatus, { label: string; color: string; icon: any }> = {
   beat:        { label: "Beat predicted",  color: "var(--teal)",  icon: TrendingUp },
@@ -13,9 +13,35 @@ const STATUS_META: Record<OutcomeStatus, { label: string; color: string; icon: a
 
 export default function TrackRecord({ onNavigate }: { onNavigate: (key: string) => void }) {
   const { TRACK_RECORD, LAYERS } = useNarrative();
+  const isDefault = useIsDefaultProfile();
+  const { profile } = useCompany();
   const [filter, setFilter] = useState<"all" | OutcomeStatus>("all");
   const s = useMemo(() => summary(), []);
   const layerLabel = useMemo(() => Object.fromEntries(LAYERS.map(l => [l.key, l.title])), [LAYERS]);
+
+  // Every track-record entry is hand-authored Mercer history (Lowe's promo,
+  // Phoenix DC, Kelly MSA, cordless SKUs etc). There's no per-profile
+  // override path. For non-default profiles we render a clean empty state
+  // instead of leaking the Mercer history with the wrong brand name.
+  if (!isDefault) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <div className="eyebrow text-[var(--coral)] mb-2">Track record · System accountability</div>
+          <h1 className="font-serif text-[40px] leading-[1.05] text-[var(--navy)] font-semibold">Outcome track record</h1>
+          <p className="font-serif italic text-[20px] text-[var(--slate-light)] mt-1.5">Every recommendation we make is graded against what it delivered.</p>
+        </div>
+        <div className="card card-accent-gold">
+          <div className="font-serif text-[18px] text-[var(--navy)] leading-snug">
+            Track record will populate here once the system has closed its first quarter of recommendations for {profile.name}.
+          </div>
+          <p className="font-serif italic text-[14px] text-[var(--slate)] mt-3 leading-snug">
+            Every recommendation issued — predicted dollar impact, named owner, time horizon — is recorded at the moment it's committed, then graded against the actual outcome when the window closes. The history is auditable end-to-end; what you'd see here is the receipts.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const visible = TRACK_RECORD.filter(t => filter === "all" || t.status === filter);
 
