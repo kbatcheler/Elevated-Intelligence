@@ -61,7 +61,9 @@ export default function EngagementPipeline({ onNavigate }: { onNavigate: (k: str
       <div>
         <div className="eyebrow text-[var(--coral)] mb-2">System · Engagement pipeline</div>
         <h1 className="font-serif text-[32px] leading-tight text-[var(--navy)]">Different Day engagement pipeline</h1>
-        <p className="font-serif italic text-[18px] text-[var(--slate-light)] mt-1">Every architectural gap surfaced across the ten intelligence layers, prioritised by indicative recovery value.</p>
+        <p className="font-serif italic text-[18px] text-[var(--slate-light)] mt-1 max-w-[820px]">
+          Every architectural gap and missing data feed surfaced across the intelligence layers, sized by recovery value and sequenced into a ship plan. This is the work that turns today's confidence band into next quarter's signal — read it as the joint roadmap for Different Day and the operating team.
+        </p>
       </div>
 
       {/* Hero totals */}
@@ -121,6 +123,12 @@ export default function EngagementPipeline({ onNavigate }: { onNavigate: (k: str
           })}
         </div>
       </div>
+
+      {/* 90-day ship plan — sequences the top opportunities into three sprint
+           windows. Order is deterministic (by value, highest first, then
+           round-robin across the three windows) so the plan stays stable as
+           the user toggles the layer filter. */}
+      <ShipPlan rows={rows.slice(0, 12)} onNavigate={onNavigate} />
 
       {/* Filters */}
       <div className="flex items-center justify-between">
@@ -189,6 +197,82 @@ export default function EngagementPipeline({ onNavigate }: { onNavigate: (k: str
                 <div className="flex items-center justify-end gap-1 text-[10px] text-[var(--slate-light)] mt-0.5">view <ArrowRight size={10} /></div>
               </div>
             </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ShipPlan — three-column sprint sequencing of the top opportunities. The
+// goal is to make the pipeline feel like a plan, not a backlog: every item
+// has a sprint window, an owner persona, and a sequencing rationale.
+function ShipPlan({ rows, onNavigate }: { rows: Row[]; onNavigate: (k: string) => void }) {
+  const windows = [
+    { id: "w1", label: "Days 0–30",  subtitle: "Highest-value, lowest-coupling moves", color: "var(--coral)" },
+    { id: "w2", label: "Days 31–60", subtitle: "Dependent feeds and model retrains",   color: "var(--amber)" },
+    { id: "w3", label: "Days 61–90", subtitle: "Workflow + integration build-outs",    color: "var(--teal)"  },
+  ];
+  // Round-robin allocation by descending value so each window gets a mix of
+  // FEED and GAP work rather than all FEED in week 1 and all GAP in week 3.
+  const buckets: Row[][] = [[], [], []];
+  rows.forEach((r, i) => buckets[i % 3].push(r));
+
+  const ownerFor = (r: Row): string => {
+    if (r.source === "FEED") return "Data engineering";
+    if (r.category === "MODEL")    return "Decision science";
+    if (r.category === "WORKFLOW") return `${r.layerTitle} ops`;
+    if (r.category === "INTEG")    return "Platform integration";
+    if (r.category === "SIGNAL")   return "Signal team";
+    return `${r.layerTitle} ops`;
+  };
+
+  return (
+    <div className="card card-accent-navy">
+      <div className="flex items-baseline justify-between mb-4">
+        <div>
+          <div className="eyebrow text-[var(--coral)] mb-1">90-day ship plan</div>
+          <div className="font-serif text-[20px] text-[var(--navy)] font-semibold leading-tight">
+            Top 12 opportunities, sequenced into three sprint windows
+          </div>
+          <div className="font-sans italic text-[12px] text-[var(--slate-light)] mt-1">
+            Highest-value, lowest-coupling work first; feeds and model retrains in the middle; workflow + integration plumbing last.
+          </div>
+        </div>
+        <div className="font-sans text-[11px] text-[var(--slate-light)]">
+          {rows.length} opportunities · ${rows.reduce((s, r) => s + r.value, 0).toFixed(1)}M sequenced
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        {windows.map((w, i) => {
+          const items = buckets[i];
+          const total = items.reduce((s, r) => s + r.value, 0);
+          return (
+            <div key={w.id} className="rounded border bg-[var(--cream-light)]" style={{ borderColor: "var(--cream-dark)" }}>
+              <div className="px-3 py-2 border-b" style={{ background: w.color, color: "white", borderColor: w.color }}>
+                <div className="flex items-baseline justify-between">
+                  <div className="font-sans font-bold text-[12px] uppercase tracking-wider">{w.label}</div>
+                  <div className="font-sans tabular-nums font-bold text-[13px]">${total.toFixed(1)}M</div>
+                </div>
+                <div className="font-sans italic text-[10px] opacity-90 leading-snug">{w.subtitle}</div>
+              </div>
+              <div className="divide-y divide-[var(--cream-dark)]">
+                {items.map((r, idx) => (
+                  <button key={idx} onClick={() => onNavigate(r.layer)}
+                          className="w-full text-left px-3 py-2.5 hover:bg-white transition-colors">
+                    <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                      <span className="font-sans text-[11px] font-semibold text-[var(--navy)] leading-tight truncate">{r.title}</span>
+                      <span className="font-sans tabular-nums font-bold text-[11px] text-[var(--coral)] shrink-0">{r.valueLabel}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-sans uppercase tracking-wider text-[9px] text-[var(--slate-light)]">{r.layerTitle}</span>
+                      <span className="text-[var(--slate-light)] opacity-50">·</span>
+                      <span className="font-sans uppercase tracking-wider text-[9px] text-[var(--slate)]">{ownerFor(r)}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
           );
         })}
       </div>

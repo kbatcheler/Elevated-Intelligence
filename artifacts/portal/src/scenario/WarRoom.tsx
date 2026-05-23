@@ -1,8 +1,76 @@
 import { useMemo, useState } from "react";
-import { Sliders, RotateCcw, CheckSquare, AlertTriangle } from "lucide-react";
+import { Sliders, RotateCcw, CheckSquare, AlertTriangle, Shield, Banknote, TrendingUp, Zap } from "lucide-react";
 import { computeImpact, type Lever } from "../data/warroom";
 import { useApp } from "../context/AppContext";
-import { useNarrative } from "../context/CompanyContext";
+import { useNarrative, useIsDefaultProfile } from "../context/CompanyContext";
+import { TRACK_RECORD } from "../data/trackRecord";
+
+// Scenario presets — each snaps multiple levers at once so the operator can
+// step through framed Q4 stories instead of moving sliders one at a time.
+// Values are intentionally aggressive at the high end so the bridge moves
+// visibly and the trade-offs (margin vs cash vs caution warnings) are loud.
+type Preset = {
+  id: string;
+  label: string;
+  blurb: string;
+  Icon: any;
+  values: Record<string, number>;
+};
+
+const PRESETS: Preset[] = [
+  {
+    id: "conservative",
+    label: "Conservative recovery",
+    blurb: "Hold pricing discipline, modest counter-promo, finish what's already started.",
+    Icon: Shield,
+    values: {
+      "match-cap": 22, "counter-promo": 2, "phoenix-shifts": 11,
+      "supplier-c": 4, "marketing-realloc": 50, "credit-holds": 3,
+    },
+  },
+  {
+    id: "margin-defence",
+    label: "Margin defence",
+    blurb: "Tighten the match-cap, suspend counter-promo, push the email reallocation hard.",
+    Icon: TrendingUp,
+    values: {
+      "match-cap": 18, "counter-promo": 0, "phoenix-shifts": 11,
+      "supplier-c": 4, "marketing-realloc": 100, "credit-holds": 3,
+    },
+  },
+  {
+    id: "aggressive-cash",
+    label: "Aggressive cash",
+    blurb: "Maximise working-capital release — accept the named-account churn risk.",
+    Icon: Banknote,
+    values: {
+      "match-cap": 22, "counter-promo": 2, "phoenix-shifts": 11,
+      "supplier-c": 4, "marketing-realloc": 50, "credit-holds": 8,
+    },
+  },
+  {
+    id: "growth-push",
+    label: "Growth push",
+    blurb: "Stack every revenue lever — counter-promo full, dual-source aggressively, reallocate hard.",
+    Icon: Zap,
+    values: {
+      "match-cap": 26, "counter-promo": 4, "phoenix-shifts": 14,
+      "supplier-c": 8, "marketing-realloc": 110, "credit-holds": 3,
+    },
+  },
+];
+
+// Pulls the most recent closed outcome from the track record for a given
+// lever, matched by layer. TRACK_RECORD is authored in chronological order
+// (oldest first), so we scan from the end to surface the latest comparable
+// — that's what gives the "last time we moved this layer" claim its bite.
+const historicalForLayer = (layer: string) => {
+  for (let i = TRACK_RECORD.length - 1; i >= 0; i--) {
+    const t = TRACK_RECORD[i];
+    if (t.layer === layer && t.status !== "in-flight") return t;
+  }
+  return undefined;
+};
 
 const fmt = (n: number, prefix = "$") => {
   const sign = n >= 0 ? "+" : "−";
@@ -20,6 +88,20 @@ export default function WarRoom({ onNavigate }: { onNavigate: (key: string) => v
 
   const reset = () =>
     setValues(Object.fromEntries(LEVERS.map(l => [l.id, l.defaultValue])));
+
+  const applyPreset = (p: Preset) => setValues(p.values);
+  // A preset is "active" when every lever matches its stored value, so the
+  // chip highlights only when the user is actually viewing that scenario.
+  const activePresetId = PRESETS.find(p =>
+    LEVERS.every(l => values[l.id] === (p.values[l.id] ?? l.defaultValue)),
+  )?.id;
+  // Presets are hand-authored against the Mercer lever IDs — they don't
+  // apply to alternate narratives whose levers may have different keys or
+  // counts. Only render the preset row when the narrative's lever set
+  // matches what the presets target.
+  const isDefault = useIsDefaultProfile();
+  const presetsApply = isDefault && PRESETS[0]
+    && Object.keys(PRESETS[0].values).every(k => LEVERS.some(l => l.id === k));
 
   const commitAll = () => {
     LEVERS.forEach(l => {
@@ -58,6 +140,49 @@ export default function WarRoom({ onNavigate }: { onNavigate: (key: string) => v
           </button>
         </div>
       </div>
+
+      {/* Scenario presets — one-click stacks of the six levers. Lets the
+          operator step through framed Q4 stories before tweaking sliders.
+          Only renders for narratives whose levers match the preset shape. */}
+      {presetsApply && (
+      <div className="card">
+        <div className="flex items-baseline justify-between mb-3">
+          <div>
+            <div className="eyebrow text-[var(--coral)] mb-1">Scenario presets</div>
+            <div className="font-serif italic text-[13px] text-[var(--slate)] leading-snug">
+              Snap all six levers to a framed stance. Then fine-tune any single slider below.
+            </div>
+          </div>
+          <div className="font-sans text-[11px] text-[var(--slate-light)]">
+            {activePresetId ? `Viewing: ${PRESETS.find(p => p.id === activePresetId)?.label}` : "Custom mix"}
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-3">
+          {PRESETS.map(p => {
+            const active = p.id === activePresetId;
+            const PIcon = p.Icon;
+            return (
+              <button key={p.id} onClick={() => applyPreset(p)}
+                      className="text-left p-3 rounded border transition-colors"
+                      style={{
+                        background:  active ? "var(--navy)" : "var(--cream-light)",
+                        color:       active ? "var(--cream)" : "var(--navy)",
+                        borderColor: active ? "var(--gold)" : "var(--cream-dark)",
+                      }}>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <PIcon size={14} strokeWidth={1.6} style={{ color: active ? "var(--gold-light)" : "var(--coral)" }} />
+                  <div className="font-sans font-semibold text-[12px]">{p.label}</div>
+                </div>
+                <div className={"font-sans italic text-[11px] leading-snug " + (active ? "text-[var(--cream-dark)]" : "text-[var(--slate)]")}>
+                  {p.blurb}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      )}
 
       {/* Combined Q4 bridge */}
       <Bridge impact={impact} />
@@ -170,6 +295,10 @@ function LeverRow({ lever, value, onChange, onNavigate }: { lever: Lever; value:
     lever.direction === "margin" ? "var(--coral)" :
     lever.direction === "cash"   ? "var(--teal)"  :
                                    "var(--navy)";
+  // Most recent comparable from the track record on the same layer — used as
+  // a credibility anchor underneath the lever ("last time we moved this
+  // layer it delivered X vs Y predicted").
+  const prior = historicalForLayer(lever.layer);
   return (
     <div className="px-5 py-4 grid grid-cols-12 gap-4 items-center">
       {/* Lever ID + title */}
@@ -208,13 +337,21 @@ function LeverRow({ lever, value, onChange, onNavigate }: { lever: Lever; value:
         )}
       </div>
 
-      {/* Impact */}
+      {/* Impact + historical comparable */}
       <div className="col-span-3 text-right">
         <div className="eyebrow text-[var(--slate-light)] mb-1">Δ vs baseline</div>
         <div className="font-sans font-bold text-[18px] tabular-nums leading-none" style={{ color: impact === 0 ? "var(--slate-light)" : directionColor }}>
           {impact === 0 ? "—" : fmt(impact)}
         </div>
         <div className="font-sans italic text-[10px] text-[var(--slate-light)] mt-1 uppercase tracking-wider">{lever.direction}</div>
+        {prior && (
+          <div className="mt-2 pt-2 border-t border-[var(--cream-dark)] text-[10px] leading-snug">
+            <div className="font-sans uppercase tracking-wider text-[var(--slate-light)] mb-0.5">Last comparable · {prior.quarter}</div>
+            <div className="font-sans text-[var(--slate)] italic">
+              Predicted {prior.predicted}, delivered <span className="font-semibold not-italic" style={{ color: prior.status === "beat" || prior.status === "met" ? "var(--teal)" : prior.status === "missed" ? "var(--coral)" : "var(--amber)" }}>{prior.delivered}</span>.
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

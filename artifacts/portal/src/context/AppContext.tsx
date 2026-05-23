@@ -4,6 +4,8 @@ import {
 } from "react";
 import { type IncomingSignal, type EvidenceSpec } from "../data/signals";
 import { useNarrative, useCompany } from "./CompanyContext";
+import { DEFAULT_PROFILE_ID } from "../data/companies";
+import { MERCER_COMMITTED_SEED } from "../data/committedSeed";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -88,7 +90,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [briefOpen, setBriefOpen] = useState(false);
   const [evidence, setEvidence] = useState<EvidenceSpec | null>(null);
   const [why, setWhy] = useState<{ layer: string; metric: string } | null>(null);
-  const [committed, setCommitted] = useState<CommittedAction[]>([]);
+  // Seed the committed tray from the Mercer roster when the demo loads on
+  // the default profile, so the Committed Actions page is populated cold —
+  // a leadership team should be able to walk into that view without having
+  // to manually commit anything first. Non-default profiles start empty.
+  const seedCommitted = useCallback((profileId: string): CommittedAction[] => {
+    if (profileId !== DEFAULT_PROFILE_ID) return [];
+    const baseTime = Date.now();
+    return MERCER_COMMITTED_SEED.map((s, i) => ({
+      ...s,
+      id: `C-seed-${i}`,
+      committedAt: baseTime - (MERCER_COMMITTED_SEED.length - i) * 60_000,
+    }));
+  }, []);
+  const [committed, setCommitted] = useState<CommittedAction[]>(() => seedCommitted(profile.id));
   const [timeOffsetByLayer, setTimeOffsetByLayer] = useState<Record<string, number>>({});
   const [activeLayer, setActiveLayer] = useState("business-performance");
 
@@ -111,7 +126,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setBriefOpen(false);
     setEvidence(null);
     setWhy(null);
-    setCommitted([]);
+    setCommitted(seedCommitted(profile.id));
     setTimeOffsetByLayer({});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.id]);

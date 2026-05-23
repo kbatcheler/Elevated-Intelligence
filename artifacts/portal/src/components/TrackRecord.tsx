@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Award, TrendingUp, TrendingDown, Clock, MinusCircle } from "lucide-react";
+import { Award, TrendingUp, TrendingDown, Clock, MinusCircle, AlertTriangle } from "lucide-react";
 import { summary, type TrackRecordEntry, type OutcomeStatus } from "../data/trackRecord";
 import { useNarrative, useIsDefaultProfile, useCompany } from "../context/CompanyContext";
 
@@ -45,6 +45,38 @@ export default function TrackRecord({ onNavigate }: { onNavigate: (key: string) 
 
   const visible = TRACK_RECORD.filter(t => filter === "all" || t.status === filter);
 
+  // Quarterly roll-up — predicted vs delivered $ by quarter, plus a hit-rate.
+  // Skips non-dollar entries (NPS-only, ROAS-only) so the bars stay comparable.
+  const quarterly = useMemo(() => {
+    const dollarOnly = TRACK_RECORD.filter(t =>
+      t.id !== "tr-003" && t.id !== "tr-005" && t.id !== "tr-007" &&
+      t.id !== "tr-008" && t.id !== "tr-010" && t.id !== "tr-012",
+    );
+    const quarters: Array<"Q1 2026" | "Q2 2026" | "Q3 2026"> = ["Q1 2026", "Q2 2026", "Q3 2026"];
+    return quarters.map(q => {
+      const all = TRACK_RECORD.filter(t => t.quarter === q);
+      const closed = all.filter(t => t.status !== "in-flight");
+      const hits = closed.filter(t => t.status === "beat" || t.status === "met").length;
+      const dollars = dollarOnly.filter(t => t.quarter === q);
+      return {
+        quarter: q,
+        predicted: +dollars.reduce((s, t) => s + t.predictedValue, 0).toFixed(2),
+        delivered: +dollars.reduce((s, t) => s + t.deliveredValue, 0).toFixed(2),
+        count: all.length,
+        hitRate: closed.length ? Math.round((hits / closed.length) * 100) : 0,
+      };
+    });
+  }, []);
+
+  // Lessons drawn from misses and partials — automatic so the page stays in
+  // sync with the underlying data; no separate hand-authored lessons file.
+  const lessons = useMemo(
+    () => TRACK_RECORD.filter(t => t.status === "missed" || t.status === "partial"),
+    [],
+  );
+
+  const maxQuarterDollar = Math.max(...quarterly.map(q => Math.max(q.predicted, q.delivered)), 1);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -64,6 +96,56 @@ export default function TrackRecord({ onNavigate }: { onNavigate: (key: string) 
                     sub={`${((s.totalDeliveredDollar / s.totalPredictedDollar - 1) * 100).toFixed(0)}% vs predicted`}
                     emphasis={s.totalDeliveredDollar >= s.totalPredictedDollar ? "var(--teal)" : "var(--coral)"} />
           <Headline label="In flight"              value={`${s.inFlight}`} sub="actions tracking now" emphasis="var(--amber)" />
+        </div>
+      </div>
+
+      {/* Quarterly trend — predicted vs delivered, side-by-side bars */}
+      <div className="card">
+        <div className="flex items-baseline justify-between mb-4">
+          <div>
+            <div className="eyebrow text-[var(--slate-light)] mb-1">Quarterly trend · predicted vs delivered</div>
+            <div className="font-sans italic text-[12px] text-[var(--slate)]">
+              Dollar-graded recommendations only. NPS, ROAS and pipeline-coverage plays are excluded so the bars stay comparable.
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-6">
+          {quarterly.map(q => (
+            <div key={q.quarter} className="space-y-2">
+              <div className="flex items-baseline justify-between">
+                <span className="eyebrow text-[var(--navy)]">{q.quarter}</span>
+                <span className="font-sans text-[11px] text-[var(--slate-light)]">
+                  {q.count} {q.count === 1 ? "play" : "plays"} · {q.hitRate}% hit
+                </span>
+              </div>
+              <div className="flex items-end gap-3 h-[88px]">
+                <div className="flex-1 flex flex-col items-center justify-end">
+                  <div className="font-sans tabular-nums text-[10px] text-[var(--slate)] mb-1">${q.predicted.toFixed(1)}M</div>
+                  <div className="w-full rounded-t" style={{ height: `${(q.predicted / maxQuarterDollar) * 100}%`, background: "var(--slate-light)", minHeight: 4 }} />
+                  <div className="font-sans uppercase tracking-wider text-[9px] text-[var(--slate-light)] mt-1">Predicted</div>
+                </div>
+                <div className="flex-1 flex flex-col items-center justify-end">
+                  <div className="font-sans tabular-nums text-[10px] font-semibold mb-1"
+                       style={{ color: q.delivered >= q.predicted ? "var(--teal)" : "var(--coral)" }}>
+                    ${q.delivered.toFixed(1)}M
+                  </div>
+                  <div className="w-full rounded-t"
+                       style={{ height: `${(q.delivered / maxQuarterDollar) * 100}%`,
+                                background: q.delivered >= q.predicted ? "var(--teal)" : "var(--coral)",
+                                minHeight: 4 }} />
+                  <div className="font-sans uppercase tracking-wider text-[9px] mt-1"
+                       style={{ color: q.delivered >= q.predicted ? "var(--teal)" : "var(--coral)" }}>
+                    Delivered
+                  </div>
+                </div>
+              </div>
+              <div className="text-center font-sans text-[11px] text-[var(--slate)] pt-1 border-t border-[var(--cream-dark)]">
+                {q.delivered >= q.predicted
+                  ? <span className="text-[var(--teal)] font-semibold">+${(q.delivered - q.predicted).toFixed(1)}M vs predicted</span>
+                  : <span className="text-[var(--coral)] font-semibold">−${(q.predicted - q.delivered).toFixed(1)}M vs predicted</span>}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -95,6 +177,36 @@ export default function TrackRecord({ onNavigate }: { onNavigate: (key: string) 
           <Legend status="in-flight" />
         </div>
       </div>
+
+      {/* Lessons learned — derived from misses and partials. Makes the page
+          honest: this is what we got wrong, and what we changed because of it. */}
+      {filter === "all" && lessons.length > 0 && (
+        <div className="card card-accent-coral">
+          <div className="flex items-baseline justify-between mb-3">
+            <div>
+              <div className="eyebrow text-[var(--coral)] mb-1">Lessons banked</div>
+              <div className="font-serif text-[16px] text-[var(--navy)] font-semibold leading-tight">
+                {lessons.length} plays that missed or partly missed — what we changed
+              </div>
+            </div>
+            <div className="font-sans italic text-[11px] text-[var(--slate-light)]">Every miss becomes a gate or a rule</div>
+          </div>
+          <div className="space-y-2.5">
+            {lessons.map(l => (
+              <div key={l.id} className="flex items-start gap-3 pt-2 border-t border-[var(--cream-dark)] first:border-t-0 first:pt-0">
+                <AlertTriangle size={14} strokeWidth={1.8} className="text-[var(--coral)] mt-1 shrink-0" />
+                <div className="flex-1">
+                  <button onClick={() => onNavigate(l.layer)}
+                          className="font-sans font-semibold text-[12px] text-[var(--navy)] hover:text-[var(--coral)] underline-offset-2 hover:underline text-left leading-snug">
+                    {l.title}
+                  </button>
+                  <p className="font-serif italic text-[12px] text-[var(--slate)] mt-1 leading-snug">{l.note}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Entries */}
       <div className="space-y-3">
