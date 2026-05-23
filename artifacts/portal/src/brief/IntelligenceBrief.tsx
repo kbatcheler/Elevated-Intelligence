@@ -1,6 +1,145 @@
-import { useEffect, useState } from "react";
-import { X, Printer, Sparkles, Building2, Users2, LineChart, Lightbulb, RefreshCw, Globe } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { X, Printer, Sparkles, Building2, Users2, LineChart, Lightbulb, RefreshCw, Globe, ArrowUp, ArrowDown, CircleDot, Activity } from "lucide-react";
 import { useCompany } from "../context/CompanyContext";
+import type { LayerData } from "../data/layers";
+
+// Deterministic 32-bit hash of a string (Fowler–Noll–Vo / xorshift mix). Used
+// to seed the "since yesterday" delta selection so each company's ribbon is
+// stable across reloads and reseeds, while different companies see different
+// deltas. NOT cryptographic — only needs the property that visually different
+// inputs give visually different outputs.
+function seededHash(s: string): number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  // One round of xorshift to spread bits
+  h ^= h << 13; h >>>= 0;
+  h ^= h >>> 17;
+  h ^= h << 5; h >>>= 0;
+  return h;
+}
+
+type DeltaKind = "metric" | "cause" | "action" | "gap";
+interface Delta {
+  kind: DeltaKind;
+  label: string;        // short label, e.g. "Demand intelligence"
+  text: string;         // the change itself
+  direction: "up" | "down" | "neutral";
+  tone: "good" | "bad" | "warn" | "neutral";
+}
+
+// Derive a deterministic set of 3 "since yesterday" deltas from the seeded
+// company's layer signals. The hash of the company name selects WHICH layers
+// and WHICH movement shapes are surfaced, so the same company always gets the
+// same ribbon, and different companies see different framing — without us
+// needing to ship per-company hand-written deltas.
+function deriveDeltas(profileName: string, layers: LayerData[]): Delta[] {
+  if (layers.length === 0) return [];
+  // Normalize before hashing so reseeds with casing / whitespace / punctuation
+  // drift ("Acme", "  acme  ", "Acme.") still land on the same ribbon. Doesn't
+  // solve true name changes (e.g. "Acme" vs "Acme Inc."), but covers the
+  // common drift pattern across reseed flows.
+  const normalized = (profileName || "default").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+  const seed = seededHash(normalized);
+  // Magnitudes per metric type. The hash picks from these so the units
+  // attached to the move match the units the metric is denominated in —
+  // otherwise a currency metric ends up with a bare "+1.2 overnight" which
+  // reads as nonsense in a CEO brief.
+  const ppMoves    = [0.3, 0.6, 0.9, 1.2, 1.6, 2.1, 2.8, 3.2];     // percentage points
+  const pctMoves   = [4, 6, 8, 11, 14, 18];                         // percent changes (for count/index metrics)
+  const usdMoves   = ["$0.2M", "$0.4M", "$0.6M", "$0.9M", "$1.3M", "$1.8M"];
+  const directions: Array<"up" | "down"> = ["up", "down"];
+
+  // Rotate through layers starting at a hash-determined offset so a "Patagonia"
+  // brief leans into different layers than a "Stripe" brief.
+  const startIdx = seed % layers.length;
+  const deltas: Delta[] = [];
+  for (let i = 0; i < layers.length && deltas.length < 3; i++) {
+    const layer = layers[(startIdx + i) % layers.length];
+    // Mix the seed with the loop index via xorshift instead of a wide shift —
+    // shift counts above 31 wrap in JS and reuse the same bits, so each layer
+    // would draw from overlapping entropy. xorshift gives independent draws.
+    let lhash = (seed ^ (i * 0x9e3779b1)) >>> 0;
+    lhash ^= lhash << 13; lhash >>>= 0;
+    lhash ^= lhash >>> 17;
+    lhash ^= lhash << 5;  lhash >>>= 0;
+    const localSeed = lhash & 0xff;
+    const shape = localSeed % 4;
+    const dir = directions[localSeed % 2];
+
+    // Shape 0: a top metric ticked. Format the magnitude based on the
+    // metric's denomination so the chip reads naturally — pp for %, USD for
+    // currency, percent change for counts/indices.
+    if (shape === 0 && layer.metrics?.[0]) {
+      const m = layer.metrics[0];
+      const isPercent  = /%/.test(m.value);
+      const isCurrency = /[$£€]/.test(m.value);
+      const sign       = dir === "up" ? "+" : "-";
+      let moveText: string;
+      if (isPercent) {
+        moveText = `${sign}${ppMoves[localSeed % ppMoves.length].toFixed(1)}pp`;
+      } else if (isCurrency) {
+        moveText = `${sign}${usdMoves[localSeed % usdMoves.length].replace(/^\$/, "$")}`;
+      } else {
+        // Count / index / NPS etc — express as a percent change so the
+        // magnitude scales sensibly without us knowing the underlying unit.
+        moveText = `${sign}${pctMoves[localSeed % pctMoves.length]}%`;
+      }
+      // "good" tone means improvement; flip direction accordingly to keep
+      // the up/down arrow consistent with the tone.
+      const improving = (m.tone === "good" && dir === "up") || (m.tone === "bad" && dir === "down");
+      deltas.push({
+        kind: "metric",
+        label: layer.title,
+        text: `${m.label} ${moveText} overnight`,
+        direction: dir,
+        tone: improving ? "good" : m.tone === "neutral" ? "neutral" : "warn",
+      });
+      continue;
+    }
+    // Shape 1: a cause moved in dollar terms
+    if (shape === 1 && layer.causes?.[0]) {
+      const c = layer.causes[0];
+      const move = usdMoves[localSeed % usdMoves.length];
+      // Hash bit chooses widening (worse) vs narrowing (better)
+      const widening = (localSeed & 0x10) === 0;
+      deltas.push({
+        kind: "cause",
+        label: layer.title,
+        text: `"${c.title}" ${widening ? "widened" : "narrowed"} by ${move} vs prior day`,
+        direction: widening ? "up" : "down",
+        tone: widening ? "bad" : "good",
+      });
+      continue;
+    }
+    // Shape 2: a recommended action firmed up
+    if (shape === 2 && layer.actions?.[0]) {
+      const a = layer.actions[0];
+      deltas.push({
+        kind: "action",
+        label: layer.title,
+        text: `Action firmed up: "${a.title}" now scored at ${a.impact}`,
+        direction: "neutral",
+        tone: "good",
+      });
+      continue;
+    }
+    // Shape 3: confidence shifted
+    const pctShift = pctMoves[localSeed % pctMoves.length];
+    const conf = layer.confidence ?? 80;
+    const newConf = Math.max(50, Math.min(95, conf + (dir === "up" ? +1 : -1) * (pctShift / 4)));
+    deltas.push({
+      kind: "gap",
+      label: layer.title,
+      text: `Diagnostic confidence ${dir === "up" ? "rose" : "fell"} to ${newConf.toFixed(0)}% (was ${conf}%)`,
+      direction: dir,
+      tone: dir === "up" ? "good" : "warn",
+    });
+  }
+  return deltas;
+}
 
 interface Brief {
   company:  { snapshot: string; history: string; businessModel: string; differentiators: string[] };
@@ -47,8 +186,13 @@ function saveCached(profileId: string, brief: Brief): void {
 }
 
 export default function IntelligenceBrief({ onClose }: { onClose: () => void }) {
-  const { profile } = useCompany();
+  const { profile, narrative } = useCompany();
   const [brief, setBrief] = useState<Brief | null>(() => loadCached(profile.id));
+  // "Since yesterday" deltas — derived from the seeded company's actual layer
+  // signals via a deterministic hash on profile.name. Stable across reloads
+  // and reseeds of the same company; different companies get different ribbons.
+  const deltas = useMemo(() => deriveDeltas(profile.name, narrative.LAYERS), [profile.name, narrative.LAYERS]);
+  const [ribbonDismissed, setRibbonDismissed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +203,7 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
   useEffect(() => {
     setBrief(loadCached(profile.id));
     setError(null);
+    setRibbonDismissed(false);
   }, [profile.id]);
 
   async function generate(force = false): Promise<void> {
@@ -138,6 +283,31 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
 
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        {/* "Since yesterday" delta ribbon — sticky to the top of the scroll
+            area so it stays visible while the reader scrolls the brief. Hash-
+            seeded by profile.name, so the same company always gets the same
+            ribbon and different companies see different framing. */}
+        {!ribbonDismissed && deltas.length > 0 && (
+          <div className="sticky top-0 z-10 border-b border-[var(--cream-dark)]"
+               style={{ background: "var(--cream-light)", boxShadow: "0 2px 8px rgba(15,26,51,0.08)" }}>
+            <div className="max-w-[920px] mx-auto py-2.5 px-10 flex items-center gap-4">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Activity size={12} strokeWidth={2} className="text-[var(--coral)]" />
+                <span className="font-sans text-[10px] uppercase tracking-wider font-bold text-[var(--coral)]">
+                  Since yesterday
+                </span>
+              </div>
+              <div className="flex-1 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                {deltas.map((d, i) => <DeltaChip key={i} delta={d} />)}
+              </div>
+              <button onClick={() => setRibbonDismissed(true)}
+                      aria-label="Dismiss since-yesterday ribbon"
+                      className="shrink-0 p-1.5 rounded-sm text-[var(--slate-light)] hover:text-[var(--navy)] hover:bg-[var(--cream-dark)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--gold)]">
+                <X size={14} strokeWidth={1.8} />
+              </button>
+            </div>
+          </div>
+        )}
         <div className="max-w-[920px] mx-auto py-10 px-10" style={{ background: "var(--cream)", minHeight: "100%" }}>
           {/* Masthead */}
           <div className="border-b-2 border-[var(--navy)] pb-6 mb-8">
@@ -312,6 +482,32 @@ function SubHeader({ children, compact }: { children: React.ReactNode; compact?:
 function Para({ children, small }: { children: React.ReactNode; small?: boolean }) {
   return (
     <p className={`font-sans ${small ? "text-[13px]" : "text-[14px]"} text-[var(--ink)] leading-relaxed`}>{children}</p>
+  );
+}
+
+// Compact inline chip used in the "Since yesterday" ribbon. Colour-coded by
+// tone (good/warn/bad/neutral), with an arrow that mirrors the direction of
+// the move. Designed to read at a glance — the ribbon is meant to communicate
+// "here's what shifted overnight" in under two seconds.
+function DeltaChip({ delta }: { delta: Delta }) {
+  const toneColor =
+    delta.tone === "good" ? "var(--teal)" :
+    delta.tone === "bad"  ? "var(--coral)" :
+    delta.tone === "warn" ? "var(--amber)" :
+                            "var(--slate)";
+  // Neutral chips (e.g. "action firmed up") aren't a warning, so don't carry
+  // a warning glyph. CircleDot reads as a status marker without implying
+  // direction or alarm.
+  const Arrow =
+    delta.direction === "up"   ? ArrowUp :
+    delta.direction === "down" ? ArrowDown :
+                                 CircleDot;
+  return (
+    <span className="inline-flex items-center gap-1.5 font-sans text-[11px] leading-tight">
+      <Arrow size={11} strokeWidth={2.2} style={{ color: toneColor }} />
+      <span className="font-semibold text-[var(--navy)] tabular-nums">{delta.label}</span>
+      <span className="text-[var(--slate)]">{delta.text}</span>
+    </span>
   );
 }
 
