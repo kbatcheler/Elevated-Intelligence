@@ -10,6 +10,7 @@ import {
   type DataGap,
   type ProductCategory,
 } from "../data/deficiencies";
+import { DIFFDAY_APPS, appsForProduct, type DiffDayApp } from "../data/appLibrary";
 
 // Each node is a layer; edges express "X feeds the diagnosis in Y, weighted W"
 // Positions are laid out in a clustered, hand-tuned 4-band arrangement so it
@@ -288,7 +289,7 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
                 <div className="eyebrow text-[var(--coral)] mb-2">Reading the graph</div>
                 <p className="font-serif italic text-[13px] text-[var(--slate)] leading-snug">
                   Hover any layer to isolate its dependencies. Edge thickness shows the share of one layer's diagnosis that traces to another.
-                  {showGaps && " Coral badges count unmet data feeds; the side panel shows which DiffDay product would close each one."}
+                  {showGaps && " Coral badges count unmet data feeds; the side panel shows which DiffDay solution would close each one."}
                 </p>
                 <div className="mt-5 space-y-2.5">
                   <Legend color="var(--coral)" label="Critical state" />
@@ -299,9 +300,9 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
                 {showGaps ? (
                   <>
                     <div className="mt-5 pt-4 border-t border-[var(--cream-dark)]">
-                      <div className="eyebrow text-[var(--slate-light)] mb-2">Top data gaps · product fit</div>
+                      <div className="eyebrow text-[var(--slate-light)] mb-2">Top data gaps · solution fit</div>
                       <div className="font-sans text-[10px] text-[var(--slate-light)] mb-2 leading-snug">
-                        Highest-leverage feed gaps and the DiffDay product that closes each.
+                        Highest-leverage feed gaps and the DiffDay solution that closes each.
                       </div>
                       {topGaps(5).map(g => <GapCard key={g.id} gap={g} compact />)}
                     </div>
@@ -342,16 +343,20 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
         </div>
       </div>
 
-      {/* Product catalog footer — visible when overlay is on. Makes the
-          full 13-product map legible without forcing the user to hover every
-          node. Acts as the legend for chip colors above. */}
+      {/* Solution catalog (conceptual layer). Visible when the overlay is on.
+          The 13 capability-style "solutions" the team frames around — these
+          are how we talk about the platform internally and on the dependency
+          graph. Each one is mapped to feed gaps above. */}
       {showGaps && (
         <div className="card">
           <div className="flex items-baseline justify-between mb-3">
             <div>
-              <div className="eyebrow text-[var(--coral)] mb-1">Product surface</div>
+              <div className="eyebrow text-[var(--coral)] mb-1">Solution capabilities</div>
               <div className="font-serif text-[20px] text-[var(--navy)] font-semibold leading-tight">
-                {DIFFDAY_PRODUCTS.length} DiffDay products, mapped to feed gaps in the graph above
+                {DIFFDAY_PRODUCTS.length} DiffDay solution capabilities, mapped to feed gaps in the graph above
+              </div>
+              <div className="font-sans italic text-[12px] text-[var(--slate-light)] mt-1">
+                The conceptual layer. Below this card you'll see how each capability ships as one or more deployed apps in the live App Library.
               </div>
             </div>
             <div className="flex items-center gap-3 text-[10px]">
@@ -371,6 +376,7 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
               const s = categoryStyle(p.category);
               const usedBy = DATA_GAPS.filter(g => g.productFit.includes(p.id));
               const uplift = usedBy.reduce((a, g) => a + g.confidenceUplift, 0);
+              const shippedAs = appsForProduct(p.id);
               return (
                 <div key={p.id}
                      className="p-3 rounded border bg-[var(--cream-light)]"
@@ -383,7 +389,7 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
                     </span>
                   </div>
                   <div className="font-sans italic text-[11px] text-[var(--slate)] leading-snug mb-2">{p.oneLiner}</div>
-                  <div className="flex items-center justify-between text-[10px]">
+                  <div className="flex items-center justify-between text-[10px] mb-2">
                     <span className="font-sans text-[var(--slate-light)]">
                       {usedBy.length === 0
                         ? "Cross-cutting · consumption surface"
@@ -393,12 +399,89 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
                       <span className="font-sans tabular-nums font-bold text-[var(--coral)]">+{uplift}pp</span>
                     )}
                   </div>
+                  {/* "Ships as" — which real apps in the live library instantiate
+                       this capability. Empty for cross-cutting access products. */}
+                  {shippedAs.length > 0 && (
+                    <div className="pt-2 border-t border-[var(--cream-dark)]">
+                      <div className="font-sans uppercase tracking-wider text-[9px] text-[var(--slate-light)] mb-1">
+                        Ships in {shippedAs.length} {shippedAs.length === 1 ? "app" : "apps"}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {shippedAs.map(app => (
+                          <span key={app.id}
+                                className="font-sans text-[9px] font-semibold px-1.5 py-0.5 rounded border bg-white"
+                                style={{ borderColor: "var(--cream-dark)", color: "var(--navy)" }}
+                                title={app.tagline}>
+                            {app.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         </div>
       )}
+
+      {/* DiffDay App Library — the real deployed apps. Always visible (not
+          gated on the data-gap overlay) because it's the ground-truth catalog
+          a buyer sees on demo.diffday.dev. Grouped by industry domain so the
+          21-app surface stays scannable. */}
+      <div className="card">
+        <div className="flex items-baseline justify-between mb-3">
+          <div>
+            <div className="eyebrow text-[var(--teal)] mb-1">App library · ships today</div>
+            <div className="font-serif text-[20px] text-[var(--navy)] font-semibold leading-tight">
+              {DIFFDAY_APPS.length} DiffDay apps live on demo.diffday.dev
+            </div>
+            <div className="font-sans italic text-[12px] text-[var(--slate-light)] mt-1">
+              The real deployed surface. Each app instantiates one or more of the {DIFFDAY_PRODUCTS.length} capabilities above for a specific industry context.
+            </div>
+          </div>
+          <a href="https://demo.diffday.dev" target="_blank" rel="noopener noreferrer"
+             className="font-sans text-[11px] font-semibold text-[var(--navy)] hover:text-[var(--coral)] underline decoration-dotted underline-offset-2 shrink-0">
+            Visit demo.diffday.dev →
+          </a>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {DIFFDAY_APPS.map(app => (
+            <AppCard key={app.id} app={app} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AppCard({ app }: { app: DiffDayApp }) {
+  return (
+    <div className="p-3 rounded border bg-white flex flex-col" style={{ borderColor: "var(--cream-dark)" }}>
+      <div className="flex items-start gap-2.5 mb-2">
+        <div className="shrink-0 h-9 w-9 rounded flex items-center justify-center font-sans font-bold text-[12px]"
+             style={{ background: "var(--navy)", color: "var(--cream)" }}>
+          {app.initials}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="font-sans text-[12px] font-semibold text-[var(--navy)] leading-tight truncate">{app.name}</div>
+          <div className="font-sans italic text-[10px] text-[var(--slate-light)] leading-snug">{app.tagline}</div>
+        </div>
+      </div>
+      <div className="font-sans text-[11px] text-[var(--slate)] leading-snug mb-2.5 flex-1">{app.description}</div>
+      <div className="pt-2 border-t border-[var(--cream-dark)] space-y-1.5">
+        <div className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: "var(--teal)" }} />
+          <span className="font-sans uppercase tracking-wider text-[9px] text-[var(--slate-light)]">{app.domain}</span>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {app.capabilities.map(cid => {
+            const p = PRODUCT_BY_ID[cid];
+            if (!p) return null;
+            return <ProductChip key={cid} name={p.name} category={p.category} />;
+          })}
+        </div>
+      </div>
     </div>
   );
 }

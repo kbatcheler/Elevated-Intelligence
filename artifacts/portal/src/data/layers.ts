@@ -824,6 +824,69 @@ export const LAYERS: LayerData[] = [
       { title: "Hiring slowdown is intentional", ci: "16% CI", detail: "CFO requested Q3 hiring freeze on 8 non-critical reqs; included in 24 open count." },
     ],
   },
+  {
+    key: "contract-management",
+    group: "Operational",
+    title: "Contract management",
+    question: "Where is contract exposure compounding the Q3 variance, and which renewals concentrate risk?",
+    confidence: 81,
+    sources: 8,
+    diagnosedAt: "Oct 14, 2026 · 06:42 CT",
+    metrics: [
+      { label: "Active contracts",       value: "412",   sub: "supplier, customer, labour",         tone: "neutral" },
+      { label: "Expiring next 90 days",  value: "37",    sub: "$11.2M annualised value",            tone: "warn"    },
+      { label: "ETF / penalty exposure", value: "$4.6M", sub: "concentrated in 9 supplier contracts", tone: "bad"   },
+      { label: "Evergreen auto-renew",   value: "62",    sub: "no review in last 18 months",        tone: "warn"    },
+    ],
+    narrative:
+      "Contract exposure is silently amplifying the Q3 variance. Three clusters concentrate the risk. First, Supplier B is invoking its force-majeure clause to defer a $1.4M production-shortfall penalty, blocking the credit that would have offset part of the OOS damage. Second, Dallas and Phoenix DC contract-labour rate cards auto-renewed at peak-demand premiums without negotiation, contributing $1.4M of the opex overrun flagged in Finance. Third, four of the six past-due trade customers operate under evergreen master service agreements with rolling 60-day terms — there is no contractual lever to enforce earlier payment, which leaves the receivables recovery dependent on goodwill alone. The Supplier C activation that the whole Q4 plan rests on is also a contract problem: the qualified-supplier agreement has been in legal review for 23 days against a 10-day target, and every additional day costs roughly $60K in further OOS damage on Home Improvement.",
+    causes: [
+      { title: "Supplier B force-majeure invocation",     impact: "$1.4M credit deferred",
+        detail: "Production-shortfall penalty deferred under FM clause until Q4 close; legal recovery probability assessed at 55%." },
+      { title: "DC contract labour rate-card auto-renew", impact: "+$1.4M opex",
+        detail: "Dallas and Phoenix temp-labour contracts renewed at peak-premium rates with no built-in negotiation window before the peak period." },
+      { title: "Supplier C agreement in extended review", impact: "14-day shipment delay",
+        detail: "Indemnity and audit clauses still open after 23 days; each day in review equals ~$60K of additional OOS damage on Home Improvement." },
+    ],
+    chartTitle: "Contract value expiring by month, next two quarters",
+    chart: {
+      kind: "stacked-bar",
+      xKey: "month",
+      yLabel: "USD millions / annualised",
+      data: [
+        { month: "Oct", supplier: 1.8, customer: 0.6, labour: 0.4 },
+        { month: "Nov", supplier: 2.1, customer: 0.4, labour: 0.3 },
+        { month: "Dec", supplier: 1.4, customer: 1.2, labour: 0.5 },
+        { month: "Jan", supplier: 0.9, customer: 0.7, labour: 0.2 },
+        { month: "Feb", supplier: 1.6, customer: 0.5, labour: 0.4 },
+        { month: "Mar", supplier: 2.3, customer: 0.8, labour: 0.6 },
+      ],
+      series: [
+        { key: "supplier", name: "Supplier",        color: NAVY,  type: "bar" },
+        { key: "customer", name: "Customer / MSA",  color: GOLD,  type: "bar" },
+        { key: "labour",   name: "Contract labour", color: CORAL, type: "bar" },
+      ],
+    },
+    actions: [
+      { title: "Close Supplier C legal review this week", detail: "Escalate indemnity and audit clauses to GC; target 5-day close to unlock shipment", impact: "$0.8M Q4" },
+      { title: "Renegotiate DC labour rate cards",        detail: "Phoenix card renews Nov 1 — reset to off-peak benchmark before counter-signing",  impact: "$0.6M Q4" },
+      { title: "Pursue Supplier B FM partial recovery",   detail: "Counter-letter on shortfall penalty; settlement target 60% of the $1.4M deferred", impact: "$0.5M cash" },
+      { title: "Convert top-6 debtor MSAs to net-30",     detail: "Bundle into recovery plan with service-restoration milestones tied to payment terms", impact: "$0.4M DSO" },
+    ],
+    actionsRecoveryUsd: "$2.3M predicted recovery",
+    gaps: [
+      { category: "DATA",     title: "Unified contract repository",      detail: "Contracts split across SharePoint, DocuSign and email — no single source of truth" },
+      { category: "MODEL",    title: "ETF and penalty exposure model",   detail: "No automatic surfacing of early-termination or shortfall-penalty exposure across the book" },
+      { category: "WORKFLOW", title: "Renewal review cadence",           detail: "62 evergreen contracts auto-renew with no scheduled review touchpoint" },
+      { category: "INTEG",    title: "Contract terms → ERP propagation", detail: "Payment terms, SLAs and price escalators are not flowed into the transactional system" },
+      { category: "SIGNAL",   title: "Counterparty financial health",    detail: "No early-warning signal when a supplier or customer's public filings change" },
+    ],
+    gapsPipelineUsd: "$3.4M indicative pipeline",
+    counterArgs: [
+      { title: "Force majeure is industry-standard exposure",   ci: "12% CI", detail: "FM clauses appear in 78% of peer supplier contracts; the issue is invocation pattern, not the clause itself." },
+      { title: "Evergreen renewals are operationally efficient", ci: "9% CI",  detail: "True for low-value contracts; 18 of the 62 evergreens are above $250K annualised and should be on a review cycle." },
+    ],
+  },
 ];
 
 export function getLayer(key: string) {

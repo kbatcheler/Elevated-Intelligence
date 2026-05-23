@@ -3,7 +3,7 @@ import {
   BarChart3, TrendingUp, Crosshair, Users, Megaphone,
   Truck, Tag, GitBranch, Target, UserCog, Cpu, ChevronDown, Briefcase,
   Banknote, Receipt, UserPlus, Network, Newspaper, CheckSquare, Lock,
-  Sliders, Award, FileText, Sparkles, HelpCircle,
+  Sliders, Award, FileText, Sparkles, HelpCircle, FileSignature,
 } from "lucide-react";
 import { useNarrative } from "./context/CompanyContext";
 import CoachmarkTour from "./components/CoachmarkTour";
@@ -47,6 +47,7 @@ const NAV: NavItem[] = [
   { key: "sales-pipeline",           label: "Sales pipeline",           group: "Operational",    icon: GitBranch,  status: "bad"  },
   { key: "marketing-performance",    label: "Marketing performance",    group: "Operational",    icon: Target,     status: "warn" },
   { key: "people-operations",        label: "People and operations",    group: "Operational",    icon: UserCog,    status: "bad"  },
+  { key: "contract-management",      label: "Contract management",      group: "Operational",    icon: FileSignature, status: "warn" },
   { key: "receivables",              label: "Receivables and invoicing", group: "Operational",    icon: Receipt,    status: "bad"  },
   { key: "talent-hr",                label: "Talent and HR",            group: "Operational",    icon: UserPlus,   status: "bad"  },
   { key: "intelligence-architecture",label: "Intelligence architecture",group: "System",         icon: Cpu,        status: "good" },
