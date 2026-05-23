@@ -257,7 +257,7 @@ function ActionRow({ action: c, onNavigate, onAdvance, onRemove }:
               {c.status === "done" ? "closed" : c.status}
               {c.status !== "done" && <ArrowRight size={10} strokeWidth={2} />}
             </button>
-            <button onClick={onRemove} title="Remove from tray"
+            <button onClick={onRemove} title="Remove from tray" aria-label="Remove from tray"
                     className="text-[var(--slate-light)] hover:text-[var(--coral)] p-1">
               <XIcon size={12} strokeWidth={1.5} />
             </button>
