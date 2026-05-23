@@ -19,10 +19,10 @@ export default function TrackRecord({ onNavigate }: { onNavigate: (key: string) 
   const s = useMemo(() => summary(), []);
   const layerLabel = useMemo(() => Object.fromEntries(LAYERS.map(l => [l.key, l.title])), [LAYERS]);
 
-  // Every track-record entry is hand-authored Mercer history (Lowe's promo,
+  // Every track-record entry is hand-authored Meridian Industrial history (Lowe's promo,
   // Phoenix DC, Kelly MSA, cordless SKUs etc). There's no per-profile
   // override path. For non-default profiles we render a clean empty state
-  // instead of leaking the Mercer history with the wrong brand name.
+  // instead of leaking the Meridian Industrial history with the wrong brand name.
   if (!isDefault) {
     return (
       <div className="space-y-6">

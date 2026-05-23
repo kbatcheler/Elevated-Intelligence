@@ -34,7 +34,7 @@ export default function PeerBenchmark({ layerKey }: { layerKey: string }) {
             </div>
             {/* Values */}
             <div className="col-span-3 grid grid-cols-3 gap-2 text-center">
-              <ValueCell label={profile.name}  value={m.mercer}  emphasis tone={m.tone} />
+              <ValueCell label={profile.name}  value={m.meridian}  emphasis tone={m.tone} />
               <ValueCell label="Median"  value={m.median} />
               <ValueCell label="Best"    value={m.best}   sublabel={m.bestLabel} />
             </div>

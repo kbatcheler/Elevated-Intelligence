@@ -13,14 +13,14 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
   const meta = `${profile.name} · ${profile.period} close-out · 14 October 2026`;
   const s = summary();
   const h = profile.headlines;
-  // Mercer-specific fallback rootCauses/recoveryLevers (Home Depot promo depth,
+  // Meridian Industrial-specific fallback rootCauses/recoveryLevers (Home Depot promo depth,
   // Phoenix DC, cordless-tools, Kelly Services MSA, etc.) only apply to the
   // baseline. Seeded profiles that override these fields show their own copy;
   // seeded profiles WITHOUT overrides get a generic neutral fallback so we
-  // never claim a non-Mercer company sells cordless tools out of Phoenix.
-  const mercerRootCauses = [
+  // never claim a non-Meridian Industrial company sells cordless tools out of Phoenix.
+  const meridianRootCauses = [
     { title: "Competitor promotional intensity", impact: "−$6.2M",
-      body: "Home Depot ran a sustained 1.8× baseline promo depth across five SE markets for the last 14 days of Q3. Numerator panel confirms the depth; Mercer's match-not-beat policy locked us into matching every move. The cohort that hurt most: the 24 top cordless-tools SKUs where elasticity is highest." },
+      body: "Home Depot ran a sustained 1.8× baseline promo depth across five SE markets for the last 14 days of Q3. Numerator panel confirms the depth; Meridian Industrial's match-not-beat policy locked us into matching every move. The cohort that hurt most: the 24 top cordless-tools SKUs where elasticity is highest." },
     { title: "Compound supply disruption", impact: "−$3.1M",
       body: "Supplier B's production delay coincided with a Dallas + Phoenix DC labour shortfall. Top-5 SKUs accumulated 41 OOS days in weeks 30–34. Inventory did not partially offset the demand softness — it amplified it. Two simultaneous constraints, not one." },
     { title: "Margin defence via promotional matching", impact: "−$1.8M",
@@ -34,7 +34,7 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
     { title: "Reflexive margin defence", impact: "—",
       body: "Pricing was held flat against the competitive set rather than re-anchored to a margin floor. Volume was preserved at the cost of margin — the most reversible of the three causes." },
   ];
-  const mercerRecoveryLevers = [
+  const meridianRecoveryLevers = [
     { title: "Cap the cordless-tools promo match at 22%",
       horizon: "This week", recovery: "$1.2M annualised", owner: "Head of Pricing",
       body: "Currently matching Home Depot exactly (28% depth). A 22% cap restores 4pp gross margin on the 24 SKUs driving the slip. Reversible inside 5 trading days." },
@@ -57,10 +57,10 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
       body: "Targeted to the regions and cohorts where the competitive pressure is concentrated. Hard exit at day 14 so the play stays reversible." },
   ];
   // Always render exactly three root causes / three recovery levers (the page
-  // layout assumes it). For the default profile we use the Mercer fallback if
+  // layout assumes it). For the default profile we use the Meridian Industrial fallback if
   // the override is absent. For seeded profiles we backfill any missing or
   // malformed override entries with generic neutral copy, so a partial
-  // override array can never leave Mercer-specific copy in the remaining
+  // override array can never leave Meridian Industrial-specific copy in the remaining
   // slots.
   const pickThree = <T extends { title: string; body: string }>(
     override: readonly T[] | undefined,
@@ -71,10 +71,10 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
     return fallback[i]!;
   });
   const rootCauses = isDefault
-    ? (profile.rootCauses ?? mercerRootCauses)
+    ? (profile.rootCauses ?? meridianRootCauses)
     : pickThree(profile.rootCauses, genericRootCauses);
   const recoveryLevers = isDefault
-    ? (profile.recoveryLevers ?? mercerRecoveryLevers)
+    ? (profile.recoveryLevers ?? meridianRecoveryLevers)
     : pickThree(profile.recoveryLevers, genericRecoveryLevers);
   const combinedRecovery = profile.combinedRecovery ?? (isDefault ? "$5.6M Q4" : "In-quarter recovery");
   const recoveryConfidence = profile.recoveryConfidence ?? (isDefault
@@ -175,7 +175,7 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
           </Page>
 
           {/* ─── Page 5: Track record ─── */}
-          {/* Track record entries are hand-authored Mercer history with no per-
+          {/* Track record entries are hand-authored Meridian Industrial history with no per-
               profile override path; for non-default profiles we render an
               empty-state page so the wrong-brand history can't leak in. */}
           <Page>

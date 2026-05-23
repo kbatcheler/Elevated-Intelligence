@@ -95,7 +95,7 @@ export default function WarRoom({ onNavigate }: { onNavigate: (key: string) => v
   const activePresetId = PRESETS.find(p =>
     LEVERS.every(l => values[l.id] === (p.values[l.id] ?? l.defaultValue)),
   )?.id;
-  // Presets are hand-authored against the Mercer lever IDs — they don't
+  // Presets are hand-authored against the Meridian Industrial lever IDs — they don't
   // apply to alternate narratives whose levers may have different keys or
   // counts. Only render the preset row when the narrative's lever set
   // matches what the presets target.

@@ -1,6 +1,6 @@
 # Different Day | Elevated Intelligence Portal
 
-High-fidelity interactive prototype of an enterprise intelligence portal for the fictional client **Mercer Group** (US diversified retail and trade, Q3 2026).
+High-fidelity interactive prototype of an enterprise intelligence portal for the fictional client **Meridian Industrial** (US diversified retail and trade, Q3 2026).
 
 ## Run
 

@@ -13,7 +13,7 @@ export default function PipelineDetail({ layerKey }: { layerKey: string }) {
   const isDefault = useIsDefaultProfile();
   const deep = PIPELINE_DEEP[layerKey];
   if (!deep) return null;
-  // Pipeline-deep fixtures are entirely Mercer-shaped (SKU codes, supplier
+  // Pipeline-deep fixtures are entirely Meridian Industrial-shaped (SKU codes, supplier
   // names, DC cities, "match Home Depot" copy). Suppress for any seeded
   // profile so we don't claim e.g. Apple is selling cordless drills.
   if (!isDefault) return null;

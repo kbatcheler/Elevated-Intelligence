@@ -4,7 +4,7 @@ export type GapCategory = "DATA" | "INTEG" | "MODEL" | "WORKFLOW" | "SIGNAL";
 export interface Metric { label: string; value: string; sub: string; tone: Tone; }
 export interface Cause  { title: string; impact: string; detail: string; }
 export interface Action { title: string; detail: string; impact: string; }
-export interface Gap    { category: GapCategory; title: string; detail: string; }
+export interface Gap    { category: GapCategory; title: string; detail: string; confidenceLiftPp: number; solution: string; }
 
 export interface ChartSpec {
   kind: "composed" | "line" | "stacked-bar" | "bar" | "area";
@@ -22,6 +22,7 @@ export interface LayerData {
   confidence: number;          // 0–100
   sources: number;
   diagnosedAt: string;
+  analystTake: string;
   metrics: Metric[];
   narrative: string;
   causes: Cause[];
@@ -49,6 +50,7 @@ export const LAYERS: LayerData[] = [
     confidence: 87,
     sources: 14,
     diagnosedAt: "Oct 14, 2026 · 06:42 CT",
+    analystTake: "Three layers explain almost the entire $11M gap, and the fastest reversible lever this quarter is pricing \u2014 not demand, not supply.",
     metrics: [
       { label: "Revenue",        value: "$127M",  sub: "vs $138M plan",       tone: "bad"  },
       { label: "Operating margin", value: "11.4%", sub: "vs 15.2% target",     tone: "bad"  },
@@ -56,7 +58,7 @@ export const LAYERS: LayerData[] = [
       { label: "Customer NPS",   value: "38",     sub: "vs 41 prior quarter", tone: "warn" },
     ],
     narrative:
-      "Mercer ended Q3 8% behind revenue plan and 380 basis points behind margin target, with the cash position holding up only because working capital tightening offset trading shortfalls. The variance is not diffuse. Three layers of the business account for almost the entire gap: demand softness in DIY and Home Improvement, supply disruption that compounded the demand issue rather than offsetting it, and pricing decisions that protected volume at the expense of margin. The fastest reversible lever this quarter is in pricing, not demand or supply.",
+      "Meridian Industrial ended Q3 8% behind revenue plan and 380 basis points behind margin target, with the cash position holding up only because working capital tightening offset trading shortfalls. The variance is not diffuse. Three layers of the business account for almost the entire gap: demand softness in DIY and Home Improvement, supply disruption that compounded the demand issue rather than offsetting it, and pricing decisions that protected volume at the expense of margin. The fastest reversible lever this quarter is in pricing, not demand or supply.",
     causes: [
       { title: "Demand variance concentrated in two channels", impact: "-$6.2M",
         detail: "DIY channel underperformed by 23% and Home Improvement category by 18%, jointly accounting for 60% of the revenue gap." },
@@ -88,11 +90,11 @@ export const LAYERS: LayerData[] = [
     ],
     actionsRecoveryUsd: "$3.1M predicted recovery",
     gaps: [
-      { category: "DATA",     title: "Real-time competitor pricing absent", detail: "4–7 day lag prevents responsive pricing decisions" },
-      { category: "INTEG",    title: "Trade segment EPOS not consolidated", detail: "23% of trade volume reports manually" },
-      { category: "MODEL",    title: "Margin elasticity model out of date", detail: "Last refresh March 2025, pre-supply shock" },
-      { category: "WORKFLOW", title: "No automated stock-out to PO trigger", detail: "Manual reorder process in DIY channel" },
-      { category: "SIGNAL",   title: "Macro consumer sentiment signal absent", detail: "Regional confidence not in any model" },
+      { category: "DATA", title: "Real-time competitor pricing absent", detail: "4\u20137 day lag prevents responsive pricing decisions", confidenceLiftPp: 3, solution: "Real-Time Pricing Intelligence" },
+      { category: "INTEG", title: "Trade segment EPOS not consolidated", detail: "23% of trade volume reports manually", confidenceLiftPp: 2, solution: "Trade EPOS Connector" },
+      { category: "MODEL", title: "Margin elasticity model out of date", detail: "Last refresh March 2025, pre-supply shock", confidenceLiftPp: 3, solution: "Margin Elasticity Modeller" },
+      { category: "WORKFLOW", title: "No automated stock-out to PO trigger", detail: "Manual reorder process in DIY channel", confidenceLiftPp: 2, solution: "Stockout-to-PO Trigger" },
+      { category: "SIGNAL", title: "Macro consumer sentiment signal absent", detail: "Regional confidence not in any model", confidenceLiftPp: 2, solution: "Macro Signal Feed" },
     ],
     gapsPipelineUsd: "$2.4M indicative pipeline",
     counterArgs: [
@@ -109,6 +111,7 @@ export const LAYERS: LayerData[] = [
     confidence: 84,
     sources: 11,
     diagnosedAt: "Oct 14, 2026 · 05:18 CT",
+    analystTake: "Most of the $2.8M demand miss is competitive-promo response and stockout damage, not a soft consumer \u2014 and two of those three causes are fixable inside Q4.",
     metrics: [
       { label: "Variance vs plan",          value: "-$2.8M", sub: "12.4% below",      tone: "bad"  },
       { label: "Period actual",             value: "$19.8M", sub: "vs $22.6M plan",   tone: "neutral" },
@@ -119,7 +122,7 @@ export const LAYERS: LayerData[] = [
       "Q3 demand finished $2.8M behind plan, with the variance concentrated in the DIY channel and Home Improvement category. Three compounding causes account for almost all of it: competitor promotional intensity, a portfolio stockout pattern in Dallas and Phoenix distribution centres, and forecast model degradation that has not been retrained since March. Of the three, the pricing response is the fastest to reverse.",
     causes: [
       { title: "Competitor promotional intensity", impact: "-$1.2M",
-        detail: "Home Depot ran 1.8x baseline promo depth in five SE markets, redirecting DIY browse-to-buy share away from Mercer." },
+        detail: "Home Depot ran 1.8x baseline promo depth in five SE markets, redirecting DIY browse-to-buy share away from Meridian Industrial." },
       { title: "Stockout pattern in Dallas and Phoenix", impact: "-$0.9M",
         detail: "41 OOS days on the top 5 SKUs concentrated in weeks 30–34, lost peak-season conversion that does not recover later in quarter." },
       { title: "Forecast model degradation", impact: "-$0.7M",
@@ -149,11 +152,11 @@ export const LAYERS: LayerData[] = [
     ],
     actionsRecoveryUsd: "$1.45M predicted recovery",
     gaps: [
-      { category: "DATA",     title: "Competitor pricing latency",       detail: "4–7 day lag on category-level intelligence" },
-      { category: "SIGNAL",   title: "Regional weather signal absent",   detail: "Garden and Outdoor demand swings unmodelled" },
-      { category: "INTEG",    title: "Store-level POS missing",          detail: "Trade channel reports daily, not hourly" },
-      { category: "MODEL",    title: "Marketing attribution to demand",  detail: "Campaign-to-SKU lift not isolated in current model" },
-      { category: "WORKFLOW", title: "OOS-to-PO trigger missing",        detail: "Manual replenishment review only" },
+      { category: "DATA", title: "Competitor pricing latency", detail: "4\u20137 day lag on category-level intelligence", confidenceLiftPp: 3, solution: "Real-Time Pricing Intelligence" },
+      { category: "SIGNAL", title: "Regional weather signal absent", detail: "Garden and Outdoor demand swings unmodelled", confidenceLiftPp: 2, solution: "Weather Signal Feed" },
+      { category: "INTEG", title: "Store-level POS missing", detail: "Trade channel reports daily, not hourly", confidenceLiftPp: 2, solution: "Trade EPOS Connector" },
+      { category: "MODEL", title: "Marketing attribution to demand", detail: "Campaign-to-SKU lift not isolated in current model", confidenceLiftPp: 2, solution: "Attribution Hub" },
+      { category: "WORKFLOW", title: "OOS-to-PO trigger missing", detail: "Manual replenishment review only", confidenceLiftPp: 3, solution: "Stockout-to-PO Trigger" },
     ],
     gapsPipelineUsd: "$1.8M indicative pipeline",
     counterArgs: [
@@ -169,6 +172,7 @@ export const LAYERS: LayerData[] = [
     confidence: 79,
     sources: 9,
     diagnosedAt: "Oct 13, 2026 · 22:51 CT",
+    analystTake: "Share loss is concentrated in three product families and three regions, so the recovery must be targeted; broad-spectrum spend would over-invest and still under-perform.",
     metrics: [
       { label: "Market share",          value: "14.3%", sub: "down 2.1pp",        tone: "bad"  },
       { label: "Share of voice",        value: "11.8%", sub: "down 4pp",          tone: "bad"  },
@@ -176,14 +180,14 @@ export const LAYERS: LayerData[] = [
       { label: "Competitor promo depth",value: "32%",   sub: "vs 18% baseline",   tone: "warn" },
     ],
     narrative:
-      "Mercer's market position eroded materially in Q3. Share fell 2.1pp to 14.3%, driven primarily by Home Depot's private-label expansion in the Southeast and Lowe's price aggression in Texas and the South Central region. The story is asymmetric: in volume terms the loss is concentrated in three product families and three regions. Sustained position recovery requires either matched pricing in those segments or rapid product differentiation, not both.",
+      "Meridian Industrial's market position eroded materially in Q3. Share fell 2.1pp to 14.3%, driven primarily by Home Depot's private-label expansion in the Southeast and Lowe's price aggression in Texas and the South Central region. The story is asymmetric: in volume terms the loss is concentrated in three product families and three regions. Sustained position recovery requires either matched pricing in those segments or rapid product differentiation, not both.",
     causes: [
       { title: "Home Depot private-label expansion", impact: "-1.1pp share",
-        detail: "New private-label range launched across 320 SE stores at 12–18% discount to Mercer equivalents, with strong end-cap placement." },
+        detail: "New private-label range launched across 320 SE stores at 12–18% discount to Meridian Industrial equivalents, with strong end-cap placement." },
       { title: "Lowe's promotional intensity", impact: "-0.7pp share",
         detail: "Sustained 4-week price campaign in Texas and South Central regions, depth averaging 24% on overlapping SKUs." },
       { title: "Ace Hardware availability advantage", impact: "-0.3pp share",
-        detail: "During Mercer stockouts in weeks 30–34, Ace held in-stock position on top 12 overlapping SKUs and captured switchers." },
+        detail: "During Meridian Industrial stockouts in weeks 30–34, Ace held in-stock position on top 12 overlapping SKUs and captured switchers." },
     ],
     chartTitle: "Share by competitor, last four quarters",
     chart: {
@@ -191,13 +195,13 @@ export const LAYERS: LayerData[] = [
       xKey: "quarter",
       yLabel: "Share %",
       data: [
-        { quarter: "Q4 25", Mercer: 16.8, "Home Depot": 31.2, "Lowe's": 24.4, Others: 27.6 },
-        { quarter: "Q1 26", Mercer: 16.4, "Home Depot": 31.6, "Lowe's": 24.6, Others: 27.4 },
-        { quarter: "Q2 26", Mercer: 16.4, "Home Depot": 32.0, "Lowe's": 24.5, Others: 27.1 },
-        { quarter: "Q3 26", Mercer: 14.3, "Home Depot": 33.1, "Lowe's": 25.4, Others: 27.2 },
+        { quarter: "Q4 25", "Meridian Industrial": 16.8, "Home Depot": 31.2, "Lowe's": 24.4, Others: 27.6 },
+        { quarter: "Q1 26", "Meridian Industrial": 16.4, "Home Depot": 31.6, "Lowe's": 24.6, Others: 27.4 },
+        { quarter: "Q2 26", "Meridian Industrial": 16.4, "Home Depot": 32.0, "Lowe's": 24.5, Others: 27.1 },
+        { quarter: "Q3 26", "Meridian Industrial": 14.3, "Home Depot": 33.1, "Lowe's": 25.4, Others: 27.2 },
       ],
       series: [
-        { key: "Mercer",      name: "Mercer",      color: NAVY,  type: "bar" },
+        { key: "Meridian Industrial",      name: "Meridian Industrial",      color: NAVY,  type: "bar" },
         { key: "Home Depot",  name: "Home Depot",  color: CORAL, type: "bar" },
         { key: "Lowe's",      name: "Lowe's",      color: GOLD,  type: "bar" },
       ],
@@ -210,16 +214,16 @@ export const LAYERS: LayerData[] = [
     ],
     actionsRecoveryUsd: "$4.1M predicted recovery",
     gaps: [
-      { category: "DATA",     title: "Real-time competitor SKU coverage", detail: "Coverage limited to top 200 SKUs, weekly cadence" },
-      { category: "SIGNAL",   title: "Customer switching pattern signal", detail: "Loyalty data does not capture cross-shop behaviour" },
-      { category: "INTEG",    title: "Pricing intelligence integration",  detail: "Competitor data not fed into pricing decision tool" },
-      { category: "MODEL",    title: "Share elasticity model",            detail: "No model linking promo depth to share recovery" },
-      { category: "WORKFLOW", title: "Competitive intel to category mgr", detail: "Insights surface in weekly PDF, not real-time alerts" },
+      { category: "DATA", title: "Real-time competitor SKU coverage", detail: "Coverage limited to top 200 SKUs, weekly cadence", confidenceLiftPp: 3, solution: "Real-Time Pricing Intelligence" },
+      { category: "SIGNAL", title: "Customer switching pattern signal", detail: "Loyalty data does not capture cross-shop behaviour", confidenceLiftPp: 2, solution: "Customer Health Score" },
+      { category: "INTEG", title: "Pricing intelligence integration", detail: "Competitor data not fed into pricing decision tool", confidenceLiftPp: 3, solution: "Pricing Decision Bridge" },
+      { category: "MODEL", title: "Share elasticity model", detail: "No model linking promo depth to share recovery", confidenceLiftPp: 2, solution: "Share Elasticity Modeller" },
+      { category: "WORKFLOW", title: "Competitive intel to category mgr", detail: "Insights surface in weekly PDF, not real-time alerts", confidenceLiftPp: 1, solution: "Insight Routing Workflow" },
     ],
     gapsPipelineUsd: "$2.9M indicative pipeline",
     counterArgs: [
       { title: "Share loss is temporary noise", ci: "8% CI", detail: "Three consecutive quarters of decline rule out noise; trend is statistically significant." },
-      { title: "Caused by Mercer assortment change", ci: "6% CI", detail: "No material assortment changes in Q3; ruled out by category audit." },
+      { title: "Caused by Meridian Industrial assortment change", ci: "6% CI", detail: "No material assortment changes in Q3; ruled out by category audit." },
     ],
   },
   {
@@ -230,6 +234,7 @@ export const LAYERS: LayerData[] = [
     confidence: 82,
     sources: 10,
     diagnosedAt: "Oct 14, 2026 · 03:09 CT",
+    analystTake: "Trade churn is service-driven, not price-driven \u2014 which means customer recovery is gated on supply chain recovery being visible to those accounts within 30 days.",
     metrics: [
       { label: "Trade customer churn",   value: "18%",    sub: "vs 11% baseline",   tone: "bad"  },
       { label: "Lifetime value",         value: "$8,400", sub: "down 12%",          tone: "bad"  },
@@ -272,11 +277,11 @@ export const LAYERS: LayerData[] = [
     ],
     actionsRecoveryUsd: "$2.1M predicted recovery",
     gaps: [
-      { category: "MODEL",    title: "Customer health score real-time", detail: "Score is weekly; should fire on event" },
-      { category: "INTEG",    title: "CRM-to-supply chain integration", detail: "AMs cannot see ETA on customer-impacting OOS" },
-      { category: "DATA",     title: "Customer service interaction logging", detail: "Phone interactions not coded for sentiment" },
-      { category: "SIGNAL",   title: "Churn early warning",             detail: "No leading indicator surfaces 30+ days out" },
-      { category: "WORKFLOW", title: "At-risk customer to AM workflow", detail: "Daily list goes to a shared inbox, not assigned" },
+      { category: "MODEL", title: "Customer health score real-time", detail: "Score is weekly; should fire on event", confidenceLiftPp: 3, solution: "Customer Health Score" },
+      { category: "INTEG", title: "CRM-to-supply chain integration", detail: "AMs cannot see ETA on customer-impacting OOS", confidenceLiftPp: 2, solution: "CRM \u2194 WMS Bridge" },
+      { category: "DATA", title: "Customer service interaction logging", detail: "Phone interactions not coded for sentiment", confidenceLiftPp: 2, solution: "Voice Sentiment Coder" },
+      { category: "SIGNAL", title: "Churn early warning", detail: "No leading indicator surfaces 30+ days out", confidenceLiftPp: 3, solution: "Churn Early-Warning Model" },
+      { category: "WORKFLOW", title: "At-risk customer to AM workflow", detail: "Daily list goes to a shared inbox, not assigned", confidenceLiftPp: 2, solution: "Recovery Workflow Router" },
     ],
     gapsPipelineUsd: "$1.6M indicative pipeline",
     counterArgs: [
@@ -292,6 +297,7 @@ export const LAYERS: LayerData[] = [
     confidence: 76,
     sources: 8,
     diagnosedAt: "Oct 13, 2026 · 19:34 CT",
+    analystTake: "73% of the negative-sentiment cluster traces to availability and delivery \u2014 this is the supply chain story showing up in the brand layer, and PR has to move in step with operations.",
     metrics: [
       { label: "Brand sentiment",          value: "62%",    sub: "down 8pp positive", tone: "bad"  },
       { label: "Share of voice",           value: "11.8%",  sub: "down 4pp",          tone: "bad"  },
@@ -326,20 +332,20 @@ export const LAYERS: LayerData[] = [
     actions: [
       { title: "PR programme on supply recovery",   detail: "Regional press outreach in DFW and Phoenix",     impact: "$0.4M" },
       { title: "SEO content refresh, top 30 pages", detail: "Rewrite + structured data for category pages",   impact: "$0.3M" },
-      { title: "Targeted paid search in regions",   detail: "Defensive bidding on Mercer + competitor terms", impact: "$0.5M" },
+      { title: "Targeted paid search in regions",   detail: "Defensive bidding on Meridian Industrial + competitor terms", impact: "$0.5M" },
       { title: "Influencer programme, DIY + Garden",detail: "12 creators, six-week activation",                impact: "$0.3M" },
     ],
     actionsRecoveryUsd: "$1.5M predicted recovery",
     gaps: [
-      { category: "DATA",     title: "Regional sentiment granularity",    detail: "National roll-up only; cannot target by metro" },
-      { category: "SIGNAL",   title: "Owned content to demand signal link",detail: "No model from on-site engagement to category demand" },
-      { category: "MODEL",    title: "Brand health to operational KPI",   detail: "Brand metrics not in operational dashboard" },
-      { category: "INTEG",    title: "Search ranking integration into CMS",detail: "Rank changes not visible to content team" },
-      { category: "WORKFLOW", title: "Sentiment alert to comms team",     detail: "Reactive only; alerts fire after press cycle" },
+      { category: "DATA", title: "Regional sentiment granularity", detail: "National roll-up only; cannot target by metro", confidenceLiftPp: 2, solution: "Brand Pulse \u2014 Regional" },
+      { category: "SIGNAL", title: "Owned content to demand signal link", detail: "No model from on-site engagement to category demand", confidenceLiftPp: 2, solution: "Content-to-Demand Modeller" },
+      { category: "MODEL", title: "Brand health to operational KPI", detail: "Brand metrics not in operational dashboard", confidenceLiftPp: 2, solution: "Brand Health Bridge" },
+      { category: "INTEG", title: "Search ranking integration into CMS", detail: "Rank changes not visible to content team", confidenceLiftPp: 2, solution: "Search Rank Connector" },
+      { category: "WORKFLOW", title: "Sentiment alert to comms team", detail: "Reactive only; alerts fire after press cycle", confidenceLiftPp: 2, solution: "Sentiment Alert Workflow" },
     ],
     gapsPipelineUsd: "$1.2M indicative pipeline",
     counterArgs: [
-      { title: "Decline is global category, not Mercer", ci: "9% CI", detail: "Home Depot sentiment up 2pp in same period; rejects category-wide explanation." },
+      { title: "Decline is global category, not Meridian Industrial", ci: "9% CI", detail: "Home Depot sentiment up 2pp in same period; rejects category-wide explanation." },
       { title: "Single PR incident driving cluster", ci: "5% CI", detail: "Sentiment decline spread across 12 outlets; not single-incident." },
     ],
   },
@@ -351,6 +357,7 @@ export const LAYERS: LayerData[] = [
     confidence: 89,
     sources: 12,
     diagnosedAt: "Oct 14, 2026 · 04:22 CT",
+    analystTake: "Two simultaneous constraints, not a single failure \u2014 and the Supplier C activation that the Q4 plan rests on is already in legal review.",
     metrics: [
       { label: "OOS days top 5 SKUs", value: "41",  sub: "target 5",         tone: "bad"  },
       { label: "Supplier OTD",        value: "78%", sub: "was 91%",          tone: "bad"  },
@@ -387,11 +394,11 @@ export const LAYERS: LayerData[] = [
     ],
     actionsRecoveryUsd: "$2.0M predicted recovery",
     gaps: [
-      { category: "DATA",     title: "Supplier production data",            detail: "No real-time line view from tier-1 suppliers" },
-      { category: "MODEL",    title: "DC capacity forecasting",             detail: "Capacity model assumes static labour pool" },
-      { category: "WORKFLOW", title: "POS to replenishment trigger",        detail: "Replenishment runs nightly, not event-driven" },
-      { category: "SIGNAL",   title: "Weather signal in forecast",          detail: "Regional weather not feeding demand model" },
-      { category: "INTEG",    title: "Multi-supplier orchestration",        detail: "No system to route demand across qualified suppliers" },
+      { category: "DATA", title: "Supplier production data", detail: "No real-time line view from tier-1 suppliers", confidenceLiftPp: 3, solution: "Supplier Telemetry Feed" },
+      { category: "MODEL", title: "DC capacity forecasting", detail: "Capacity model assumes static labour pool", confidenceLiftPp: 2, solution: "DC Capacity Modeller" },
+      { category: "WORKFLOW", title: "POS to replenishment trigger", detail: "Replenishment runs nightly, not event-driven", confidenceLiftPp: 2, solution: "Stockout-to-PO Trigger" },
+      { category: "SIGNAL", title: "Weather signal in forecast", detail: "Regional weather not feeding demand model", confidenceLiftPp: 2, solution: "Weather Signal Feed" },
+      { category: "INTEG", title: "Multi-supplier orchestration", detail: "No system to route demand across qualified suppliers", confidenceLiftPp: 2, solution: "Multi-Supplier Router" },
     ],
     gapsPipelineUsd: "$2.1M indicative pipeline",
     counterArgs: [
@@ -407,6 +414,7 @@ export const LAYERS: LayerData[] = [
     confidence: 91,
     sources: 13,
     diagnosedAt: "Oct 14, 2026 · 06:11 CT",
+    analystTake: "Promotional matching defended unit volume but compressed margin 240bps with no share recovery \u2014 the discipline reset is overdue, not aggressive.",
     metrics: [
       { label: "Gross margin",                value: "38.2%", sub: "down 240bps",        tone: "bad"  },
       { label: "Promo intensity",             value: "32%",   sub: "+14pp of sales",     tone: "warn" },
@@ -443,11 +451,11 @@ export const LAYERS: LayerData[] = [
     ],
     actionsRecoveryUsd: "$2.4M predicted recovery",
     gaps: [
-      { category: "DATA",     title: "Real-time competitor pricing",      detail: "4–7 day lag, blocks day-of decisions" },
-      { category: "MODEL",    title: "Margin elasticity model",            detail: "Pre-supply-shock; underestimates current sensitivity" },
-      { category: "WORKFLOW", title: "Pricing decision audit trail",       detail: "Manual approval chain, no decision logging" },
-      { category: "SIGNAL",   title: "Cost signal from suppliers",         detail: "Cost changes arrive in PO, not as forward signal" },
-      { category: "INTEG",    title: "Pricing to ERP propagation",         detail: "Two-system manual sync delays activation by 48h" },
+      { category: "DATA", title: "Real-time competitor pricing", detail: "4\u20137 day lag, blocks day-of decisions", confidenceLiftPp: 3, solution: "Real-Time Pricing Intelligence" },
+      { category: "MODEL", title: "Margin elasticity model", detail: "Pre-supply-shock; underestimates current sensitivity", confidenceLiftPp: 3, solution: "Margin Elasticity Modeller" },
+      { category: "WORKFLOW", title: "Pricing decision audit trail", detail: "Manual approval chain, no decision logging", confidenceLiftPp: 1, solution: "Decision Audit Log" },
+      { category: "SIGNAL", title: "Cost signal from suppliers", detail: "Cost changes arrive in PO, not as forward signal", confidenceLiftPp: 2, solution: "Cost Forecasting Engine" },
+      { category: "INTEG", title: "Pricing to ERP propagation", detail: "Two-system manual sync delays activation by 48h", confidenceLiftPp: 2, solution: "Pricing Decision Bridge" },
     ],
     gapsPipelineUsd: "$2.6M indicative pipeline",
     counterArgs: [
@@ -463,6 +471,7 @@ export const LAYERS: LayerData[] = [
     confidence: 73,
     sources: 7,
     diagnosedAt: "Oct 13, 2026 · 21:08 CT",
+    analystTake: "Headline coverage looks healthy, but stage-by-stage progression has decayed in the regions doing most of the lifting \u2014 the risk is hidden by the average.",
     metrics: [
       { label: "Pipeline coverage", value: "1.8x",     sub: "need 2.5x",    tone: "bad"  },
       { label: "Win rate",          value: "24%",      sub: "vs 31%",       tone: "bad"  },
@@ -470,7 +479,7 @@ export const LAYERS: LayerData[] = [
       { label: "Forecast accuracy", value: "61%",      sub: "vs 78%",       tone: "bad"  },
     ],
     narrative:
-      "B2B trade pipeline is materially undercovered for Q4 forecast. Mid-funnel stall in deals over $100k and 12 large deal slippages tell a single story: enterprise approval cycles materially lengthened post-budget season, and Mercer's sales motion has not adapted. Coverage at 1.8x against a need of 2.5x means we cannot make the forecast on natural conversion alone; targeted acceleration is required on the top 20 stalled deals.",
+      "B2B trade pipeline is materially undercovered for Q4 forecast. Mid-funnel stall in deals over $100k and 12 large deal slippages tell a single story: enterprise approval cycles materially lengthened post-budget season, and Meridian Industrial's sales motion has not adapted. Coverage at 1.8x against a need of 2.5x means we cannot make the forecast on natural conversion alone; targeted acceleration is required on the top 20 stalled deals.",
     causes: [
       { title: "Mid-funnel stall in enterprise segment", impact: "-$3.4M Q4 risk",
         detail: "Deals over $100k stuck at stage 3 for 38+ days; budget-cycle delays at 9 named accounts." },
@@ -504,11 +513,11 @@ export const LAYERS: LayerData[] = [
     ],
     actionsRecoveryUsd: "$3.6M predicted recovery",
     gaps: [
-      { category: "DATA",     title: "Stage progression data quality", detail: "Stage transitions logged manually; 22% missing dates" },
-      { category: "SIGNAL",   title: "Buyer signal monitoring",        detail: "No external buying-intent feed for trade segment" },
-      { category: "INTEG",    title: "CRM to pricing integration",     detail: "AEs cannot quote with current pricing inside CRM" },
-      { category: "MODEL",    title: "Forecast model recalibration",   detail: "Model uses 2024 win-rate; needs Q3 26 refresh" },
-      { category: "WORKFLOW", title: "Deal review automation",         detail: "Weekly deal reviews driven by manual spreadsheet pull" },
+      { category: "DATA", title: "Stage progression data quality", detail: "Stage transitions logged manually; 22% missing dates", confidenceLiftPp: 2, solution: "Pipeline Health Scorer" },
+      { category: "SIGNAL", title: "Buyer signal monitoring", detail: "No external buying-intent feed for trade segment", confidenceLiftPp: 3, solution: "Buyer Intent Feed" },
+      { category: "INTEG", title: "CRM to pricing integration", detail: "AEs cannot quote with current pricing inside CRM", confidenceLiftPp: 2, solution: "Pricing Decision Bridge" },
+      { category: "MODEL", title: "Forecast model recalibration", detail: "Model uses 2024 win-rate; needs Q3 26 refresh", confidenceLiftPp: 3, solution: "Forecast Recalibration Engine" },
+      { category: "WORKFLOW", title: "Deal review automation", detail: "Weekly deal reviews driven by manual spreadsheet pull", confidenceLiftPp: 1, solution: "Deal Review Workflow" },
     ],
     gapsPipelineUsd: "$2.2M indicative pipeline",
     counterArgs: [
@@ -524,6 +533,7 @@ export const LAYERS: LayerData[] = [
     confidence: 74,
     sources: 9,
     diagnosedAt: "Oct 13, 2026 · 23:47 CT",
+    analystTake: "Top-of-funnel spend is intact; channel mix and creative fatigue are eating the return \u2014 the issue is allocation, not budget.",
     metrics: [
       { label: "CAC",                          value: "$186",   sub: "+31%",            tone: "bad"  },
       { label: "Marketing-influenced revenue", value: "$12.4M", sub: "-8%",             tone: "warn" },
@@ -563,15 +573,15 @@ export const LAYERS: LayerData[] = [
     ],
     actionsRecoveryUsd: "$1.8M predicted recovery",
     gaps: [
-      { category: "MODEL",    title: "Multi-touch attribution",         detail: "Single-touch model masks paid-search role" },
-      { category: "DATA",     title: "Retention to acquisition link",   detail: "Cohort retention not joined to acquisition source" },
-      { category: "SIGNAL",   title: "Creative performance signal",     detail: "Fatigue detected after the fact, not predicted" },
-      { category: "WORKFLOW", title: "MMM to channel team workflow",    detail: "Quarterly MMM reports not actioned mid-quarter" },
-      { category: "INTEG",    title: "Marketing tech to BI integration",detail: "Ad platforms not piped into central BI cube" },
+      { category: "MODEL", title: "Multi-touch attribution", detail: "Single-touch model masks paid-search role", confidenceLiftPp: 3, solution: "Attribution Hub" },
+      { category: "DATA", title: "Retention to acquisition link", detail: "Cohort retention not joined to acquisition source", confidenceLiftPp: 2, solution: "Cohort Linker" },
+      { category: "SIGNAL", title: "Creative performance signal", detail: "Fatigue detected after the fact, not predicted", confidenceLiftPp: 2, solution: "Creative Fatigue Detector" },
+      { category: "WORKFLOW", title: "MMM to channel team workflow", detail: "Quarterly MMM reports not actioned mid-quarter", confidenceLiftPp: 1, solution: "MMM Action Router" },
+      { category: "INTEG", title: "Marketing tech to BI integration", detail: "Ad platforms not piped into central BI cube", confidenceLiftPp: 2, solution: "MarTech \u2194 BI Connector" },
     ],
     gapsPipelineUsd: "$1.4M indicative pipeline",
     counterArgs: [
-      { title: "CAC rise is industry-wide", ci: "8% CI", detail: "Peer benchmarks show 14% CAC rise; remainder is Mercer-specific." },
+      { title: "CAC rise is industry-wide", ci: "8% CI", detail: "Peer benchmarks show 14% CAC rise; remainder is Meridian Industrial-specific." },
       { title: "Brand pull weakness is root cause", ci: "11% CI", detail: "Branded search volume flat YoY; brand pull not deteriorated." },
     ],
   },
@@ -583,6 +593,7 @@ export const LAYERS: LayerData[] = [
     confidence: 78,
     sources: 8,
     diagnosedAt: "Oct 14, 2026 · 01:55 CT",
+    analystTake: "Six critical unfilled roles map directly onto the three functions driving the Q3 variance \u2014 staffing risk is upstream of operating risk.",
     metrics: [
       { label: "Voluntary attrition",   value: "19%", sub: "target 12%",     tone: "bad"  },
       { label: "Productivity index",    value: "92",  sub: "vs 100 baseline", tone: "warn" },
@@ -624,16 +635,16 @@ export const LAYERS: LayerData[] = [
     ],
     actionsRecoveryUsd: "$1.4M predicted recovery",
     gaps: [
-      { category: "SIGNAL",   title: "Engagement signal real-time", detail: "Engagement measured quarterly; need pulse cadence" },
-      { category: "MODEL",    title: "Workforce-to-output model",   detail: "No model linking headcount to throughput recovery" },
-      { category: "INTEG",    title: "HRIS to ops integration",     detail: "Operations dashboards do not show staffing gaps" },
-      { category: "DATA",     title: "Exit reason coding",          detail: "Free-text only; not codified for analysis" },
-      { category: "WORKFLOW", title: "Manager intervention workflow",detail: "No automated nudge to managers on attrition risk" },
+      { category: "SIGNAL", title: "Engagement signal real-time", detail: "Engagement measured quarterly; need pulse cadence", confidenceLiftPp: 3, solution: "Engagement Pulse Module" },
+      { category: "MODEL", title: "Workforce-to-output model", detail: "No model linking headcount to throughput recovery", confidenceLiftPp: 2, solution: "Workforce Risk Detector" },
+      { category: "INTEG", title: "HRIS to ops integration", detail: "Operations dashboards do not show staffing gaps", confidenceLiftPp: 2, solution: "HRIS \u2194 Ops Bridge" },
+      { category: "DATA", title: "Exit reason coding", detail: "Free-text only; not codified for analysis", confidenceLiftPp: 1, solution: "Exit Reason Coder" },
+      { category: "WORKFLOW", title: "Manager intervention workflow", detail: "No automated nudge to managers on attrition risk", confidenceLiftPp: 2, solution: "Attrition Alert Workflow" },
     ],
     gapsPipelineUsd: "$1.1M indicative pipeline",
     counterArgs: [
       { title: "Compensation alone fixes it", ci: "10% CI", detail: "Comp-only modelled recovery is 41%; structural workload also contributes." },
-      { title: "Industry-wide labour effect", ci: "8% CI",  detail: "Peer DC attrition averages 18%; Mercer 27% is Mercer-specific." },
+      { title: "Industry-wide labour effect", ci: "8% CI",  detail: "Peer DC attrition averages 18%; Meridian Industrial 27% is Meridian Industrial-specific." },
     ],
   },
   {
@@ -644,6 +655,7 @@ export const LAYERS: LayerData[] = [
     confidence: 91,
     sources: 11,
     diagnosedAt: "Oct 14, 2026 · 06:42 CT",
+    analystTake: "Cash is holding only because working capital tightened, not because earnings did \u2014 and the cushion narrows fast if any Q4 recovery lever slips.",
     metrics: [
       { label: "Operating cash flow", value: "$24.2M", sub: "vs $19.4M plan",   tone: "good" },
       { label: "EBITDA",              value: "$14.5M", sub: "vs $21.0M plan",   tone: "bad"  },
@@ -685,11 +697,11 @@ export const LAYERS: LayerData[] = [
     ],
     actionsRecoveryUsd: "$3.3M predicted recovery",
     gaps: [
-      { category: "DATA",     title: "Real-time spend telemetry",   detail: "Cloud spend visible weekly via vendor portal, not in BI" },
-      { category: "INTEG",    title: "ERP ↔ banking integration",   detail: "Cash position computed nightly via batch upload" },
-      { category: "MODEL",    title: "Cash forecasting model",      detail: "Direct method only; no rolling 13-week indirect view" },
-      { category: "SIGNAL",   title: "Vendor cost change feed",     detail: "Supplier price increases discovered at invoice, not negotiation" },
-      { category: "WORKFLOW", title: "Budget reforecast workflow",  detail: "Quarterly cycle only; no in-quarter envelope reset trigger" },
+      { category: "DATA", title: "Real-time spend telemetry", detail: "Cloud spend visible weekly via vendor portal, not in BI", confidenceLiftPp: 2, solution: "Spend Telemetry Feed" },
+      { category: "INTEG", title: "ERP ↔ banking integration", detail: "Cash position computed nightly via batch upload", confidenceLiftPp: 2, solution: "Banking Connector" },
+      { category: "MODEL", title: "Cash forecasting model", detail: "Direct method only; no rolling 13-week indirect view", confidenceLiftPp: 3, solution: "Cash Forecasting Engine" },
+      { category: "SIGNAL", title: "Vendor cost change feed", detail: "Supplier price increases discovered at invoice, not negotiation", confidenceLiftPp: 2, solution: "Cost Forecasting Engine" },
+      { category: "WORKFLOW", title: "Budget reforecast workflow", detail: "Quarterly cycle only; no in-quarter envelope reset trigger", confidenceLiftPp: 2, solution: "Reforecast Workflow" },
     ],
     gapsPipelineUsd: "$1.7M indicative pipeline",
     counterArgs: [
@@ -705,6 +717,7 @@ export const LAYERS: LayerData[] = [
     confidence: 84,
     sources: 7,
     diagnosedAt: "Oct 14, 2026 · 06:42 CT",
+    analystTake: "Six accounts concentrate most of the past-due exposure, and four are protected by evergreen MSAs \u2014 recovery here is goodwill, not contract.",
     metrics: [
       { label: "Total outstanding", value: "$40.5M", sub: "724 open invoices",   tone: "neutral" },
       { label: "Past 60 days",      value: "$10.9M", sub: "27% of book",          tone: "bad"     },
@@ -749,15 +762,15 @@ export const LAYERS: LayerData[] = [
     ],
     actionsRecoveryUsd: "$2.9M predicted recovery",
     gaps: [
-      { category: "DATA",     title: "Promise-to-pay tracking",     detail: "Verbal commitments captured in notes, not structured" },
-      { category: "INTEG",    title: "Receivables ↔ CRM integration", detail: "AMs see invoice status one click away, not in account view" },
-      { category: "MODEL",    title: "Payment-risk model",          detail: "No predictive model on late-payment risk by account" },
-      { category: "WORKFLOW", title: "Recovery + churn shared queue", detail: "Collections and CSM work the same 6 accounts in parallel" },
-      { category: "SIGNAL",   title: "Bank file matching",          detail: "12% of payments require manual matching to invoice" },
+      { category: "DATA", title: "Promise-to-pay tracking", detail: "Verbal commitments captured in notes, not structured", confidenceLiftPp: 2, solution: "Promise-to-Pay Tracker" },
+      { category: "INTEG", title: "Receivables ↔ CRM integration", detail: "AMs see invoice status one click away, not in account view", confidenceLiftPp: 2, solution: "Receivables \u2194 CRM Bridge" },
+      { category: "MODEL", title: "Payment-risk model", detail: "No predictive model on late-payment risk by account", confidenceLiftPp: 3, solution: "Receivables Risk Modeller" },
+      { category: "WORKFLOW", title: "Recovery + churn shared queue", detail: "Collections and CSM work the same 6 accounts in parallel", confidenceLiftPp: 2, solution: "Recovery Workflow Router" },
+      { category: "SIGNAL", title: "Bank file matching", detail: "12% of payments require manual matching to invoice", confidenceLiftPp: 1, solution: "Bank File Matcher" },
     ],
     gapsPipelineUsd: "$1.3M indicative pipeline",
     counterArgs: [
-      { title: "Macro tightening explains slowdown",  ci: "14% CI", detail: "Sector peers report DSO drift of +2–3 days; Mercer +4 days is partly macro, partly account-specific." },
+      { title: "Macro tightening explains slowdown",  ci: "14% CI", detail: "Sector peers report DSO drift of +2–3 days; Meridian Industrial +4 days is partly macro, partly account-specific." },
       { title: "Concentration is structural, not new",ci: "9% CI",  detail: "The top 6 debtors have always carried >50% of book; magnitude is new, mix is not." },
     ],
   },
@@ -769,6 +782,7 @@ export const LAYERS: LayerData[] = [
     confidence: 79,
     sources: 9,
     diagnosedAt: "Oct 14, 2026 · 06:42 CT",
+    analystTake: "Funnel quality, not late-stage drop-off, is the constraint \u2014 and two DC regions plus the lead data-engineer slot close 80% of the Q4 staffing risk.",
     metrics: [
       { label: "Open critical roles", value: "24",   sub: "vs 8 target",       tone: "bad"  },
       { label: "Time-to-fill",        value: "53d",  sub: "vs 32d target",     tone: "bad"  },
@@ -812,15 +826,15 @@ export const LAYERS: LayerData[] = [
     ],
     actionsRecoveryUsd: "$1.6M predicted recovery",
     gaps: [
-      { category: "DATA",     title: "Source-of-hire attribution",  detail: "Job board attribution missing for 31% of applicants" },
-      { category: "MODEL",    title: "Quality-of-hire model",       detail: "90-day performance not linked back to sourcing channel" },
-      { category: "INTEG",    title: "ATS ↔ HRIS integration",      detail: "Greenhouse to Workday handoff still manual for 12% of joiners" },
-      { category: "SIGNAL",   title: "Engagement pulse cadence",    detail: "Annual survey only; cannot detect mid-quarter risk" },
-      { category: "WORKFLOW", title: "Offer approval workflow",     detail: "5-step approval; market data shows 48-hour offer window now standard" },
+      { category: "DATA", title: "Source-of-hire attribution", detail: "Job board attribution missing for 31% of applicants", confidenceLiftPp: 2, solution: "Source-to-Hire Tracker" },
+      { category: "MODEL", title: "Quality-of-hire model", detail: "90-day performance not linked back to sourcing channel", confidenceLiftPp: 2, solution: "Quality-of-Hire Modeller" },
+      { category: "INTEG", title: "ATS ↔ HRIS integration", detail: "Greenhouse to Workday handoff still manual for 12% of joiners", confidenceLiftPp: 2, solution: "ATS \u2194 HRIS Bridge" },
+      { category: "SIGNAL", title: "Engagement pulse cadence", detail: "Annual survey only; cannot detect mid-quarter risk", confidenceLiftPp: 3, solution: "Engagement Pulse Module" },
+      { category: "WORKFLOW", title: "Offer approval workflow", detail: "5-step approval; market data shows 48-hour offer window now standard", confidenceLiftPp: 1, solution: "Offer Approval Workflow" },
     ],
     gapsPipelineUsd: "$1.2M indicative pipeline",
     counterArgs: [
-      { title: "Macro labour market the cause",  ci: "12% CI", detail: "Peer median time-to-fill is 41 days; Mercer 53 is partly macro, mostly Mercer-specific." },
+      { title: "Macro labour market the cause",  ci: "12% CI", detail: "Peer median time-to-fill is 41 days; Meridian Industrial 53 is partly macro, mostly Meridian Industrial-specific." },
       { title: "Hiring slowdown is intentional", ci: "16% CI", detail: "CFO requested Q3 hiring freeze on 8 non-critical reqs; included in 24 open count." },
     ],
   },
@@ -832,6 +846,7 @@ export const LAYERS: LayerData[] = [
     confidence: 81,
     sources: 8,
     diagnosedAt: "Oct 14, 2026 · 06:42 CT",
+    analystTake: "Three quiet contract clusters silently amplify the Q3 variance, and the Q4 plan rests on a supplier agreement that has been in legal review for 23 days.",
     metrics: [
       { label: "Active contracts",       value: "412",   sub: "supplier, customer, labour",         tone: "neutral" },
       { label: "Expiring next 90 days",  value: "37",    sub: "$11.2M annualised value",            tone: "warn"    },
@@ -875,11 +890,11 @@ export const LAYERS: LayerData[] = [
     ],
     actionsRecoveryUsd: "$2.3M predicted recovery",
     gaps: [
-      { category: "DATA",     title: "Unified contract repository",      detail: "Contracts split across SharePoint, DocuSign and email — no single source of truth" },
-      { category: "MODEL",    title: "ETF and penalty exposure model",   detail: "No automatic surfacing of early-termination or shortfall-penalty exposure across the book" },
-      { category: "WORKFLOW", title: "Renewal review cadence",           detail: "62 evergreen contracts auto-renew with no scheduled review touchpoint" },
-      { category: "INTEG",    title: "Contract terms → ERP propagation", detail: "Payment terms, SLAs and price escalators are not flowed into the transactional system" },
-      { category: "SIGNAL",   title: "Counterparty financial health",    detail: "No early-warning signal when a supplier or customer's public filings change" },
+      { category: "DATA", title: "Unified contract repository", detail: "Contracts split across SharePoint, DocuSign and email \u2014 no single source of truth", confidenceLiftPp: 3, solution: "Contract Repository Module" },
+      { category: "MODEL", title: "ETF and penalty exposure model", detail: "No automatic surfacing of early-termination or shortfall-penalty exposure across the book", confidenceLiftPp: 3, solution: "Contract Exposure Tracker" },
+      { category: "WORKFLOW", title: "Renewal review cadence", detail: "62 evergreen contracts auto-renew with no scheduled review touchpoint", confidenceLiftPp: 2, solution: "Renewal Review Workflow" },
+      { category: "INTEG", title: "Contract terms → ERP propagation", detail: "Payment terms, SLAs and price escalators are not flowed into the transactional system", confidenceLiftPp: 2, solution: "Contract \u2194 ERP Bridge" },
+      { category: "SIGNAL", title: "Counterparty financial health", detail: "No early-warning signal when a supplier or customer's public filings change", confidenceLiftPp: 2, solution: "Counterparty Health Signal" },
     ],
     gapsPipelineUsd: "$3.4M indicative pipeline",
     counterArgs: [

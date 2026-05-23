@@ -298,14 +298,14 @@ export default function CompanyPicker() {
     // Narrate step — second LLM call. Rewrites every layer's narrative + 3
     // causes + 4 actions in this company's authentic voice so each report
     // page actually reads as if it were written for them. Without this step
-    // the deep panels still tell a Mercer-shaped story with word swaps only.
+    // the deep panels still tell a Meridian Industrial-shaped story with word swaps only.
     //
     // We post the (already vocab-swapped) skeleton so the LLM has a concrete
     // structural template to rewrite — keeping LAYERS as the single source of
     // truth and avoiding a duplicate server-side copy that could drift.
     //
     // Failure here is non-fatal: the seeded profile is still usable; layers
-    // simply fall through to the vocab-swapped Mercer text (logical filler).
+    // simply fall through to the vocab-swapped Meridian Industrial text (logical filler).
     updateSeedStep("narrate", { status: "running" });
     const narrateStart = performance.now();
     let layerOverrides: CompanyProfile["layerOverrides"] = undefined;
@@ -497,7 +497,7 @@ export default function CompanyPicker() {
           {profile.id !== DEFAULT_PROFILE_ID && (
             <button onClick={resetToDefault}
                     className="px-4 flex items-center gap-1.5 font-sans text-[11px] uppercase tracking-wider text-[var(--slate)] hover:text-[var(--navy)]">
-              <RotateCcw size={11} strokeWidth={1.8} /> Reset to Mercer
+              <RotateCcw size={11} strokeWidth={1.8} /> Reset to Meridian Industrial
             </button>
           )}
         </div>

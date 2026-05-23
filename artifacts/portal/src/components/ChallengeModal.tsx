@@ -39,12 +39,12 @@ export default function ChallengeModal({ layer, onClose }: { layer: LayerData; o
   const CHANGE_CRITERIA = useSwap(CHANGE_CRITERIA_RAW);
   const { resolve } = useCompany();
   const isDefault = useIsDefaultProfile();
-  // The default falsification criteria are Mercer-shaped (Tractor Supply, HD,
+  // The default falsification criteria are Meridian Industrial-shaped (Tractor Supply, HD,
   // OOS days top 5 SKUs). For non-default profiles, show an empty list so the
   // wrong-brand criteria can't render.
   const criteria = isDefault ? (CHANGE_CRITERIA[layer.key] ?? CHANGE_CRITERIA.default) : [];
   const challengePlaceholder = isDefault
-    ? resolve("e.g. The DIY variance is macro-driven, not Mercer-specific. Tractor Supply's Q3 print will show similar softness.")
+    ? resolve("e.g. The DIY variance is macro-driven, not Meridian Industrial-specific. Tractor Supply's Q3 print will show similar softness.")
     : "e.g. The variance is macro-driven, not company-specific. Peer prints this quarter will show similar softness.";
 
   return (

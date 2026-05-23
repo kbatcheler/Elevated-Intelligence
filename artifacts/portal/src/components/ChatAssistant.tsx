@@ -8,7 +8,7 @@ import type { LayerData } from "../data/layers";
 
 // Build a set of suggested chat prompts grounded in the actually-seeded
 // company's layer data — metric movers, top causes, top recommended actions.
-// Unlike static SUGGESTED (which is just vocab-swapped Mercer copy), these
+// Unlike static SUGGESTED (which is just vocab-swapped Meridian Industrial copy), these
 // reference the seeded company's real signals so they feel like "questions
 // the system already has answers to."
 function buildGroundedSuggestions(layers: LayerData[]): string[] {

@@ -134,7 +134,7 @@ export const FEEDS: Record<string, DataFeed[]> = {
     { source: "Lattice — performance + 1:1s",     type: "Survey", cadence: "Quarterly",     lastSync: "67d ago",  completeness: 100, status: "stale", pipelineUsd: "$0.3M", pipelineNote: "Annual cadence cannot detect mid-quarter risk" },
     { source: "Kronos — time + attendance",       type: "HRIS",   cadence: "Hourly",        lastSync: "33m ago",  completeness: 94,  status: "live" },
     { source: "Quality-of-hire model",            type: "Model",  cadence: "—",             lastSync: "Never",    completeness: 0,   status: "missing", pipelineUsd: "$0.3M", pipelineNote: "90-day performance not linked to sourcing channel" },
-    { source: "Comp benchmarking — Mercer survey",type: "External", cadence: "Annual",      lastSync: "240d ago", completeness: 100, status: "stale" },
+    { source: "Comp benchmarking — Meridian Industrial survey",type: "External", cadence: "Annual",      lastSync: "240d ago", completeness: 100, status: "stale" },
     { source: "Offer approval workflow",          type: "Audit",  cadence: "—",             lastSync: "Never",    completeness: 0,   status: "missing", pipelineUsd: "$0.2M", pipelineNote: "5-step approval; market window is now 48h" },
   ],
   "people-operations": [
@@ -144,7 +144,7 @@ export const FEEDS: Record<string, DataFeed[]> = {
     { source: "Lattice — performance + engagement",type: "Survey", cadence: "Quarterly",     lastSync: "67d ago",  completeness: 100, status: "stale", pipelineUsd: "$0.3M", pipelineNote: "Engagement measured quarterly; need pulse cadence" },
     { source: "Exit reason coding — free-text",    type: "Manual", cadence: "Manual",        lastSync: "1d ago",   completeness: 41,  status: "partial", pipelineUsd: "$0.2M", pipelineNote: "Free-text only; not codified for analysis" },
     { source: "HRIS ↔ ops dashboard integration",  type: "EDI",    cadence: "—",             lastSync: "Never",    completeness: 0,   status: "missing", pipelineUsd: "$0.3M", pipelineNote: "Operations dashboards do not show staffing gaps" },
-    { source: "Mercer comp benchmarking",          type: "External", cadence: "Annual",      lastSync: "240d ago", completeness: 100, status: "stale" },
+    { source: "Meridian Industrial comp benchmarking",          type: "External", cadence: "Annual",      lastSync: "240d ago", completeness: 100, status: "stale" },
     { source: "Manager nudge workflow",            type: "Model",  cadence: "—",             lastSync: "Never",    completeness: 0,   status: "missing", pipelineUsd: "$0.2M", pipelineNote: "No automated nudge on attrition risk" },
   ],
 };

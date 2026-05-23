@@ -30,7 +30,7 @@ import CompanyPicker from "./components/CompanyPicker";
 import CompanyBootSplash from "./components/CompanyBootSplash";
 import { useApp } from "./context/AppContext";
 import { useCompany } from "./context/CompanyContext";
-import { MERCER } from "./data/companies";
+import { MERIDIAN } from "./data/companies";
 import { DEFAULT_PROFILE_ID } from "./data/companies";
 
 type NavItem = { key: string; label: string; group: string; icon: any; status: "good" | "warn" | "bad" };
@@ -159,7 +159,7 @@ export default function App() {
                 {isCustomProfile && (
                   <button onClick={() => { setClientOpen(false); resetToDefault(); }}
                           className="w-full text-left px-4 py-2.5 flex items-center justify-between hover:bg-[var(--cream-light)]">
-                    <div className="font-sans text-[12px] text-[var(--slate)] italic">Reset to {MERCER.name} (default demo)</div>
+                    <div className="font-sans text-[12px] text-[var(--slate)] italic">Reset to {MERIDIAN.name} (default demo)</div>
                   </button>
                 )}
               </div>

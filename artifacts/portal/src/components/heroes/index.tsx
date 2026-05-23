@@ -37,7 +37,7 @@ export function BusinessPerformanceHero({ layer }: HeroProps) {
           <span className="eyebrow text-[var(--coral)]">EXECUTIVE SCORECARD</span>
           <span className="font-sans text-[12px] text-[var(--slate)]">Q3 2026 · 14 sources</span>
         </div>
-        {/* These three pills carry Mercer-specific scorecard numbers (8%
+        {/* These three pills carry Meridian Industrial-specific scorecard numbers (8%
             behind plan, 380bps margin gap, Cash +$3.8M). For non-default
             profiles we suppress them — the per-metric "% vs plan" tags below
             are derived from each metric's tone and remain valid. */}
@@ -196,7 +196,7 @@ export function CompetitiveIntelligenceHero({ layer: _layer }: HeroProps) {
   // ensures a custom profile with an empty RIVALS list doesn't crash the hero.
   const topRival = [...RIVALS].sort((a, b) => b.share - a.share)[0]
     ?? { name: "Top competitor", share: 30, move: 0, depth: 0, color: "#1B2A4E" };
-  // Our share comes from the profile (defaults to 14.3 for the Mercer baseline)
+  // Our share comes from the profile (defaults to 14.3 for the Meridian Industrial baseline)
   // so new profiles can declare their own market position without code edits.
   const ourShare = profile.marketSharePct ?? 14.3;
   const usWidth = Math.round((ourShare / (ourShare + topRival.share)) * 100);
@@ -301,21 +301,21 @@ export function CompetitiveIntelligenceHero({ layer: _layer }: HeroProps) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SKUS_RAW = [
-  { name: "10\" cordless drill",       mercer: 119, hd: 99,  lowes: 109, walmart: 89,  margin: 18, tone: "bad" as const  },
-  { name: "Garden soil 40lb bag",      mercer: 8.4, hd: 7.8, lowes: 8.2, walmart: 6.9, margin: 24, tone: "warn" as const },
-  { name: "Pressure washer 2000psi",   mercer: 249, hd: 229, lowes: 239, walmart: 219, margin: 16, tone: "bad" as const  },
-  { name: "Patio set, 4-piece",        mercer: 449, hd: 489, lowes: 469, walmart: 399, margin: 31, tone: "good" as const },
-  { name: "LED shop light 4ft",        mercer: 34,  hd: 29,  lowes: 32,  walmart: 27,  margin: 21, tone: "warn" as const },
+  { name: "10\" cordless drill",       meridian: 119, hd: 99,  lowes: 109, walmart: 89,  margin: 18, tone: "bad" as const  },
+  { name: "Garden soil 40lb bag",      meridian: 8.4, hd: 7.8, lowes: 8.2, walmart: 6.9, margin: 24, tone: "warn" as const },
+  { name: "Pressure washer 2000psi",   meridian: 249, hd: 229, lowes: 239, walmart: 219, margin: 16, tone: "bad" as const  },
+  { name: "Patio set, 4-piece",        meridian: 449, hd: 489, lowes: 469, walmart: 399, margin: 31, tone: "good" as const },
+  { name: "LED shop light 4ft",        meridian: 34,  hd: 29,  lowes: 32,  walmart: 27,  margin: 21, tone: "warn" as const },
 ];
 
 export function PricingMarginHero({ layer: _layer }: HeroProps) {
   const SKUS = useDataset("SKUS", SKUS_RAW);
   const { profile, resolve } = useCompany();
-  const min = Math.min(...SKUS.flatMap(s => [s.mercer, s.hd, s.lowes, s.walmart]));
-  const max = Math.max(...SKUS.flatMap(s => [s.mercer, s.hd, s.lowes, s.walmart]));
+  const min = Math.min(...SKUS.flatMap(s => [s.meridian, s.hd, s.lowes, s.walmart]));
+  const max = Math.max(...SKUS.flatMap(s => [s.meridian, s.hd, s.lowes, s.walmart]));
   const range = max - min;
   const pos = (v: number) => ((v - min) / range) * 100;
-  const aboveCount = SKUS.filter(s => s.mercer > s.hd).length;
+  const aboveCount = SKUS.filter(s => s.meridian > s.hd).length;
   const hdLabel = resolve("Home Depot");
   const lowesLabel = resolve("Lowe's");
 
@@ -339,11 +339,11 @@ export function PricingMarginHero({ layer: _layer }: HeroProps) {
                 <Marker pos={pos(s.walmart)} symbol="✕" color="#888888" label={`$${s.walmart}`} />
                 <Marker pos={pos(s.hd)}      symbol="●" color="#F96302" label={`$${s.hd}`} />
                 <Marker pos={pos(s.lowes)}   symbol="◆" color="#004990" label={`$${s.lowes}`} />
-                <Marker pos={pos(s.mercer)}  symbol="▲" color="var(--coral)" label={`$${s.mercer}`} big />
+                <Marker pos={pos(s.meridian)}  symbol="▲" color="var(--coral)" label={`$${s.meridian}`} big />
               </div>
               <div className="col-span-2 text-right">
                 <div className="tag inline-block" style={{ background: toneBg(s.tone), color: toneFg(s.tone) }}>
-                  {s.mercer > s.hd ? `+$${(s.mercer - s.hd).toFixed(s.mercer < 20 ? 1 : 0)} vs peer` : `−$${(s.hd - s.mercer).toFixed(0)} vs peer`}
+                  {s.meridian > s.hd ? `+$${(s.meridian - s.hd).toFixed(s.meridian < 20 ? 1 : 0)} vs peer` : `−$${(s.hd - s.meridian).toFixed(0)} vs peer`}
                 </div>
               </div>
             </li>

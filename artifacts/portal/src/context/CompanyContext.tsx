@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  LIBRARY, MERCER, DEFAULT_PROFILE_ID, makeResolver, deepResolveWith,
+  LIBRARY, MERIDIAN, DEFAULT_PROFILE_ID, makeResolver, deepResolveWith,
   type CompanyProfile,
 } from "../data/companies";
 
@@ -29,7 +29,7 @@ const STORAGE_KEY_CUSTOM = "differentday.customProfiles.v1";
 // ─────────────────────────────────────────────────────────────────────────────
 // The raw bulk collections (SIGNAL_POOL, ACTIVITY_STREAM, FEEDS, NARRATOR,
 // PEERS, EVIDENCE, ANOMALIES, LEVERS, PATTERNS, ...) are written entirely in
-// Mercer-shaped language with brand-specific tokens (Home Depot, Phoenix DC,
+// Meridian Industrial-shaped language with brand-specific tokens (Home Depot, Phoenix DC,
 // Greater Plains Co., Kelly Services, cordless drill, ...). The vocab swap
 // layer cannot translate those — it can only substring-replace mapped vocab.
 //
@@ -64,17 +64,17 @@ const NEUTRAL_ACTIVITY_STREAM: typeof RAW_ACTIVITY_STREAM = [
   { ts: "06:02", layer: "brand-social",             text: "Brand sentiment refreshed against the rolling baseline.",                  tone: "info" },
 ];
 
-// For layers that have no per-profile narrative override, replace the Mercer-
+// For layers that have no per-profile narrative override, replace the Meridian Industrial-
 // shaped baseline narrative + causes + actions with a neutral placeholder so
 // the wrong-brand story can't leak through. Charts and metric values are kept
 // because they're either LLM-overridden or numerically rescaled.
 const NEUTRAL_LAYER_NARRATIVE =
   "The system has not yet generated a per-layer narrative for this company. The headline metrics, chart, and any LLM-generated executive summary above remain valid; the deeper story below populates once enough company-specific context has been ingested.";
 
-// Mercer's quarterly revenue (from MERCER.headlines.revenueActual = "$127M").
+// Meridian Industrial's quarterly revenue (from MERIDIAN.headlines.revenueActual = "$127M").
 // Charts in data/layers.ts are drawn at this scale; the rescale factor below
 // normalises to the seeded company's actual operating magnitude.
-const MERCER_QUARTERLY_REVENUE_M = 127;
+const MERIDIAN_QUARTERLY_REVENUE_M = 127;
 
 // Parse a headline-style string like "$95B", "$2.4B", "$340M", "$23M",
 // "$1,200M" into a number of millions. Returns null on failure.
@@ -92,13 +92,13 @@ function parseHeadlineToMillions(s: string | undefined | null): number | null {
   return null;
 }
 
-// Derive a single multiplicative factor that scales Mercer-shaped chart
+// Derive a single multiplicative factor that scales Meridian Industrial-shaped chart
 // values into the seeded company's magnitude. Defaults to 1 (no-op) for the
-// Mercer profile or when revenueActual is missing/unparseable.
+// Meridian Industrial profile or when revenueActual is missing/unparseable.
 function computeRevenueScaleFactor(profile: CompanyProfile): number {
   const revM = parseHeadlineToMillions(profile.headlines?.revenueActual);
   if (revM == null || revM <= 0) return 1;
-  const factor = revM / MERCER_QUARTERLY_REVENUE_M;
+  const factor = revM / MERIDIAN_QUARTERLY_REVENUE_M;
   if (!Number.isFinite(factor) || factor <= 0) return 1;
   return factor;
 }
@@ -217,25 +217,38 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
 
   const allProfiles = useMemo(() => [...LIBRARY, ...customProfiles], [customProfiles]);
   const profile = useMemo(
-    () => allProfiles.find(p => p.id === activeId) ?? MERCER,
+    () => allProfiles.find(p => p.id === activeId) ?? MERIDIAN,
     [allProfiles, activeId],
   );
+
+  // Self-heal stale activeId in localStorage. A previous build of the app
+  // used "mercer-group" as the default profile id; users with that value
+  // cached will fall back to MERIDIAN above, but the stale id stays in
+  // storage. Rewrite it to DEFAULT_PROFILE_ID so the picker UI and any
+  // future bootstrap stay consistent.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (profile.id !== activeId) {
+      setActiveId(profile.id);
+      try { window.localStorage.setItem(STORAGE_KEY_ACTIVE, profile.id); } catch { /* ignore */ }
+    }
+  }, [profile.id, activeId]);
   const resolve = useMemo(() => makeResolver(profile), [profile]);
 
-  // Deep-swapped narrative bundle. For the Mercer (default) profile the vocab
+  // Deep-swapped narrative bundle. For the Meridian Industrial (default) profile the vocab
   // map is empty so deepResolveWith is effectively a structural-clone no-op,
-  // and Mercer copy stays bit-perfect. Memoised per profile.id.
+  // and Meridian Industrial copy stays bit-perfect. Memoised per profile.id.
   const narrative = useMemo<NarrativeBundle>(() => {
     const isDefault = profile.id === DEFAULT_PROFILE_ID;
     const swap = <T,>(v: T): T => deepResolveWith(v, resolve);
-    // 1. Vocab-swap every dataset (no-op for the default Mercer profile).
+    // 1. Vocab-swap every dataset (no-op for the default Meridian Industrial profile).
     let layersOut = swap(RAW_LAYERS);
     // 2. For seeded profiles, overlay per-layer LLM-rewritten narrative /
     //    metrics / causes / actions on top of the vocab swap. Missing layers
-    //    fall through — for the default profile that's vocab-swapped Mercer
+    //    fall through — for the default profile that's vocab-swapped Meridian Industrial
     //    copy (logical filler); for non-default profiles we replace the
     //    narrative + causes + actions with neutral placeholders so the
-    //    wrong-brand Mercer story can't leak through.
+    //    wrong-brand Meridian Industrial story can't leak through.
     const overrides = profile.layerOverrides;
     layersOut = layersOut.map(layer => {
       const ov = overrides?.[layer.key];
@@ -253,7 +266,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       }
       return next;
     });
-    // 3. Chart-data rescale. Charts are hardcoded at Mercer's ~$127M-quarter
+    // 3. Chart-data rescale. Charts are hardcoded at Meridian Industrial's ~$127M-quarter
     //    scale; for a seeded company we scale every numeric value in dollar-
     //    denominated charts proportionally so the bars/lines/areas match the
     //    rebased headlines. Percentage / count charts are left untouched
@@ -280,7 +293,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       });
     }
     // For non-default profiles, substitute neutral fallbacks for every
-    // Mercer-shaped bulk collection. SIGNAL_POOL and ACTIVITY_STREAM use
+    // Meridian Industrial-shaped bulk collection. SIGNAL_POOL and ACTIVITY_STREAM use
     // explicit neutral arrays (their consumers can't tolerate empty);
     // everything else is safe to leave empty — the consuming renderers all
     // handle empty record/array gracefully (see explorer notes).
@@ -498,18 +511,18 @@ export function useNarrative(): NarrativeBundle {
 }
 
 /**
- * True when the active profile is the built-in Mercer baseline.
+ * True when the active profile is the built-in Meridian Industrial baseline.
  *
  * Many deep-dive panels (PipelineDetail, the Hero blocks for non-business-
  * performance layers, every Extras block) are populated from hardcoded
- * Mercer-shaped fixtures: SKU rows like "Cordless drill 18V", supplier names,
+ * Meridian Industrial-shaped fixtures: SKU rows like "Cordless drill 18V", supplier names,
  * DC city names, competitor brands like "Home Depot" / "Lowe's", etc. The
  * vocab-swap layer can only do substring substitution; it cannot translate
  * "Cordless drill" into an iPhone SKU. When a seeded profile lands without a
- * matching dataset/layer override, the raw Mercer copy leaks through and the
+ * matching dataset/layer override, the raw Meridian Industrial copy leaks through and the
  * dashboard claims (e.g.) that Apple sells power tools.
  *
- * Components that render Mercer-shaped fixtures gate themselves on this flag
+ * Components that render Meridian Industrial-shaped fixtures gate themselves on this flag
  * so that for any non-default profile the leaking block is hidden rather than
  * rendered with wrong-brand content. The rest of the layer (header, narrative,
  * metric tiles, chart, causes, actions, counter-args, gaps) is driven by the

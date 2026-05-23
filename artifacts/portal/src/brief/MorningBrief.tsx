@@ -93,19 +93,19 @@ export default function MorningBrief() {
   const isDefault = useIsDefaultProfile();
   const today = "Tuesday, 14 October 2026 · 06:42 CT";
   const layerByKey = Object.fromEntries(LAYERS.map(l => [l.key, l]));
-  // Merge profile overrides with the Mercer baseline copy. For the Mercer
-  // baseline OR non-Mercer profiles with explicit per-layer overrides, we
+  // Merge profile overrides with the Meridian Industrial baseline copy. For the Meridian Industrial
+  // baseline OR non-Meridian Industrial profiles with explicit per-layer overrides, we
   // include the finding. For seeded profiles that don't override a given
-  // layer, we DROP the finding instead of leaking Mercer specifics (Home
+  // layer, we DROP the finding instead of leaking Meridian Industrial specifics (Home
   // Depot promo depth, Dallas/Phoenix OOS, Greater Plains Co. credit hold).
   // For non-default profiles we require the override to carry at least its
   // own `finding` AND `impact` strings — otherwise we'd silently fall back to
-  // Mercer copy via the spread. Default profile keeps the original merge.
+  // Meridian Industrial copy via the spread. Default profile keeps the original merge.
   const mergedFindings = TOP_FINDINGS.flatMap(f => {
     const ov = profile.topFindings?.[f.layer];
     if (isDefault) return [{ ...f, ...(ov ?? {}) }];
     if (ov && typeof ov.finding === "string" && typeof ov.impact === "string") {
-      // Build the entry from override-only fields so the Mercer baseline
+      // Build the entry from override-only fields so the Meridian Industrial baseline
       // `lever` (and any future optional baseline field) cannot survive the
       // spread for a non-default profile. `layer` is taken from the baseline
       // row because it's just the key; `lever` is included only if the

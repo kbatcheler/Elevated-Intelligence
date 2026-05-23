@@ -19,11 +19,11 @@ const CAMPAIGNS_RAW = [
 ];
 
 const MEDIA_RAW = [
-  { source: "DFW Morning News",  outlet: "Local TV",  headline: "Mercer storefronts navigate Texas supply crunch", tone: "neg" as const, reach: "640k" },
-  { source: "Trade Pro Weekly",  outlet: "B2B Trade", headline: "Contractor confidence in Mercer holds despite delays", tone: "neu" as const, reach: "84k" },
-  { source: "Southern Living",   outlet: "Lifestyle", headline: "Five backyard transformations using Mercer Garden", tone: "pos" as const, reach: "2.1M" },
-  { source: "Reddit r/HomeImprovement", outlet: "Community", headline: "Anyone else seeing Mercer OOS on power tools?", tone: "neg" as const, reach: "47k" },
-  { source: "AP Newswire",       outlet: "Wire",      headline: "Mercer Group posts mixed Q3 amid retail headwinds", tone: "neu" as const, reach: "12M" },
+  { source: "DFW Morning News",  outlet: "Local TV",  headline: "Meridian Industrial storefronts navigate Texas supply crunch", tone: "neg" as const, reach: "640k" },
+  { source: "Trade Pro Weekly",  outlet: "B2B Trade", headline: "Contractor confidence in Meridian Industrial holds despite delays", tone: "neu" as const, reach: "84k" },
+  { source: "Southern Living",   outlet: "Lifestyle", headline: "Five backyard transformations using Meridian Industrial Garden", tone: "pos" as const, reach: "2.1M" },
+  { source: "Reddit r/HomeImprovement", outlet: "Community", headline: "Anyone else seeing Meridian Industrial OOS on power tools?", tone: "neg" as const, reach: "47k" },
+  { source: "AP Newswire",       outlet: "Wire",      headline: "Meridian Industrial posts mixed Q3 amid retail headwinds", tone: "neu" as const, reach: "12M" },
 ];
 
 export function BrandSocialExtras() {

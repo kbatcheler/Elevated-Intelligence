@@ -46,7 +46,7 @@ export default function Layer({
   const { openEvidence, openWhy, pulse, timeOffsetByLayer } = useApp();
   const { PEERS, EVIDENCE } = useNarrative();
   const isDefaultProfile = useIsDefaultProfile();
-  // TIMELINES contains Mercer-shaped "Diagnosis timeline" headlines
+  // TIMELINES contains Meridian Industrial-shaped "Diagnosis timeline" headlines
   // ("8% behind plan, 380bps margin gap …") that the vocab swap cannot
   // translate. For non-default profiles we suppress the timeline entirely
   // — TimeTravel below renders null when its layer key is absent, and
@@ -201,9 +201,15 @@ export default function Layer({
         {layer.gaps.map((g, i) => (
           <li key={i} className={"flex items-start justify-between gap-3 " + (isHi(`gap:${i}`) ? "pulse-coral !rounded-sm" : "")}>
             <div className="flex-1">
-              <span className={tagClass(g.category)}>{g.category}</span>
+              <div className="flex items-center gap-2">
+                <span className={tagClass(g.category)}>{g.category}</span>
+                <span className="font-sans text-[11px] font-bold text-[var(--coral)] tabular-nums">+{g.confidenceLiftPp}pp confidence</span>
+              </div>
               <div className="font-sans font-semibold text-[12px] text-[var(--navy)] mt-1.5">{g.title}</div>
               <div className="font-sans italic text-[11px] text-[var(--slate-light)] leading-snug mt-0.5">{g.detail}</div>
+              <div className="font-sans text-[11px] text-[var(--slate)] mt-1">
+                Closed by <span className="font-semibold text-[var(--navy)]">{g.solution}</span>
+              </div>
             </div>
             <button
               type="button"
@@ -219,7 +225,7 @@ export default function Layer({
     </div>
   );
 
-  // Heroes + Extras are populated from hardcoded Mercer fixtures (named
+  // Heroes + Extras are populated from hardcoded Meridian Industrial fixtures (named
   // suppliers, DC cities, competitor brands, SKUs etc). For any non-default
   // profile we hide them rather than render wrong-brand copy — see
   // useIsDefaultProfile for the full rationale. BusinessPerformanceHero is
@@ -263,6 +269,25 @@ export default function Layer({
       </div>
 
       <TimeTravel layerKey={layer.key} />
+
+      {/* ────────────────────────────────────────────────────────────────
+          Analyst's take — the one-sentence lead, above §1.
+          Hidden for non-default tenants: the analyst leads are written
+          in Meridian Industrial-shaped language (named channels, named
+          competitors, "$11M gap"…) that the vocab swap cannot translate.
+          Same anti-leak principle as NEUTRAL_LAYER_NARRATIVE in
+          CompanyContext.
+         ──────────────────────────────────────────────────────────────── */}
+      {isDefaultProfile && (
+        <div className="card card-accent-gold">
+          <div className="flex items-baseline gap-3">
+            <div className="eyebrow text-[var(--gold)] shrink-0">Analyst's take</div>
+            <p className="font-serif italic text-[16px] leading-[1.5] text-[var(--ink)]">
+              {layer.analystTake}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ────────────────────────────────────────────────────────────────
           §1 RECOMMENDATION — what to do (BLUF)

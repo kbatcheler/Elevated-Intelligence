@@ -84,7 +84,7 @@ export interface CompanyProfile {
   accentColor?: string;        // optional brand accent override
 
   // Vocabulary — substring swaps applied at render time via resolve()
-  // Empty for the default profile (Mercer): no swaps, copy renders as-is.
+  // Empty for the default profile (Meridian Industrial): no swaps, copy renders as-is.
   vocab: Record<string, string>;
 
   headlines: CompanyHeadlines;
@@ -116,9 +116,9 @@ export interface CompanyProfile {
   // tiles) + 3 causes + 4 actions in the company's authentic voice (real
   // competitor, supplier, metro, operating model) AND rescales every number
   // to the company's actual operating magnitude (e.g. Apple's $95B/quarter
-  // instead of Mercer's $127M). Chart data is rescaled separately by a
+  // instead of Meridian Industrial's $127M). Chart data is rescaled separately by a
   // proportional factor derived from headlines.revenueActual. Missing keys
-  // fall through to vocab-swapped Mercer text (logical filler). Keyed by
+  // fall through to vocab-swapped Meridian Industrial text (logical filler). Keyed by
   // LAYERS[i].key.
   layerOverrides?: Partial<Record<string, {
     narrative?: string;
@@ -133,14 +133,14 @@ export interface CompanyProfile {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// MERCER GROUP — default profile. Identity vocab (no swaps).
-// The hardcoded layer narrative everywhere in the codebase is the Mercer
+// MERIDIAN INDUSTRIAL — default profile. Identity vocab (no swaps).
+// The hardcoded layer narrative everywhere in the codebase is the Meridian Industrial
 // narrative, so this profile defines no overrides — everything renders as-is.
 // ───────────────────────────────────────────────────────────────────────────
-export const MERCER: CompanyProfile = {
-  id: "mercer-group",
-  name: "Mercer Group",
-  url: "mercergroup.com",
+export const MERIDIAN: CompanyProfile = {
+  id: "meridian-industrial",
+  name: "Meridian Industrial",
+  url: "meridianindustrial.com",
   logoMonogram: "M",
   sector: "Hardware & garden retail",
   hqCity: "Charlotte", hqState: "NC",
@@ -181,8 +181,7 @@ export const GUITAR_CENTER: CompanyProfile = {
   channelLabel: "Retail + e-comm + Pro Coverage",
   tagline: "Specialty music retail · 295 stores · Reverb · Music & Arts",
   vocab: {
-    "Mercer Group":           "Guitar Center",
-    "Mercer":                 "Guitar Center",
+    "Meridian Industrial":    "Guitar Center",
     "hardware & garden retail":"specialty music retail",
     "US retail":              "Music retail",
     "Home Depot":             "Sweetwater",
@@ -329,11 +328,11 @@ export const GUITAR_CENTER: CompanyProfile = {
     ],
     // Pricing & margin — music-product SKU ladder
     SKUS: [
-      { name: "Fender Player Strat MIM",   mercer: 849,  hd: 799,  lowes: 829,  walmart: 779, margin: 18, tone: "bad" as const  },
-      { name: "Shure SM7B dynamic mic",    mercer: 419,  hd: 399,  lowes: 409,  walmart: 379, margin: 22, tone: "warn" as const },
-      { name: "Roland TD-17KVX e-kit",     mercer: 1799, hd: 1699, lowes: 1749, walmart: 1649,margin: 16, tone: "bad" as const  },
-      { name: "Yamaha P-125a digital piano", mercer: 749, hd: 799, lowes: 779,  walmart: 729, margin: 28, tone: "good" as const },
-      { name: "D'Addario EXL110 strings 3pk", mercer: 19, hd: 17, lowes: 18,    walmart: 15,  margin: 21, tone: "warn" as const },
+      { name: "Fender Player Strat MIM",   meridian: 849,  hd: 799,  lowes: 829,  walmart: 779, margin: 18, tone: "bad" as const  },
+      { name: "Shure SM7B dynamic mic",    meridian: 419,  hd: 399,  lowes: 409,  walmart: 379, margin: 22, tone: "warn" as const },
+      { name: "Roland TD-17KVX e-kit",     meridian: 1799, hd: 1699, lowes: 1749, walmart: 1649,margin: 16, tone: "bad" as const  },
+      { name: "Yamaha P-125a digital piano", meridian: 749, hd: 799, lowes: 779,  walmart: 729, margin: 28, tone: "good" as const },
+      { name: "D'Addario EXL110 strings 3pk", meridian: 19, hd: 17, lowes: 18,    walmart: 15,  margin: 21, tone: "warn" as const },
     ],
     // Sales pipeline — Pro Coverage funnel (B2B account stages)
     STAGES: [
@@ -365,8 +364,7 @@ export const SWEETGREEN: CompanyProfile = {
   channelLabel: "Restaurants + digital + outpost",
   tagline: "Fast-casual healthy bowls · 248 locations · digital-first",
   vocab: {
-    "Mercer Group":           "Sweetgreen",
-    "Mercer":                 "Sweetgreen",
+    "Meridian Industrial":    "Sweetgreen",
     "hardware & garden retail":"fast-casual restaurant",
     "US retail":              "Restaurant operations",
     "Home Depot":             "Cava",
@@ -498,13 +496,13 @@ export const SWEETGREEN: CompanyProfile = {
   analyst: "Katherine Boyd · Lead analyst",
 };
 
-export const LIBRARY: CompanyProfile[] = [MERCER, GUITAR_CENTER, SWEETGREEN];
+export const LIBRARY: CompanyProfile[] = [MERIDIAN, GUITAR_CENTER, SWEETGREEN];
 
-export const DEFAULT_PROFILE_ID = MERCER.id;
+export const DEFAULT_PROFILE_ID = MERIDIAN.id;
 
 // ───────────────────────────────────────────────────────────────────────────
 // resolve() — apply a profile's vocab swaps to a hardcoded string.
-// Identity for the Mercer profile (empty vocab). Longest-key-first to avoid
+// Identity for the Meridian Industrial profile (empty vocab). Longest-key-first to avoid
 // partial-overlap collisions (e.g. "Phoenix DC" must match before "Phoenix").
 // ───────────────────────────────────────────────────────────────────────────
 export function makeResolver(profile: CompanyProfile): (text: string) => string {

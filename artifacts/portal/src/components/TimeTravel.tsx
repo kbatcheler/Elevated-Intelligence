@@ -8,7 +8,7 @@ export default function TimeTravel({ layerKey }: { layerKey: string }) {
   const isDefault = useIsDefaultProfile();
   const TIMELINES = useSwap(TIMELINES_RAW);
   // Suppress timeline UI entirely for non-default profiles — the rewound
-  // snap headlines are Mercer-shaped and can't be safely vocab-swapped.
+  // snap headlines are Meridian Industrial-shaped and can't be safely vocab-swapped.
   const timeline: Timeline | undefined = isDefault ? TIMELINES[layerKey] : undefined;
   if (!timeline) return null;
   const offset = timeOffsetByLayer[layerKey] ?? 0;

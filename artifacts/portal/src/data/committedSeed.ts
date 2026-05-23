@@ -1,4 +1,4 @@
-// Pre-seeded committed actions for the Mercer demo profile. Without these,
+// Pre-seeded committed actions for the Meridian Industrial demo profile. Without these,
 // the Committed Actions page is empty until a user manually clicks "commit"
 // inside a layer — which defeats the point of the page as a stand-alone view
 // the leadership team should be able to walk into cold.
@@ -12,7 +12,7 @@ import type { CommittedAction } from "../context/AppContext";
 
 export type CommittedSeed = Omit<CommittedAction, "id" | "committedAt">;
 
-export const MERCER_COMMITTED_SEED: CommittedSeed[] = [
+export const MERIDIAN_COMMITTED_SEED: CommittedSeed[] = [
   // ── In-flight, this week ───────────────────────────────────────────
   {
     layer: "pricing-margin",

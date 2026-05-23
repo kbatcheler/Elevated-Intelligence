@@ -108,7 +108,7 @@ export const NARRATOR: Record<string, NarratorContent> = {
     summary:
       "B2B pipeline is undercovered for Q4 forecast. Mid-funnel stall in deals over $100k and 12 large deal slippages tell a single story: enterprise approval cycles materially lengthened post-budget season. Coverage at 1.8x against a 2.5x need cannot make the forecast without targeted acceleration.",
     cross: [
-      { icon: "link",  title: "Stalled deals concentrated in Mercer churn regions", body: "Mid-funnel stall and trade churn share the same TX and Mountain West geography.", targetLayer: "customer-intelligence", targetField: "cause:1" },
+      { icon: "link",  title: "Stalled deals concentrated in Meridian Industrial churn regions", body: "Mid-funnel stall and trade churn share the same TX and Mountain West geography.", targetLayer: "customer-intelligence", targetField: "cause:1" },
       { icon: "alert", title: "Win-rate erosion mirrors competitor activity",       body: "Lowe's intensity in TX overlaps directly with the 4 named-account losses.", targetLayer: "competitive-intelligence", targetField: "cause:1" },
     ],
     next: [

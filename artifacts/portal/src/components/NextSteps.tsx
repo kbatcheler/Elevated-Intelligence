@@ -18,7 +18,7 @@ export default function NextSteps({ layerKey, layerTitle }: { layerKey: string; 
   const isDefault = useIsDefaultProfile();
   const block = NEXT_STEPS[layerKey];
   if (!block) return null;
-  // Every NEXT_STEPS entry is hand-authored Mercer copy (Home Depot promo,
+  // Every NEXT_STEPS entry is hand-authored Meridian Industrial copy (Home Depot promo,
   // Phoenix DC shifts, Kelly Services MSA, Greater Plains Co. AR holds). The
   // vocab swap layer cannot translate brand-specific entities, so for any
   // non-default profile we suppress this block rather than render wrong-brand
