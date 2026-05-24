@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { MousePointer2, X, TrendingUp, AlertTriangle, ShieldCheck } from "lucide-react";
 import {
   DATA_GAPS,
   DIFFDAY_PRODUCTS,
@@ -44,7 +45,8 @@ const NODES: Node[] = [
   { key: "people-operations",    label: "People & ops",      band: "ops",    x: 650, y: 420, status: "bad"  },
   // System / financial close band, bottom
   { key: "receivables",          label: "Receivables",       band: "system", x: 220, y: 580, status: "bad"  },
-  { key: "contract-management",  label: "Contracts",         band: "system", x: 410, y: 580, status: "warn" },
+  // Contracts has zero entries in DATA_GAPS, its work shows up as causal edges into 3 other layers, not as unmet feeds. Status set to "good" so the node visual matches the absent badge.
+  { key: "contract-management",  label: "Contracts",         band: "system", x: 410, y: 580, status: "good" },
   { key: "talent-hr",            label: "Talent & HR",       band: "system", x: 600, y: 580, status: "bad"  },
 ];
 
@@ -101,16 +103,93 @@ const categoryStyle = (c: ProductCategory): { bg: string; border: string; fg: st
   }
 };
 
+type InsightCard = {
+  key: string;
+  icon: typeof TrendingUp;
+  iconColor: string;
+  headline: string;
+  body: string;
+  ctaLabel: string;
+  ctaKey: string;
+  edge: { from: string; to: string };
+};
+
+const INSIGHT_CARDS: InsightCard[] = [
+  {
+    key: "demand-bizperf",
+    icon: TrendingUp,
+    iconColor: "var(--coral)",
+    headline: "Demand carries 60% of the gap into Business performance",
+    body: "The single heaviest edge in the system. Fix Demand and the headline number moves first.",
+    ctaLabel: "View Demand intelligence",
+    ctaKey: "demand-intelligence",
+    edge: { from: "demand-intelligence", to: "business-performance" },
+  },
+  {
+    key: "talent-people",
+    icon: AlertTriangle,
+    iconColor: "var(--amber)",
+    headline: "Talent gates Supply, Pricing and People at the same time",
+    body: "Three downstream layers all wait on the same constrained Talent and HR input.",
+    ctaLabel: "View Talent and HR",
+    ctaKey: "talent-hr",
+    edge: { from: "talent-hr", to: "people-operations" },
+  },
+  {
+    key: "pricing-finance",
+    icon: ShieldCheck,
+    iconColor: "var(--teal)",
+    headline: "Pricing feeds 65% of the Finance bridge",
+    body: "The largest single line in the EBITDA bridge runs from Pricing and margin into Finance, $4.2M.",
+    ctaLabel: "View Finance",
+    ctaKey: "finance",
+    edge: { from: "pricing-margin", to: "finance" },
+  },
+];
+
+const edgeKey = (e: { from: string; to: string }) => `${e.from}->${e.to}`;
+
+// Inline labels for the heaviest edges, rendered at the curve midpoint as a cream-light pill.
+const EDGE_LABELS: Record<string, string> = {
+  "demand-intelligence->business-performance": "60% Demand to Bizperf",
+  "pricing-margin->finance":                   "65% Pricing to Finance",
+  "competitive-intelligence->demand-intelligence": "55% Competitive to Demand",
+  "talent-hr->people-operations":              "55% Talent to People",
+};
+
 export default function DependencyGraph({ onNavigate }: { onNavigate: (key: string) => void }) {
   const [hover, setHover] = useState<string | null>(null);
-  const [showGaps, setShowGaps] = useState(true);
+  const [cardHighlight, setCardHighlight] = useState<{ from: string; to: string } | null>(null);
+  const [edgeFilter, setEdgeFilter] = useState<"top" | "all">("top");
+  const [annotateGaps, setAnnotateGaps] = useState(false);
+  const [coachDismissed, setCoachDismissed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("ei.depGraph.coachDismissed") === "1";
+  });
+  useEffect(() => {
+    if (coachDismissed && typeof window !== "undefined") {
+      window.localStorage.setItem("ei.depGraph.coachDismissed", "1");
+    }
+  }, [coachDismissed]);
 
+  const showGaps = annotateGaps;
   const nodeMap = Object.fromEntries(NODES.map(n => [n.key, n]));
 
-  const isEdgeLit = (e: Edge) => !hover || e.from === hover || e.to === hover;
-  const isNodeLit = (k: string) =>
-    !hover || k === hover ||
-    EDGES.some(e => (e.from === hover && e.to === k) || (e.to === hover && e.from === k));
+  // Top edges threshold tuned to land in the 6-9 range the brief asks for, gives 8 edges today.
+  const visibleEdges = edgeFilter === "top" ? EDGES.filter(e => e.weight >= 0.40) : EDGES;
+
+  const highlightKey = cardHighlight ? edgeKey(cardHighlight) : null;
+  const highlightedNodes = cardHighlight ? new Set([cardHighlight.from, cardHighlight.to]) : null;
+
+  const isEdgeLit = (e: Edge) => {
+    if (highlightKey) return edgeKey(e) === highlightKey;
+    return !hover || e.from === hover || e.to === hover;
+  };
+  const isNodeLit = (k: string) => {
+    if (highlightedNodes) return highlightedNodes.has(k);
+    return !hover || k === hover ||
+      EDGES.some(e => (e.from === hover && e.to === k) || (e.to === hover && e.from === k));
+  };
 
   const focused = hover ? nodeMap[hover] : null;
   const focusedIn  = focused ? EDGES.filter(e => e.to === focused.key) : [];
@@ -167,36 +246,67 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
         </div>
       </div>
 
-      <div className="flex items-start justify-between gap-6">
+      {/* Cross-layer insights, promoted from sidebar to hero strip. Hovering a
+          card isolates its edge in the graph below; clicking the CTA navigates. */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {INSIGHT_CARDS.map(card => {
+          const Icon = card.icon;
+          const active = cardHighlight && edgeKey(cardHighlight) === edgeKey(card.edge);
+          return (
+            <div key={card.key}
+                 onMouseEnter={() => setCardHighlight(card.edge)}
+                 onMouseLeave={() => setCardHighlight(null)}
+                 className={`card transition-shadow cursor-pointer ${active ? "ring-2 ring-[var(--coral)]" : ""}`}>
+              <div className="flex items-start gap-2.5 mb-2">
+                <Icon size={18} style={{ color: card.iconColor }} className="shrink-0 mt-0.5" />
+                <div className="font-sans text-[13px] font-semibold text-[var(--navy)] leading-snug">{card.headline}</div>
+              </div>
+              <div className="font-sans italic text-[12px] text-[var(--slate)] leading-snug mb-3">{card.body}</div>
+              <button onClick={() => onNavigate(card.ctaKey)}
+                      className="font-sans text-[11px] font-semibold text-[var(--coral)] hover:underline uppercase tracking-wider">
+                {card.ctaLabel} →
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex items-end justify-between gap-6 flex-wrap">
         <div>
-          <div className="eyebrow text-[var(--coral)] mb-2 sr-only">·</div>
-          <p className="font-serif italic text-[20px] text-[var(--slate-light)] mt-1.5">
+          <p className="font-serif italic text-[20px] text-[var(--slate-light)]">
             How a diagnosis in one layer feeds the next, and where missing data feeds bound its confidence.
           </p>
-          <div className="mt-4 flex items-center gap-4 text-[12px] text-[var(--slate-light)]">
-            <span>{NODES.length} nodes · {EDGES.length} weighted dependencies · hover to isolate</span>
-            {showGaps && (
-              <span>
-                · {totalGapCount} data gaps ·{" "}
-                <span className="text-[var(--teal)] font-semibold">+{totalUplift}pp recoverable headroom</span>
-                <span className="text-[var(--slate-light)]"> (sum across gaps, not a layer-level confidence figure)</span>
-              </span>
-            )}
+          <div className="mt-3 text-[12px] text-[var(--slate-light)]">
+            <span>{NODES.length} intelligence layers · {EDGES.length} causal dependencies · {totalGapCount} architectural gaps surfaced</span>
           </div>
         </div>
-        <div className="flex items-center gap-2 bg-[var(--cream-light)] border border-[var(--cream-dark)] rounded-full p-1">
-          <button
-            onClick={() => setShowGaps(false)}
-            className={`font-sans text-[11px] font-semibold px-3 py-1.5 rounded-full transition-colors ${!showGaps ? "bg-[var(--navy)] text-[var(--cream)]" : "text-[var(--slate)] hover:text-[var(--navy)]"}`}
-          >
-            Causal
-          </button>
-          <button
-            onClick={() => setShowGaps(true)}
-            className={`font-sans text-[11px] font-semibold px-3 py-1.5 rounded-full transition-colors ${showGaps ? "bg-[var(--coral)] text-white" : "text-[var(--slate)] hover:text-[var(--navy)]"}`}
-          >
-            + Data gaps
-          </button>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <span className="font-sans uppercase tracking-wider text-[9px] text-[var(--slate-light)]">Show</span>
+            <div className="flex items-center bg-[var(--cream-light)] border border-[var(--cream-dark)] rounded-full p-1">
+              <button onClick={() => setEdgeFilter("top")}
+                      className={`font-sans text-[11px] font-semibold px-3 py-1 rounded-full transition-colors ${edgeFilter === "top" ? "bg-[var(--navy)] text-[var(--cream)]" : "text-[var(--slate)] hover:text-[var(--navy)]"}`}>
+                Top edges
+              </button>
+              <button onClick={() => setEdgeFilter("all")}
+                      className={`font-sans text-[11px] font-semibold px-3 py-1 rounded-full transition-colors ${edgeFilter === "all" ? "bg-[var(--navy)] text-[var(--cream)]" : "text-[var(--slate)] hover:text-[var(--navy)]"}`}>
+                All edges
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="font-sans uppercase tracking-wider text-[9px] text-[var(--slate-light)]">Annotate gaps</span>
+            <div className="flex items-center bg-[var(--cream-light)] border border-[var(--cream-dark)] rounded-full p-1">
+              <button onClick={() => setAnnotateGaps(false)}
+                      className={`font-sans text-[11px] font-semibold px-3 py-1 rounded-full transition-colors ${!annotateGaps ? "bg-[var(--navy)] text-[var(--cream)]" : "text-[var(--slate)] hover:text-[var(--navy)]"}`}>
+                Off
+              </button>
+              <button onClick={() => setAnnotateGaps(true)}
+                      className={`font-sans text-[11px] font-semibold px-3 py-1 rounded-full transition-colors ${annotateGaps ? "bg-[var(--coral)] text-white" : "text-[var(--slate)] hover:text-[var(--navy)]"}`}>
+                On
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -204,7 +314,18 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
         <div className="grid grid-cols-12">
           {/* Graph */}
           <div className="col-span-9 p-5 border-r border-[var(--cream-dark)]" style={{ background: "var(--cream-light)" }}>
-            <svg viewBox="0 0 820 660" className="w-full h-auto" onMouseLeave={() => setHover(null)}>
+            {!coachDismissed && (
+              <div className="mb-3 flex items-center gap-2 text-[var(--slate-light)] italic font-sans text-[12px]">
+                <MousePointer2 size={12} className="shrink-0" />
+                <span>Hover any node to isolate its dependencies</span>
+                <button onClick={() => setCoachDismissed(true)}
+                        aria-label="Dismiss hint"
+                        className="ml-1 text-[var(--slate-light)] hover:text-[var(--navy)]">
+                  <X size={12} />
+                </button>
+              </div>
+            )}
+            <svg viewBox="-80 0 900 660" className="w-full h-auto" onMouseLeave={() => setHover(null)}>
               <defs>
                 <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                   <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--navy)" opacity="0.6" />
@@ -214,7 +335,7 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
                 </marker>
               </defs>
 
-              {/* Band labels */}
+              {/* Band labels, rendered in negative-x space the viewBox extends into. */}
               {[
                 { y: 80,  label: "EXECUTIVE" },
                 { y: 240, label: "MARKET-FACING" },
@@ -223,23 +344,24 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
               ].map(b => (
                 <g key={b.label}>
                   <line x1="40" y1={b.y} x2="60" y2={b.y} stroke="var(--cream-dark)" strokeWidth="1" />
-                  <text x="36" y={b.y + 4} textAnchor="end"
-                        className="font-sans" style={{ fontSize: 9, letterSpacing: 1.4, fill: "var(--slate-light)" }}>
+                  <text x="32" y={b.y + 4} textAnchor="end"
+                        className="font-sans" style={{ fontSize: 10, letterSpacing: 1.4, fill: "var(--slate-light)" }}>
                     {b.label}
                   </text>
                 </g>
               ))}
 
               {/* Edges */}
-              {EDGES.map((e, i) => {
+              {visibleEdges.map((e, i) => {
                 const from = nodeMap[e.from], to = nodeMap[e.to];
                 if (!from || !to) return null;
-                const lit = isEdgeLit(e) && hover !== null;
-                const dimmed = hover !== null && !isEdgeLit(e);
+                const isHighlighted = highlightKey === edgeKey(e);
+                const hoverLit = !highlightKey && hover !== null && (e.from === hover || e.to === hover);
+                const lit = isHighlighted || hoverLit;
+                const dimmed = (highlightKey && !isHighlighted) || (hover !== null && !highlightKey && !hoverLit);
                 const stroke = lit ? "var(--coral)" : "var(--navy)";
-                const opacity = dimmed ? 0.06 : lit ? 0.85 : 0.18;
+                const opacity = dimmed ? (highlightKey ? 0.15 : 0.06) : lit ? 0.9 : 0.18;
                 const width = 1 + e.weight * 4;
-                // Slight curve toward the centre of the canvas for readability
                 const midX = (from.x + to.x) / 2;
                 const midY = (from.y + to.y) / 2;
                 const curveOffset = (from.y === to.y) ? 0 : (to.x > from.x ? 12 : -12);
@@ -250,6 +372,57 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
                         stroke={stroke} strokeWidth={width} fill="none"
                         opacity={opacity}
                         markerEnd={lit ? "url(#arrowLit)" : "url(#arrow)"} />
+                );
+              })}
+
+              {/* Per-gap annotation overlay, controlled by Annotate gaps toggle.
+                  Each gap on a node renders as a short dashed coral spoke fanned above
+                  the node, giving the graph a visible "gap density" texture. */}
+              {annotateGaps && NODES.map(n => {
+                const gaps = gapsForLayer(n.key);
+                if (gaps.length === 0) return null;
+                const count = gaps.length;
+                const span = Math.min(80, 20 + count * 14);
+                const startX = n.x - span / 2;
+                const step = count > 1 ? span / (count - 1) : 0;
+                return (
+                  <g key={`gap-overlay-${n.key}`} style={{ pointerEvents: "none" }}>
+                    {gaps.map((g, gi) => {
+                      const x1 = count > 1 ? startX + gi * step : n.x;
+                      return (
+                        <line key={g.id}
+                              x1={x1} y1={n.y - 22}
+                              x2={x1} y2={n.y - 36}
+                              stroke="var(--coral)" strokeWidth={1.25}
+                              strokeDasharray="2 2" opacity={0.7} />
+                      );
+                    })}
+                  </g>
+                );
+              })}
+
+              {/* Inline labels for edges with weight >= 0.50 at the curve midpoint. */}
+              {visibleEdges.filter(e => e.weight >= 0.50).map((e, i) => {
+                const from = nodeMap[e.from], to = nodeMap[e.to];
+                if (!from || !to) return null;
+                const label = EDGE_LABELS[edgeKey(e)];
+                if (!label) return null;
+                const midX = (from.x + to.x) / 2;
+                const midY = (from.y + to.y) / 2;
+                const curveOffset = (from.y === to.y) ? 0 : (to.x > from.x ? 12 : -12);
+                const labelX = midX + curveOffset * 0.5;
+                const labelY = midY;
+                const w = label.length * 5.4 + 10;
+                const dimmed = highlightKey && highlightKey !== edgeKey(e);
+                return (
+                  <g key={`lbl-${i}`} opacity={dimmed ? 0.3 : 1} style={{ pointerEvents: "none" }}>
+                    <rect x={labelX - w / 2} y={labelY - 7} width={w} height={14} rx={2}
+                          fill="var(--cream-light)" stroke="var(--cream-dark)" strokeWidth={0.75} />
+                    <text x={labelX} y={labelY + 3} textAnchor="middle"
+                          className="font-sans" style={{ fontSize: 10, fontWeight: 600, fill: "var(--navy)" }}>
+                      {label}
+                    </text>
+                  </g>
                 );
               })}
 
@@ -272,8 +445,8 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
                           className="font-sans" style={{ fontSize: 12, fontWeight: 600, fill: "var(--navy)" }}>
                       {n.label}
                     </text>
-                    {/* Data-gap badge, only when overlay is on and node has gaps */}
-                    {showGaps && nodeGaps.length > 0 && (
+                    {/* Data-gap badge, visible regardless of edge filter; Contracts genuinely has zero. */}
+                    {nodeGaps.length > 0 && (
                       <g>
                         <circle cx={n.x + 56} cy={n.y - 16} r={9} fill="var(--coral)" stroke="white" strokeWidth={1.5} />
                         <text x={n.x + 56} y={n.y - 13} textAnchor="middle"
@@ -344,9 +517,27 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
               </div>
             ) : (
               <div>
+                {/* Recoverable headroom dual-signal card, the prose home of the +Npp figure. */}
+                <div className="pb-5 mb-5 border-b border-[var(--cream-dark)]">
+                  <div className="eyebrow text-[var(--coral)] mb-1">Dual signal</div>
+                  <div className="font-serif font-semibold text-[var(--gold)] tabular-nums leading-none" style={{ fontSize: 28 }}>
+                    +{totalUplift}pp recoverable
+                  </div>
+                  <div className="font-serif italic text-[14px] text-[var(--slate)] leading-snug mt-1.5">
+                    Across {totalGapCount} data gaps. Closes the headroom between today's average layer confidence and 99%.
+                  </div>
+                  <div className="font-sans text-[12px] text-[var(--slate)] leading-snug mt-2">
+                    Recoverable headroom is the sum of confidence lifts across every architectural gap. It is not a layer-level figure. The Engagement pipeline page sequences the work.
+                  </div>
+                  <button onClick={() => onNavigate("engagement-pipeline")}
+                          className="mt-2.5 font-sans text-[11px] font-semibold text-[var(--coral)] hover:underline">
+                    Open Engagement pipeline →
+                  </button>
+                </div>
+
                 <div className="eyebrow text-[var(--coral)] mb-2">Reading the graph</div>
                 <p className="font-serif italic text-[13px] text-[var(--slate)] leading-snug">
-                  Hover any layer to isolate its dependencies. Edge thickness shows the share of one layer's diagnosis that traces to another.
+                  Edge thickness shows the share of one layer's diagnosis that traces to another. Top edges hides anything below 0.30 weight.
                   {showGaps && " Coral badges count unmet data feeds; the side panel shows which DiffDay solution would close each one."}
                 </p>
                 <div className="mt-5 space-y-2.5">
@@ -355,44 +546,27 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
                   <Legend color="var(--teal)"  label="Healthy state" />
                 </div>
 
-                {showGaps ? (
-                  <>
-                    <div className="mt-5 pt-4 border-t border-[var(--cream-dark)]">
-                      <div className="eyebrow text-[var(--slate-light)] mb-2">Top data gaps · solution fit</div>
-                      <div className="font-sans text-[10px] text-[var(--slate-light)] mb-2 leading-snug">
-                        Highest-leverage feed gaps and the DiffDay solution that closes each.
-                      </div>
-                      {topGaps(5).map(g => <GapCard key={g.id} gap={g} compact />)}
-                    </div>
+                <div className="mt-5 pt-4 border-t border-[var(--cream-dark)]">
+                  <div className="eyebrow text-[var(--slate-light)] mb-2">Top data gaps · solution fit</div>
+                  <div className="font-sans text-[10px] text-[var(--slate-light)] mb-2 leading-snug">
+                    Highest-leverage feed gaps and the DiffDay solution that closes each.
+                  </div>
+                  {topGaps(5).map(g => <GapCard key={g.id} gap={g} compact />)}
+                </div>
 
-                    <div className="mt-5 pt-4 border-t border-[var(--cream-dark)]">
-                      <div className="eyebrow text-[var(--slate-light)] mb-2">Cross-cutting access layer</div>
-                      <div className="font-sans text-[10px] text-[var(--slate-light)] mb-2 leading-snug">
-                        How analysts consume everything above.
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {ACCESS_PRODUCT_IDS.map(id => {
-                          const p = PRODUCT_BY_ID[id];
-                          if (!p) return null;
-                          return <ProductChip key={id} name={p.name} category={p.category} />;
-                        })}
-                      </div>
-                    </div>
-                  </>
-                ) : (
+                {showGaps && (
                   <div className="mt-5 pt-4 border-t border-[var(--cream-dark)]">
-                    <div className="eyebrow text-[var(--slate-light)] mb-2">Top traces (this quarter)</div>
-                    {[
-                      { txt: "60% of revenue gap → Demand",  to: "demand-intelligence" },
-                      { txt: "65% of EBITDA gap → Pricing",  to: "pricing-margin" },
-                      { txt: "55% of Demand drag → Competitive", to: "competitive-intelligence" },
-                      { txt: "55% of People stress → Talent", to: "talent-hr" },
-                    ].map((t, i) => (
-                      <button key={i} onClick={() => setHover(t.to)}
-                              className="block w-full text-left font-sans text-[11px] text-[var(--navy)] hover:text-[var(--coral)] py-1">
-                        → {t.txt}
-                      </button>
-                    ))}
+                    <div className="eyebrow text-[var(--slate-light)] mb-2">Cross-cutting access layer</div>
+                    <div className="font-sans text-[10px] text-[var(--slate-light)] mb-2 leading-snug">
+                      How analysts consume everything above.
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {ACCESS_PRODUCT_IDS.map(id => {
+                        const p = PRODUCT_BY_ID[id];
+                        if (!p) return null;
+                        return <ProductChip key={id} name={p.name} category={p.category} />;
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
