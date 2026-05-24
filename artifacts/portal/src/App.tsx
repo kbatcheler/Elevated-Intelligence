@@ -71,7 +71,15 @@ const statusColor = (s: NavItem["status"]) =>
 
 export default function App() {
   const [showMobile, clearMobile] = useShouldShowMobileSplash();
-  const [active, setActive] = useState("business-performance");
+  // Honour ?layer=<key> on first load so the page is deep-linkable
+  // (used by the build-report tour, and by support copy-paste).
+  const initialLayer = (() => {
+    try {
+      const p = new URLSearchParams(window.location.search).get("layer");
+      return p && p.length > 0 ? p : "business-performance";
+    } catch { return "business-performance"; }
+  })();
+  const [active, setActive] = useState(initialLayer);
   const [highlight, setHighlight] = useState<string | undefined>(undefined);
   const [clientOpen, setClientOpen] = useState(false);
   const [boardPackOpen, setBoardPackOpen] = useState(false);

@@ -96,8 +96,18 @@ This document, plus screenshots in `docs/screenshots/`.
 
 ## Screenshots
 
-- `screenshots/01-home.jpg`, `02-home-fixed.jpg`, `03-home-clean.jpg`: Business performance home before/after em-dash fix
-- `screenshots/04-mobile-splash.jpg`: Mobile splash at 390px viewport
+| File | Page |
+|---|---|
+| `screenshots/03-home-clean.jpg` | Business performance (default home) with dual signal + clean Analyst's take |
+| `screenshots/04-mobile-splash.jpg` | Mobile splash at 390px viewport |
+| `screenshots/05-sales-playbook.jpg` | New Sales Playbook page (8-stop timeline) |
+| `screenshots/06-intelligence-architecture.jpg` | Promoted Intelligence Architecture page |
+| `screenshots/07-pricing-margin-whatif.jpg` | Pricing & margin layer (WhatIf-enabled, dual signal) |
+| `screenshots/08-sales-pipeline.jpg` | Sales pipeline (pill $5.7M predicted recovery) |
+| `screenshots/09-dependency-graph.jpg` | Cross-layer dependency graph with new system summary card |
+| `screenshots/10-contract-management.jpg` | New Contract management hero (pill $3.7M) |
+| `screenshots/11-receivables.jpg` | Receivables (pill $7.1M predicted recovery) |
+| `screenshots/01-home.jpg`, `02-home-fixed.jpg` | Before/after of the analyst-take em-dash fix |
 
 ---
 
