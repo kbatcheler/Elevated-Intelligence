@@ -67,14 +67,15 @@ export const NARRATOR: Record<string, NarratorContent> = {
   },
   "brand-social": {
     summary:
-      "Brand health softened across every measure. 73% of the negative sentiment cluster relates to product availability and delivery, not brand affinity, the supply chain story showing up in the brand layer. Recovery lags supply chain recovery by 4–6 weeks, so PR investment alongside operational recovery is justified now.",
+      "Brand health softened across every measure. 73% of the negative sentiment cluster relates to product availability and delivery, not brand affinity, the supply chain story showing up in the brand layer. Discovery has fractured into two channels: classic SEO rank slipped 11 points and generative answer engines (ChatGPT, Perplexity, AI Overviews, Gemini) cite Meridian on only 21% of buyer questions vs 68% for Home Depot. SEO recovery and a dedicated GEO content pass both need to run now.",
     cross: [
       { icon: "link",  title: "Supply chain is the upstream cause here too",         body: "Stockouts in weeks 30–34 generated the regional press coverage now feeding sentiment.", targetLayer: "supply-chain", targetField: "metric:0" },
-      { icon: "trend", title: "Search ranking loss correlates with content backlog", body: "Engineering attrition slowed the SEO content refresh; People layer surfaces the constraint.", targetLayer: "people-operations", targetField: "cause:2" },
+      { icon: "trend", title: "Search ranking loss correlates with content backlog", body: "Engineering attrition slowed the SEO and GEO content refresh; People layer surfaces the constraint.", targetLayer: "people-operations", targetField: "cause:2" },
+      { icon: "alert", title: "GEO citation gap echoes the SEO rank gap",            body: "Both channels reward authoritative, structured, citable content. The SEO refresh and the GEO pass share the same content backlog, fund them as one programme.", targetLayer: "marketing-performance" },
     ],
     next: [
-      { title: "Which press cycles can we get ahead of?",   targetLayer: "supply-chain" },
-      { title: "What is the SEO content cadence we can run?", targetLayer: "marketing-performance" },
+      { title: "Which press cycles can we get ahead of?",     targetLayer: "supply-chain" },
+      { title: "What SEO + GEO content cadence can we run?",  targetLayer: "marketing-performance" },
       { title: "Where does brand pull help share recovery?",  targetLayer: "competitive-intelligence" },
     ],
   },

@@ -3,7 +3,7 @@ export type FeedType =
   | "ERP" | "CRM" | "WMS" | "POS" | "DW"
   | "Web" | "Ads" | "CDP" | "Social" | "Search"
   | "Survey" | "Panel" | "Scraper" | "External" | "HRIS"
-  | "Sensor" | "EDI" | "Audit" | "Model" | "Manual";
+  | "Sensor" | "EDI" | "Audit" | "Model" | "Manual" | "GEO";
 
 export interface DataFeed {
   source: string;
@@ -62,6 +62,7 @@ export const FEEDS: Record<string, DataFeed[]> = {
     { source: "SEMrush, search rank",             type: "Search", cadence: "Daily",         lastSync: "6h ago",   completeness: 100, status: "live" },
     { source: "Adobe Analytics, owned content",   type: "Web",    cadence: "Real-time",     lastSync: "1m ago",   completeness: 99,  status: "live" },
     { source: "Cision, earned media",             type: "External", cadence: "Daily",       lastSync: "14h ago",  completeness: 100, status: "live" },
+    { source: "Profound + Otterly, AI answer-engine citations", type: "GEO", cadence: "Daily", lastSync: "2d ago", completeness: 58, status: "partial", pipelineUsd: "$0.4M", pipelineNote: "Only ChatGPT and Perplexity tracked today; Gemini and AI Overviews coverage partial, no entity-level diff against Home Depot or Lowe's" },
     { source: "Regional sentiment, DMA-level",    type: "Social", cadence: "Weekly",        lastSync: "9d ago",   completeness: 42,  status: "partial", pipelineUsd: "$0.4M", pipelineNote: "National roll-up only; cannot target by metro" },
     { source: "CMS rank integration, WordPress",  type: "Web",    cadence: "—",             lastSync: "Never",    completeness: 0,   status: "missing", pipelineUsd: "$0.3M", pipelineNote: "Rank changes not visible to content team" },
     { source: "YouGov, brand tracker",            type: "Survey", cadence: "Quarterly",     lastSync: "31d ago",  completeness: 100, status: "live" },
