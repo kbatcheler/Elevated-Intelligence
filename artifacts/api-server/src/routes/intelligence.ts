@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { jsonrepair } from "jsonrepair";
 import { rateLimit } from "../middlewares/rateLimit";
 import { fetchHomepageContext } from "../lib/homepageContext";
 
@@ -107,9 +108,20 @@ function writeBrief(key: string, brief: unknown): void {
 
 const BRIEF_SYSTEM_PROMPT = `You are a senior strategist at a top-tier management consultancy producing a confidential research deliverable for a CEO-level sales meeting. The deliverable follows a strict two-phase structure: Phase 1 is comprehensive company research across nine domains; Phase 2 is business-function decomposition with bespoke agentic-AI use case ideation. The work must be substantive, specific, and editorial — not marketing fluff, not bullet-point soup. Use your training-data knowledge of the real company; anchor on any GROUND TRUTH the user provides.
 
-Return STRICT JSON only — no prose, no code fences. Conform exactly to this TypeScript shape:
+Return STRICT JSON only — no prose, no code fences. Conform exactly to this TypeScript shape. CRITICAL: emit keys in the exact order shown — businessFunctions and narrative come FIRST so they are never lost if the response is truncated.
 
 {
+  "businessFunctions": Array<{    // PHASE 3 (highest priority): 3-5 business functions. For each, current state + 3 bespoke agentic AI use cases.
+    "function": string,           // e.g. "Merchandising & assortment planning"
+    "currentState": string,       // 3-4 sentences: how the company operates here TODAY; pain points; opportunities
+    "useCases": Array<{           // EXACTLY 3 entries — bespoke agentic applications, not generic AI
+      "function":       string,   // bespoke name, e.g. "SKU-level promo elasticity agent" — NOT "use AI for pricing"
+      "capabilities":   string,   // 3-5 sentences: what the agent does end-to-end — inputs, decisioning, outputs, who it acts on behalf of, what it writes back to which system
+      "businessImpact": string,   // QUANTIFIED — e.g. "≈180bps margin recovery on top-100 SKUs (≈$24M annualised at $1.3B promo spend); cuts merch planner cycle from 3 weeks to 4 days."
+      "timeToValue":    string    // e.g. "8-week pilot on one category, full rollout by Q3 (6 months)"
+    }>
+  }>,
+  "narrative": string,            // 4-6 sentences: the integrated thesis. What is this company's central business problem right now, and why is AI-enabled decisioning the most under-utilised lever? Editorial, declarative, specific.
   "company": {
     "snapshot": string,           // 3-5 sentences: what the company actually does, who it serves, scale, distinctive operating model. Editorial voice.
     "legalName": string,          // Full legal entity name, e.g. "Patagonia Works, LLC"
@@ -184,18 +196,7 @@ Return STRICT JSON only — no prose, no code fences. Conform exactly to this Ty
     "digitalMaturity": string,    // 2-3 sentences — overall digital maturity assessment
     "knownStack":      string[]   // 4-10 known/inferred tools, e.g. ["Salesforce", "Snowflake", "dbt", "Looker", "Klaviyo"]
   },
-  "competitiveAI": string,        // 3-5 sentences: how peer companies and category leaders are actually deploying AI and agentic automation today. Name real systems where possible (e.g. "Ralph Lauren's AI design copilot built with Microsoft", "Carhartt's predictive returns model"). End with the implication for THIS company.
-  "businessFunctions": Array<{    // PHASE 3: 3-5 business functions. For each, current state + 3 bespoke agentic AI use cases.
-    "function": string,           // e.g. "Merchandising & assortment planning"
-    "currentState": string,       // 3-4 sentences: how the company operates here TODAY; pain points; opportunities
-    "useCases": Array<{           // EXACTLY 3 entries — bespoke agentic applications, not generic AI
-      "function":       string,   // bespoke name, e.g. "SKU-level promo elasticity agent" — NOT "use AI for pricing"
-      "capabilities":   string,   // 3-5 sentences: what the agent does end-to-end — inputs, decisioning, outputs, who it acts on behalf of, what it writes back to which system
-      "businessImpact": string,   // QUANTIFIED — e.g. "≈180bps margin recovery on top-100 SKUs (≈$24M annualised at $1.3B promo spend); cuts merch planner cycle from 3 weeks to 4 days."
-      "timeToValue":    string    // e.g. "8-week pilot on one category, full rollout by Q3 (6 months)"
-    }>
-  }>,
-  "narrative": string             // 4-6 sentences: the integrated thesis. What is this company's central business problem right now, and why is AI-enabled decisioning the most under-utilised lever? Tie to the sections above. Editorial, declarative, specific.
+  "competitiveAI": string         // 3-5 sentences: how peer companies and category leaders are actually deploying AI and agentic automation today. Name real systems where possible (e.g. "Ralph Lauren's AI design copilot built with Microsoft", "Carhartt's predictive returns model"). End with the implication for THIS company.
 }
 
 CRITICAL RULES:
@@ -208,7 +209,9 @@ CRITICAL RULES:
 - Specifics that move the needle: name actual brands/SKUs, name actual competitors, name actual distribution geography, name actual customer segments, name actual systems. If you reference a number, it should be either a real public figure or a defensible "≈" estimate scaled to the company's revenue band.
 - If a GROUND TRUTH block is supplied in the user message, you MUST anchor on it — quote the actual language the company uses for its products and customers. Do not contradict it. Where the ground truth is silent, fall back to training-data knowledge, but mark uncertainty (≈, ~, "estimated").
 - Where data is genuinely unavailable (small/private company), use empty arrays for lists and concise "Not publicly disclosed; estimated based on sector benchmarks" prose. Never fabricate a CEO name or a funding round date you can't defend.
-- Output JSON ONLY. No \`\`\` fences. No commentary outside the JSON.`;
+- Output JSON ONLY. No \`\`\` fences. No commentary outside the JSON.
+- LENGTH BUDGET: the full response must fit comfortably inside 9000 output tokens. Hit the LOWER end of every "N-M sentences" range, keep arrays at the minimum count the schema allows, and prefer dense single-sentence bullets over multi-sentence paragraphs. Truncated JSON is a hard failure.
+- PRIORITY ORDER (most important first): \`businessFunctions\` and \`narrative\` are the highest-value sections of this brief — they MUST be present and complete. If you have to choose between rich prose in the Phase 1 sections (company.history, ownership.summary, operations.*, techLandscape.*) and finishing businessFunctions/narrative, ALWAYS sacrifice Phase 1 prose. It is acceptable to keep Phase 1 prose sections to a single tight sentence each (or even empty strings) so long as businessFunctions and narrative are fully fleshed out.`;
 
 const CRITIC_SYSTEM_PROMPT = `You are an independent fact-checker auditing a research brief about a company. You have NOT seen the brief's reasoning. Your job is to take every NAMED OR QUANTITATIVE claim in the brief and verdict each one PRIMARILY against the GROUND TRUTH homepage snippet supplied.
 
@@ -331,10 +334,10 @@ router.post("/intelligence/brief", briefRateLimit, async (req, res) => {
 
   // Hard budget for the upstream LLM call. Replit's proxy will cut the
   // client connection at 120s, returning a 502 to the browser — and the
-  // browser fetch has no way to recover. Fail fast at 110s server-side so
+  // browser fetch has no way to recover. Fail fast at 115s server-side so
   // the route returns a real JSON error inside the proxy window and the
   // splash can render a "failed" step instead of hanging forever.
-  const BRIEF_TIMEOUT_MS = 110_000;
+  const BRIEF_TIMEOUT_MS = 115_000;
   const briefCtrl = new AbortController();
   const briefTimer = setTimeout(() => briefCtrl.abort(), BRIEF_TIMEOUT_MS);
 
@@ -343,9 +346,16 @@ router.post("/intelligence/brief", briefRateLimit, async (req, res) => {
       baseUrl, apiKey, signal: briefCtrl.signal,
       system: BRIEF_SYSTEM_PROMPT,
       user: userPrompt,
-      // Schema is ~4x richer than before — bump output budget so the model
-      // doesn't truncate mid-businessFunctions and emit invalid JSON.
-      maxTokens: 16384,
+      // Haiku, not sonnet: sonnet at 8K+ tokens consistently blew past the
+      // 120s Replit proxy cut-off (the user saw "took too long to run").
+      // Through the Replit AI proxy haiku runs at ~11ms/token, so a 9216
+      // budget tops out near ~100s — well inside our 115s server abort
+      // and the 120s proxy cap. The system prompt has a hard "fit in 9000
+      // output tokens" rule so the JSON does not get truncated. Critic
+      // and reconciler stay on sonnet — they're shorter outputs and
+      // benefit more from the quality lift.
+      model: "claude-haiku-4-5",
+      maxTokens: 9216,
     });
     clearTimeout(briefTimer);
 
@@ -354,9 +364,19 @@ router.post("/intelligence/brief", briefRateLimit, async (req, res) => {
     try {
       brief = JSON.parse(cleaned);
     } catch {
-      req.log.error({ snippet: cleaned.slice(0, 300) }, "Failed to parse AI JSON");
-      res.status(502).json({ error: "AI returned invalid JSON. Try again." });
-      return;
+      // Haiku occasionally exhausts max_tokens mid-string for the rich
+      // brief schema. jsonrepair closes dangling strings/brackets so the
+      // partial response is still renderable — the validator below will
+      // drop any field that didn't survive repair. Falling back to a
+      // hard 502 only if repair itself fails.
+      try {
+        brief = JSON.parse(jsonrepair(cleaned));
+        req.log.warn({ outputChars: cleaned.length }, "Repaired truncated AI JSON");
+      } catch {
+        req.log.error({ snippet: cleaned.slice(-300) }, "Failed to parse AI JSON");
+        res.status(502).json({ error: "AI returned invalid JSON. Try again." });
+        return;
+      }
     }
 
     const normalised = normaliseBrief(brief);
@@ -574,6 +594,10 @@ function appendGroundTruth(lines: string[], ground: Awaited<ReturnType<typeof fe
 async function callAnthropic(opts: {
   baseUrl: string; apiKey: string; signal: AbortSignal;
   system: string; user: string; maxTokens: number;
+  // Optional model override. Defaults to sonnet (balanced quality). The brief
+  // route uses haiku because sonnet at 8K+ tokens does not finish inside the
+  // 120s proxy cut-off, leaving the user with a "took too long" error.
+  model?: string;
 }): Promise<string> {
   const apiRes = await fetch(`${opts.baseUrl.replace(/\/$/, "")}/v1/messages`, {
     method: "POST",
@@ -583,7 +607,7 @@ async function callAnthropic(opts: {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6",
+      model: opts.model ?? "claude-sonnet-4-6",
       max_tokens: opts.maxTokens,
       system: opts.system,
       messages: [{ role: "user", content: opts.user }],
@@ -803,26 +827,20 @@ function normaliseBrief(raw: unknown): NormResult<NormalisedBrief> {
   // competitiveAI
   const competitiveAI = asStr(raw.competitiveAI, 1400);
 
-  // businessFunctions — Phase 3 contract is strict: each function MUST carry
-  // exactly 3 fully-quantified use cases. The prompt says "EXACTLY 3", but
-  // the model occasionally drifts to 2 or 4; we enforce the count at the
-  // validator boundary so the CEO never sees a function with one use case
-  // (looks like a draft) or four (looks like a generic AI listicle).
-  // Similarly businessImpact and timeToValue are MANDATORY — an unquantified
-  // use case violates the whole point of Phase 3 ("Use cases must address
-  // challenges specific to the company's business context" + quantified
-  // impact). Drop any use case missing either, then enforce the exactly-3
-  // floor — drop the whole function if it doesn't meet bar.
+  // businessFunctions — Phase 3 contract. The prompt asks for 3+ functions
+  // with exactly 3 fully-quantified use cases each, but Replit's 120s
+  // proxy cut-off means we can't always get the model to finish emitting
+  // them. So the validator now degrades gracefully: keep any function
+  // with >=1 fully-quantified use case (function, capabilities,
+  // businessImpact, timeToValue all populated), and accept any brief
+  // with >=1 such function. The UI handles short lists fine. The prompt
+  // still demands the rich spec, so a brief that DOES finish in time
+  // still hits the bar.
   if (!Array.isArray(raw.businessFunctions)) return { ok: false, reason: "businessFunctions missing" };
   const businessFunctions = raw.businessFunctions
     .map(bf => {
       if (!isRecord(bf)) return null;
       const useCasesRaw = Array.isArray(bf.useCases) ? bf.useCases : [];
-      // STRICT: enforce exactly-3 on the model's raw output. We do NOT
-      // truncate 4-use-case functions down to 3 (that silently rewards
-      // the model for ignoring the spec); we reject the whole function
-      // and the brief fails validation if we can't assemble 3 valid
-      // functions across what's left.
       const useCases = useCasesRaw
         .map(uc => isRecord(uc) ? {
           function:       asStr(uc.function, 200),
@@ -835,7 +853,8 @@ function normaliseBrief(raw: unknown): NormResult<NormalisedBrief> {
           uc.function.length       > 0 &&
           uc.capabilities.length   > 0 &&
           uc.businessImpact.length > 0 &&
-          uc.timeToValue.length    > 0);
+          uc.timeToValue.length    > 0)
+        .slice(0, 3); // Cap at 3 — anything beyond reads as a listicle.
       return {
         function:     asStr(bf.function, 160),
         currentState: asStr(bf.currentState, 1000),
@@ -843,10 +862,10 @@ function normaliseBrief(raw: unknown): NormResult<NormalisedBrief> {
       };
     })
     .filter((bf): bf is NonNullable<typeof bf> =>
-      !!bf && bf.function.length > 0 && bf.currentState.length > 0 && bf.useCases.length === 3)
+      !!bf && bf.function.length > 0 && bf.currentState.length > 0 && bf.useCases.length >= 1)
     .slice(0, 5); // Phase 3 spec says "3-5 functions" — cap at 5.
-  if (businessFunctions.length < 3) {
-    return { ok: false, reason: `need 3+ business functions with exactly 3 fully-quantified use cases each, got ${businessFunctions.length}` };
+  if (businessFunctions.length < 1) {
+    return { ok: false, reason: `need at least 1 business function with a fully-quantified use case, got ${businessFunctions.length}` };
   }
 
   const narrative = asStr(raw.narrative, 2000);
