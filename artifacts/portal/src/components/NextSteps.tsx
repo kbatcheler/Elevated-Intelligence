@@ -3,7 +3,7 @@ import { type NextStep } from "../data/nextSteps";
 import { useApp } from "../context/AppContext";
 import { useNarrative, useIsDefaultProfile } from "../context/CompanyContext";
 
-// Prescriptive playbook — every layer answers "what do I do next?" at three
+// Prescriptive playbook, every layer answers "what do I do next?" at three
 // time horizons. Each step has an owner, an effort estimate, and a named
 // outcome. A Commit button drops the step straight into the action tray.
 
@@ -120,7 +120,7 @@ function Meta({ icon, label, value, italic }: { icon: React.ReactNode; label: st
   // Two-line layout: tiny eyebrow row (icon + LABEL) above the value. This
   // beats the prior single-row "icon · LABEL · value" layout because long
   // values like "Pricing layer signs off margin floor (gross ≥ 18%)" no
-  // longer have to share horizontal space with the label — they get the
+  // longer have to share horizontal space with the label, they get the
   // full card width and break at word boundaries, not character by character.
   return (
     <div className="leading-snug">

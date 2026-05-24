@@ -6,7 +6,7 @@ import type { LayerData } from "../data/layers";
 // Deterministic 32-bit hash of a string (Fowler–Noll–Vo / xorshift mix). Used
 // to seed the "since yesterday" delta selection so each company's ribbon is
 // stable across reloads and reseeds, while different companies see different
-// deltas. NOT cryptographic — only needs the property that visually different
+// deltas. NOT cryptographic, only needs the property that visually different
 // inputs give visually different outputs.
 function seededHash(s: string): number {
   let h = 2166136261 >>> 0;
@@ -33,7 +33,7 @@ interface Delta {
 // Derive a deterministic set of 3 "since yesterday" deltas from the seeded
 // company's layer signals. The hash of the company name selects WHICH layers
 // and WHICH movement shapes are surfaced, so the same company always gets the
-// same ribbon, and different companies see different framing — without us
+// same ribbon, and different companies see different framing, without us
 // needing to ship per-company hand-written deltas.
 function deriveDeltas(profileName: string, layers: LayerData[]): Delta[] {
   if (layers.length === 0) return [];
@@ -70,7 +70,7 @@ function deriveDeltas(profileName: string, layers: LayerData[]): Delta[] {
     const dir = directions[localSeed % 2];
 
     // Shape 0: a top metric ticked. Format the magnitude based on the
-    // metric's denomination so the chip reads naturally — pp for %, USD for
+    // metric's denomination so the chip reads naturally, pp for %, USD for
     // currency, percent change for counts/indices.
     if (shape === 0 && layer.metrics?.[0]) {
       const m = layer.metrics[0];
@@ -83,7 +83,7 @@ function deriveDeltas(profileName: string, layers: LayerData[]): Delta[] {
       } else if (isCurrency) {
         moveText = `${sign}${usdMoves[localSeed % usdMoves.length].replace(/^\$/, "$")}`;
       } else {
-        // Count / index / NPS etc — express as a percent change so the
+        // Count / index / NPS etc, express as a percent change so the
         // magnitude scales sensibly without us knowing the underlying unit.
         moveText = `${sign}${pctMoves[localSeed % pctMoves.length]}%`;
       }
@@ -142,7 +142,7 @@ function deriveDeltas(profileName: string, layers: LayerData[]): Delta[] {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// Brief shape — mirrors NormalisedBrief on the server. The renderer fails
+// Brief shape, mirrors NormalisedBrief on the server. The renderer fails
 // soft on any missing section: arrays default to [] in the server validator,
 // so a section with empty data just collapses to its heading + a "Not
 // publicly disclosed" hint rather than crashing.
@@ -185,7 +185,7 @@ interface Brief {
   generatedAt: string;
   // Receipt from the live homepage fetch that grounded this brief. May be
   // null when the server didn't attempt a fetch, or `ok:false` when the
-  // fetch failed — the UI shows different copy in each case so the reader
+  // fetch failed, the UI shows different copy in each case so the reader
   // knows whether the brief is empirically anchored or memory-based.
   grounding?: {
     ok: boolean;
@@ -197,13 +197,13 @@ interface Brief {
   } | null;
   // True when the server returned a previously-generated brief from cache.
   // The grounding receipt is then provenance from THAT earlier fetch, not a
-  // live one — the UI downgrades the badge copy accordingly.
+  // live one, the UI downgrades the badge copy accordingly.
   cached?: boolean;
 }
 
 // Bumped from v1 → v2 when the schema expanded to the 12-section research
 // deliverable. Any v1 cache entry has the wrong shape (missing ownership,
-// timeline, products, etc) and would render as broken sections — bumping
+// timeline, products, etc) and would render as broken sections, bumping
 // the prefix forces a fresh server fetch instead of trying to migrate.
 const CACHE_PREFIX = "differentday.intelligenceBrief.v2.";
 
@@ -219,7 +219,7 @@ function saveCached(profileId: string, brief: Brief): void {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// Triple-check verification — fires after the brief loads. Returns per-
+// Triple-check verification, fires after the brief loads. Returns per-
 // section confidence (HIGH/MED/LOW from the reconciler) and a curated
 // dispute list (from the critic, arbitrated by the reconciler). Cached on
 // the server so re-opening the same brief is free.
@@ -242,21 +242,21 @@ interface VerifyResponse {
 export default function IntelligenceBrief({ onClose }: { onClose: () => void }) {
   const { profile, narrative } = useCompany();
   const [brief, setBrief] = useState<Brief | null>(() => loadCached(profile.id));
-  // "Since yesterday" deltas — derived from the seeded company's actual layer
+  // "Since yesterday" deltas, derived from the seeded company's actual layer
   // signals via a deterministic hash on profile.name. Stable across reloads
   // and reseeds of the same company; different companies get different ribbons.
   const deltas = useMemo(() => deriveDeltas(profile.name, narrative.LAYERS), [profile.name, narrative.LAYERS]);
   const [ribbonDismissed, setRibbonDismissed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Verification state — populated after a successful brief load. We never
+  // Verification state, populated after a successful brief load. We never
   // surface a "verification failed" error to the user; if the triple-check
   // pipeline trips, the chips stay empty and the verification panel hides.
   // The brief itself is still useful without verdicts.
   const [verify, setVerify] = useState<VerifyResponse | null>(null);
   const [verifying, setVerifying] = useState(false);
   // Race guard: profile.id at the moment a generate() or runVerify() call
-  // fires. We check against the LIVE profile.id when results arrive — if
+  // fires. We check against the LIVE profile.id when results arrive, if
   // they differ, the user switched companies mid-flight and we must drop
   // the response on the floor instead of overwriting state for the wrong
   // company (a particularly nasty bug because the *correct* brief might
@@ -264,7 +264,7 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
   const activeRequestProfileId = useRef<string>(profile.id);
 
   // Rehydrate cache and clear stale state whenever the active profile
-  // changes while the modal is open — otherwise the brief from the
+  // changes while the modal is open, otherwise the brief from the
   // previous profile would linger and the auto-generate effect would
   // skip the new one because `brief` is still truthy.
   useEffect(() => {
@@ -311,7 +311,7 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
       // Race guard: drop the response if the user switched companies while
       // we were waiting. The cache write is still safe (it's keyed by the
       // ORIGINAL profile id), so re-opening that profile gets the brief
-      // for free — we just don't paint it over the current view.
+      // for free, we just don't paint it over the current view.
       if (activeRequestProfileId.current !== reqProfileId) {
         saveCached(reqProfileId, data as Brief);
         return;
@@ -319,7 +319,7 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
       const b = data as Brief;
       setBrief(b);
       saveCached(reqProfileId, b);
-      // Brief just landed — kick off the triple-check verification in the
+      // Brief just landed, kick off the triple-check verification in the
       // background. Force-skip the server cache if the user clicked Regenerate
       // (the cached verdicts would be against the OLD brief content).
       void runVerify(force);
@@ -334,7 +334,7 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
   }
 
   async function runVerify(_forceRefresh = false): Promise<void> {
-    // Same race guard as generate() — verify takes 25-40s, plenty of time
+    // Same race guard as generate(), verify takes 25-40s, plenty of time
     // for a profile switch to happen before we hear back.
     const reqProfileId = profile.id;
     setVerifying(true);
@@ -356,7 +356,7 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
       });
       if (!resp.ok) return; // Fail-soft: the brief is still readable without verdicts.
       const data = await resp.json() as VerifyResponse;
-      if (activeRequestProfileId.current !== reqProfileId) return; // Profile switched mid-flight — discard.
+      if (activeRequestProfileId.current !== reqProfileId) return; // Profile switched mid-flight, discard.
       setVerify(data);
     } catch { /* fail-soft */ } finally {
       if (activeRequestProfileId.current === reqProfileId) setVerifying(false);
@@ -407,7 +407,7 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
 
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        {/* "Since yesterday" delta ribbon — sticky to the top of the scroll
+        {/* "Since yesterday" delta ribbon, sticky to the top of the scroll
             area so it stays visible while the reader scrolls the brief. Hash-
             seeded by profile.name, so the same company always gets the same
             ribbon and different companies see different framing. */}
@@ -456,13 +456,13 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
                    }}
                    title={brief.grounding.ok
                      ? `${brief.cached ? "Previously" : "Just now"}: fetched ${(brief.grounding.bytesFetched/1024).toFixed(1)}KB of HTML from ${brief.grounding.domain}; ${(brief.grounding.bytesExtracted/1024).toFixed(1)}KB of extracted text passed to the model as ground truth. ${brief.cached ? "Click Regenerate to re-fetch." : ""}`
-                     : `We tried to fetch ${brief.grounding.domain} (HTTP ${brief.grounding.status}) and didn't get usable content — this brief leans on training-data knowledge and should be reviewed before sending.`}>
+                     : `We tried to fetch ${brief.grounding.domain} (HTTP ${brief.grounding.status}) and didn't get usable content, this brief leans on training-data knowledge and should be reviewed before sending.`}>
                 <Globe size={11} strokeWidth={2} />
                 {brief.grounding.ok
                   ? <span>
                       {brief.cached ? "Grounded on previous fetch" : "Grounded on live fetch"} · {brief.grounding.domain} · {(brief.grounding.bytesExtracted/1024).toFixed(1)} KB extracted
                     </span>
-                  : <span>Homepage fetch unavailable · brief is memory-based — review before sending</span>}
+                  : <span>Homepage fetch unavailable · brief is memory-based, review before sending</span>}
               </div>
             )}
           </div>
@@ -610,7 +610,7 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
                       {brief.board.map((b, i) => (
                         <div key={i} className="font-sans text-[13px] text-[var(--ink)]">
                           <span className="font-semibold text-[var(--navy)]">{b.name}</span>
-                          <span className="text-[var(--slate)]"> — {b.affiliation}</span>
+                          <span className="text-[var(--slate)]">, {b.affiliation}</span>
                         </div>
                       ))}
                     </div>
@@ -787,7 +787,7 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
                 </div>
               </Section>
 
-              {/* Verification panel — triple-check confidence summary + disputes. */}
+              {/* Verification panel, triple-check confidence summary + disputes. */}
               <VerificationPanel verify={verify} verifying={verifying} />
 
               <div className="mt-10 pt-4 border-t border-[var(--cream-dark)] font-sans italic text-[11px] text-[var(--slate-light)]">
@@ -821,9 +821,9 @@ function Section({ icon: Icon, title, accent, children, confidence }: {
 // Per-section confidence badge. Filled in by the triple-check verifier after
 // the brief lands; absent until the critic + reconciler complete (~25-40s
 // after the brief renders). Rubric:
-//   HIGH — all checkable claims supported or plausible.
-//   MED  — mix; at most one contradicted; section is broadly defensible.
-//   LOW  — multiple contradictions or named-entity/major-quantitative
+//   HIGH, all checkable claims supported or plausible.
+//   MED , mix; at most one contradicted; section is broadly defensible.
+//   LOW , multiple contradictions or named-entity/major-quantitative
 //          claim contradicted. Reader should treat as draft.
 function ConfidenceChip({ level }: { level: ConfidenceLevel }) {
   const cfg =
@@ -883,7 +883,7 @@ function VerificationPanel({ verify, verifying }: { verify: VerifyResponse | nul
       ) : (
         <div className="mt-4 space-y-3">
           {high.length > 0 && <DisputeGroup label="Contradicted" tone="coral" items={high} />}
-          {med.length > 0  && <DisputeGroup label="Unverified — high stakes" tone="amber" items={med} />}
+          {med.length > 0  && <DisputeGroup label="Unverified, high stakes" tone="amber" items={med} />}
           {low.length > 0  && <DisputeGroup label="Worth checking" tone="slate" items={low} />}
         </div>
       )}
@@ -926,7 +926,7 @@ function Para({ children, small }: { children: React.ReactNode; small?: boolean 
 
 // Compact inline chip used in the "Since yesterday" ribbon. Colour-coded by
 // tone (good/warn/bad/neutral), with an arrow that mirrors the direction of
-// the move. Designed to read at a glance — the ribbon is meant to communicate
+// the move. Designed to read at a glance, the ribbon is meant to communicate
 // "here's what shifted overnight" in under two seconds.
 function DeltaChip({ delta }: { delta: Delta }) {
   const toneColor =
@@ -969,7 +969,7 @@ function LoadingSkeleton() {
         </div>
       ))}
       <div className="font-sans italic text-[12px] text-[var(--slate)] text-center pt-2">
-        DifferentDay AI is researching the company and drafting the brief — typically 10-20 seconds…
+        DifferentDay AI is researching the company and drafting the brief, typically 10-20 seconds…
       </div>
     </div>
   );

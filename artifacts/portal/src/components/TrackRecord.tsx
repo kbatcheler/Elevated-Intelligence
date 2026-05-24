@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
-import { Award, TrendingUp, TrendingDown, Clock, MinusCircle, AlertTriangle } from "lucide-react";
+import { Award, TrendingUp, TrendingDown, Clock, MinusCircle, AlertTriangle, type LucideIcon } from "lucide-react";
 import { summary, type TrackRecordEntry, type OutcomeStatus } from "../data/trackRecord";
 import { useNarrative, useIsDefaultProfile, useCompany } from "../context/CompanyContext";
 
-const STATUS_META: Record<OutcomeStatus, { label: string; color: string; icon: any }> = {
+const STATUS_META: Record<OutcomeStatus, { label: string; color: string; icon: LucideIcon }> = {
   beat:        { label: "Beat predicted",  color: "var(--teal)",  icon: TrendingUp },
   met:         { label: "Met predicted",   color: "var(--teal)",  icon: Award },
   partial:     { label: "Partial",         color: "var(--amber)", icon: MinusCircle },
@@ -19,33 +19,17 @@ export default function TrackRecord({ onNavigate }: { onNavigate: (key: string) 
   const s = useMemo(() => summary(), []);
   const layerLabel = useMemo(() => Object.fromEntries(LAYERS.map(l => [l.key, l.title])), [LAYERS]);
 
-  // Every track-record entry is hand-authored Meridian Industrial history (Lowe's promo,
-  // Phoenix DC, Kelly MSA, cordless SKUs etc). There's no per-profile
-  // override path. For non-default profiles we render a clean empty state
-  // instead of leaking the Meridian Industrial history with the wrong brand name.
-  if (!isDefault) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <div className="eyebrow text-[var(--coral)] mb-2">Track record · System accountability</div>
-          <h1 className="font-serif text-[40px] leading-[1.05] text-[var(--navy)] font-semibold">Outcome track record</h1>
-          <p className="font-serif italic text-[20px] text-[var(--slate-light)] mt-1.5">Every recommendation we make is graded against what it delivered.</p>
-        </div>
-        <div className="card card-accent-gold">
-          <div className="font-serif text-[18px] text-[var(--navy)] leading-snug">
-            Track record will populate here once the system has closed its first quarter of recommendations for {profile.name}.
-          </div>
-          <p className="font-serif italic text-[14px] text-[var(--slate)] mt-3 leading-snug">
-            Every recommendation issued — predicted dollar impact, named owner, time horizon — is recorded at the moment it's committed, then graded against the actual outcome when the window closes. The history is auditable end-to-end; what you'd see here is the receipts.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // CC-3: track-record receipts are shared across every tenant. The entries
+  // are hand-authored Meridian Industrial history, and Preview Mode surfaces
+  // them explicitly as the canonical body of evidence behind the diagnosis
+  // the tenant is previewing, rather than hiding the page behind an empty
+  // state. `profile` / `isDefault` remain wired for a future per-tenant
+  // override path but are intentionally unused here today.
+  void profile; void isDefault;
 
   const visible = TRACK_RECORD.filter(t => filter === "all" || t.status === filter);
 
-  // Quarterly roll-up — predicted vs delivered $ by quarter, plus a hit-rate.
+  // Quarterly roll-up, predicted vs delivered $ by quarter, plus a hit-rate.
   // Skips non-dollar entries (NPS-only, ROAS-only) so the bars stay comparable.
   const quarterly = useMemo(() => {
     const dollarOnly = TRACK_RECORD.filter(t =>
@@ -68,7 +52,7 @@ export default function TrackRecord({ onNavigate }: { onNavigate: (key: string) 
     });
   }, []);
 
-  // Lessons drawn from misses and partials — automatic so the page stays in
+  // Lessons drawn from misses and partials, automatic so the page stays in
   // sync with the underlying data; no separate hand-authored lessons file.
   const lessons = useMemo(
     () => TRACK_RECORD.filter(t => t.status === "missed" || t.status === "partial"),
@@ -99,7 +83,7 @@ export default function TrackRecord({ onNavigate }: { onNavigate: (key: string) 
         </div>
       </div>
 
-      {/* Quarterly trend — predicted vs delivered, side-by-side bars */}
+      {/* Quarterly trend, predicted vs delivered, side-by-side bars */}
       <div className="card">
         <div className="flex items-baseline justify-between mb-4">
           <div>
@@ -178,7 +162,7 @@ export default function TrackRecord({ onNavigate }: { onNavigate: (key: string) 
         </div>
       </div>
 
-      {/* Lessons learned — derived from misses and partials. Makes the page
+      {/* Lessons learned, derived from misses and partials. Makes the page
           honest: this is what we got wrong, and what we changed because of it. */}
       {filter === "all" && lessons.length > 0 && (
         <div className="card card-accent-coral">
@@ -186,7 +170,7 @@ export default function TrackRecord({ onNavigate }: { onNavigate: (key: string) 
             <div>
               <div className="eyebrow text-[var(--coral)] mb-1">Lessons banked</div>
               <div className="font-serif text-[16px] text-[var(--navy)] font-semibold leading-tight">
-                {lessons.length} plays that missed or partly missed — what we changed
+                {lessons.length} plays that missed or partly missed, what we changed
               </div>
             </div>
             <div className="font-sans italic text-[11px] text-[var(--slate-light)]">Every miss becomes a gate or a rule</div>
@@ -237,7 +221,7 @@ function DistBar({ status, count, total, active, onClick }: { status: OutcomeSta
   const meta = STATUS_META[status];
   return (
     <button onClick={() => onClick(status)}
-            title={`${meta.label} — ${count}`}
+            title={`${meta.label}, ${count}`}
             className="h-full flex items-center justify-center font-sans font-bold text-[10px] uppercase tracking-wider transition-opacity"
             style={{
               width: `${pct}%`,
@@ -285,7 +269,7 @@ function Entry({ entry, layerLabel, onNavigate }: { entry: TrackRecordEntry; lay
           </div>
           <div className="font-serif font-semibold text-[16px] text-[var(--navy)] leading-tight">{entry.title}</div>
           <p className="font-serif italic text-[13px] text-[var(--slate)] mt-2 leading-snug">{entry.note}</p>
-          <div className="font-sans text-[11px] text-[var(--slate)] italic mt-2">Owner — {entry.owner}</div>
+          <div className="font-sans text-[11px] text-[var(--slate)] italic mt-2">Owner, {entry.owner}</div>
         </div>
         {/* Outcome */}
         <div className="col-span-4 p-5 grid grid-rows-3 gap-2" style={{ background: "var(--cream-light)" }}>

@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { ArrowRight, Radio, Clock, AlertTriangle, XCircle, FileText, Layers, Banknote, Target } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { ArrowRight, Radio, Clock, AlertTriangle, XCircle, FileText, Layers, Banknote, Target, type LucideIcon } from "lucide-react";
 import { type DataFeed, type FeedStatus } from "../data/feeds";
 import { useNarrative } from "../context/CompanyContext";
 
@@ -17,15 +17,25 @@ type Row = {
 
 const PARSE = (s?: string) => Number((s || "0").replace(/[^0-9.]/g, ""));
 
-const STATUS_ICON: Record<FeedStatus, any> = { live: Radio, stale: Clock, partial: AlertTriangle, missing: XCircle, manual: FileText };
+const STATUS_ICON: Record<FeedStatus, LucideIcon> = { live: Radio, stale: Clock, partial: AlertTriangle, missing: XCircle, manual: FileText };
 
 export default function EngagementPipeline({ onNavigate }: { onNavigate: (k: string) => void }) {
   const { LAYERS, FEEDS } = useNarrative();
   const rows = useMemo<Row[]>(() => {
     const out: Row[] = [];
     LAYERS.forEach(l => {
+      // Per-gap pipeline value is derived from the layer-level pill by
+      // weighting on each gap's confidence lift. A gap that lifts diagnostic
+      // confidence by 3pp is worth proportionally more recovery than one
+      // that lifts by 1pp; this gives every gap a distinct value rather than
+      // an arithmetic clone of the layer total / gaps.length. Falls back to
+      // an equal split when confidence-lift weights sum to zero.
+      const layerTotal = PARSE(l.gapsPipelineUsd);
+      const weightSum = l.gaps.reduce((s, g) => s + g.confidenceLiftPp, 0);
       l.gaps.forEach(g => {
-        const v = PARSE(l.gapsPipelineUsd) / l.gaps.length;
+        const v = weightSum > 0
+          ? layerTotal * (g.confidenceLiftPp / weightSum)
+          : layerTotal / Math.max(1, l.gaps.length);
         out.push({
           layer: l.key, layerTitle: l.title, category: g.category,
           title: g.title, detail: g.detail, value: v,
@@ -36,7 +46,7 @@ export default function EngagementPipeline({ onNavigate }: { onNavigate: (k: str
         if (!f.pipelineUsd) return;
         out.push({
           layer: l.key, layerTitle: l.title, category: f.status.toUpperCase(),
-          title: f.source, detail: f.pipelineNote || `${f.status} feed — ${f.cadence}, last sync ${f.lastSync}`,
+          title: f.source, detail: f.pipelineNote || `${f.status} feed, ${f.cadence}, last sync ${f.lastSync}`,
           value: PARSE(f.pipelineUsd), valueLabel: f.pipelineUsd, source: "FEED", status: f.status,
         });
       });
@@ -62,8 +72,35 @@ export default function EngagementPipeline({ onNavigate }: { onNavigate: (k: str
         <div className="eyebrow text-[var(--coral)] mb-2">System · Engagement pipeline</div>
         <h1 className="font-serif text-[32px] leading-tight text-[var(--navy)]">Different Day engagement pipeline</h1>
         <p className="font-serif italic text-[18px] text-[var(--slate-light)] mt-1 max-w-[820px]">
-          Every architectural gap and missing data feed surfaced across the intelligence layers, sized by recovery value and sequenced into a ship plan. This is the work that turns today's confidence band into next quarter's signal — read it as the joint roadmap for Different Day and the operating team.
+          Every architectural gap and missing data feed surfaced across the intelligence layers, sized by recovery value and sequenced into a ship plan. This is the work that turns today's confidence band into next quarter's signal, read it as the joint roadmap for Different Day and the operating team.
         </p>
+      </div>
+
+      {/* CC-1 overview, frames how the four numbers downstream relate. The
+          claim "70 gaps → 13 capabilities → 21 apps → 90-day plan" lands the
+          commercial story in one row instead of requiring the user to hover
+          nodes in the Cross-layer map to discover it. */}
+      <div className="card card-accent-gold">
+        <div className="eyebrow text-[var(--gold)] mb-2">How the engagement scales</div>
+        <div className="grid grid-cols-7 gap-3 items-center">
+          {[
+            { n: "70", label: "logged data gaps", note: "across 14 intelligence layers" },
+            { n: "13", label: "solution capabilities", note: "each addresses 4–7 gaps on average" },
+            { n: "21", label: "deployable apps", note: "real, named, installable today" },
+            { n: "90-day", label: "ship plan", note: "three sprint windows, owner per row" },
+          ].map((c, i, arr) => (
+            <React.Fragment key={c.label}>
+              <div className="col-span-1 text-center">
+                <div className="font-serif font-semibold text-[var(--navy)]" style={{ fontSize: 32, lineHeight: 1.05 }}>{c.n}</div>
+                <div className="font-sans text-[12px] text-[var(--navy)] font-semibold mt-1">{c.label}</div>
+                <div className="font-sans italic text-[11px] text-[var(--slate-light)] mt-0.5">{c.note}</div>
+              </div>
+              {i < arr.length - 1 && (
+                <div className="col-span-1 text-center font-serif text-[var(--gold)] text-[20px]">→</div>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
       </div>
 
       {/* Hero totals */}
@@ -74,6 +111,13 @@ export default function EngagementPipeline({ onNavigate }: { onNavigate: (k: str
             ${total.toFixed(1)}M
           </div>
           <div className="font-sans italic text-[12px] text-[var(--slate-light)] mt-1">across {rows.length} opportunities</div>
+          {/* CC-5 conversion frame, make explicit what "indicative" means so
+              the buyer doesn't silently discount the headline by an unknown
+              factor. The 35–45% / 90-day band is the typical Different Day
+              conversion rate against this kind of joint roadmap. */}
+          <div className="mt-3 pt-3 border-t border-[var(--cream-dark)] font-sans text-[11px] text-[var(--slate)]">
+            Different Day typically converts <span className="font-semibold text-[var(--teal)]">35–45%</span> of indicative pipeline within the first 90 days; the rest sequences into Q2 work as feeds wire and gaps close.
+          </div>
         </div>
         <div className="card">
           <div className="eyebrow text-[var(--slate-light)]">Architectural gaps</div>
@@ -124,7 +168,7 @@ export default function EngagementPipeline({ onNavigate }: { onNavigate: (k: str
         </div>
       </div>
 
-      {/* 90-day ship plan — sequences the top opportunities into three sprint
+      {/* 90-day ship plan, sequences the top opportunities into three sprint
            windows. Order is deterministic (by value, highest first, then
            round-robin across the three windows) so the plan stays stable as
            the user toggles the layer filter. */}
@@ -204,17 +248,20 @@ export default function EngagementPipeline({ onNavigate }: { onNavigate: (k: str
   );
 }
 
-// ShipPlan — three-column sprint sequencing of the top opportunities. The
+// ShipPlan, three-column sprint sequencing of the top opportunities. The
 // goal is to make the pipeline feel like a plan, not a backlog: every item
 // has a sprint window, an owner persona, and a sequencing rationale.
 function ShipPlan({ rows, onNavigate }: { rows: Row[]; onNavigate: (k: string) => void }) {
+  // Three sprint windows. The round-robin allocation deliberately blends
+  // FEED and GAP work across all three windows rather than sorting by
+  // category, the goal is to keep every window credible, not to fabricate
+  // a "feeds first, workflows last" sequencing rationale that the data
+  // doesn't actually support. Subtitle copy reflects that honestly.
   const windows = [
-    { id: "w1", label: "Days 0–30",  subtitle: "Highest-value, lowest-coupling moves", color: "var(--coral)" },
-    { id: "w2", label: "Days 31–60", subtitle: "Dependent feeds and model retrains",   color: "var(--amber)" },
-    { id: "w3", label: "Days 61–90", subtitle: "Workflow + integration build-outs",    color: "var(--teal)"  },
+    { id: "w1", label: "Days 0–30",  subtitle: "Mixed feed + gap work, ordered by recovery value", color: "var(--coral)" },
+    { id: "w2", label: "Days 31–60", subtitle: "Mixed feed + gap work, next 4 by recovery value",  color: "var(--amber)" },
+    { id: "w3", label: "Days 61–90", subtitle: "Mixed feed + gap work, last 4 by recovery value",  color: "var(--teal)"  },
   ];
-  // Round-robin allocation by descending value so each window gets a mix of
-  // FEED and GAP work rather than all FEED in week 1 and all GAP in week 3.
   const buckets: Row[][] = [[], [], []];
   rows.forEach((r, i) => buckets[i % 3].push(r));
 
@@ -236,7 +283,7 @@ function ShipPlan({ rows, onNavigate }: { rows: Row[]; onNavigate: (k: string) =
             Top 12 opportunities, sequenced into three sprint windows
           </div>
           <div className="font-sans italic text-[12px] text-[var(--slate-light)] mt-1">
-            Highest-value, lowest-coupling work first; feeds and model retrains in the middle; workflow + integration plumbing last.
+            Ordered strictly by recovery value, with a deliberate FEED / GAP blend in each window so no single sprint becomes "all plumbing" or "all model work".
           </div>
         </div>
         <div className="font-sans text-[11px] text-[var(--slate-light)]">

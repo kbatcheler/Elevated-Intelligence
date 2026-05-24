@@ -1,8 +1,8 @@
-import { Radio, Clock, AlertTriangle, XCircle, FileText, ArrowRight } from "lucide-react";
+import { Radio, Clock, AlertTriangle, XCircle, FileText, ArrowRight, type LucideIcon } from "lucide-react";
 import { type DataFeed, type FeedStatus } from "../data/feeds";
 import { useNarrative } from "../context/CompanyContext";
 
-const STATUS_META: Record<FeedStatus, { label: string; color: string; bg: string; icon: any }> = {
+const STATUS_META: Record<FeedStatus, { label: string; color: string; bg: string; icon: LucideIcon }> = {
   live:    { label: "LIVE",    color: "var(--teal)",  bg: "var(--teal-faint)",  icon: Radio },
   stale:   { label: "STALE",   color: "var(--amber)", bg: "var(--amber-faint)", icon: Clock },
   partial: { label: "PARTIAL", color: "var(--amber)", bg: "var(--amber-faint)", icon: AlertTriangle },

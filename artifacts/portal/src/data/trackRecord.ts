@@ -1,4 +1,4 @@
-// Historical record of committed actions — predicted vs delivered outcome.
+// Historical record of committed actions, predicted vs delivered outcome.
 // This is what makes the system accountable: every recommendation we've made
 // has a checkable result. Hand-tuned synthetic data covering Q1 → Q3 2026.
 
@@ -68,7 +68,7 @@ export const TRACK_RECORD: TrackRecordEntry[] = [
     predicted: "2× applicant flow", delivered: "1.8× applicant flow",
     variance: "−0.2× vs predicted", status: "met",
     owner: "Talent acquisition lead",
-    note: "Within tolerance. Offer-to-accept window dropped 7 days as modelled. Pattern is now permanent — second satellite opening Q4.",
+    note: "Within tolerance. Offer-to-accept window dropped 7 days as modelled. Pattern is now permanent, second satellite opening Q4.",
     predictedValue: 2.0, deliveredValue: 1.8,
   },
   {
@@ -118,7 +118,7 @@ export const TRACK_RECORD: TrackRecordEntry[] = [
     predicted: "+4pts trade-segment sentiment", delivered: "+3pts",
     variance: "−1pt vs predicted", status: "met",
     owner: "Brand + Trade Marketing",
-    note: "Inbound trade enquiries up 14% in the first three weeks — a stronger leading indicator than the sentiment delta itself.",
+    note: "Inbound trade enquiries up 14% in the first three weeks, a stronger leading indicator than the sentiment delta itself.",
     predictedValue: 4, deliveredValue: 3,
   },
   {

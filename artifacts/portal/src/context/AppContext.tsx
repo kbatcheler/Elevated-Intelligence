@@ -31,7 +31,7 @@ export interface Pulse {
 }
 
 interface AppContextValue {
-  // global tick (1s) — drives ambient motion
+  // global tick (1s), drives ambient motion
   tick: number;
   // signal stream
   signals: IncomingSignal[];
@@ -45,7 +45,7 @@ interface AppContextValue {
   evidence: EvidenceSpec | null;
   openEvidence: (layer: string, metric: string) => void;
   closeEvidence: () => void;
-  // "Why this number?" inspector — references a layer key + metric label
+  // "Why this number?" inspector, references a layer key + metric label
   // and resolves into causes / cross-layer context inside the panel.
   why: { layer: string; metric: string } | null;
   openWhy: (layer: string, metric: string) => void;
@@ -115,7 +115,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const evidenceRef = useRef(EVIDENCE);
   evidenceRef.current = EVIDENCE;
 
-  // Reset the signal stream when the active company profile changes — the
+  // Reset the signal stream when the active company profile changes, the
   // ticker should immediately re-skin to the new brand's signals rather than
   // continue scrolling the previous tenant's lines.
   useEffect(() => {
@@ -137,7 +137,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(id);
   }, []);
 
-  // Signal stream — every ~5s push a new signal; ~30% of the time pulse a
+  // Signal stream, every ~5s push a new signal; ~30% of the time pulse a
   // metric on the currently-viewed layer. Reads pool from a ref so a profile
   // swap during the cycle picks up the freshly-skinned pool on the next tick.
   useEffect(() => {

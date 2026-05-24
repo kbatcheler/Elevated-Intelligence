@@ -6,7 +6,7 @@ import {
 import { useSwap } from "../../context/CompanyContext";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Brand & social — creative campaign grid + media mentions
+// Brand & social, creative campaign grid + media mentions
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CAMPAIGNS_RAW = [
@@ -72,7 +72,7 @@ export function BrandSocialExtras() {
 
       <div className="card card-accent-navy">
         <div className="font-sans font-semibold text-[16px] text-[var(--navy)] mb-1">Earned media · last 7 days</div>
-        <div className="font-sans italic text-[12px] text-[var(--slate-light)] mb-4">73% of negative cluster traces to availability — not brand</div>
+        <div className="font-sans italic text-[12px] text-[var(--slate-light)] mb-4">73% of negative cluster traces to availability, not brand</div>
         <ul className="space-y-3">
           {MEDIA.map((m, i) => {
             const tone = m.tone === "pos" ? "var(--teal)" : m.tone === "neg" ? "var(--coral)" : "var(--slate-light)";
@@ -98,7 +98,7 @@ export function BrandSocialExtras() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Supply chain — DC heat tiles + supplier OTD scorecard
+// Supply chain, DC heat tiles + supplier OTD scorecard
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DCS_RAW = [
@@ -209,7 +209,7 @@ export function SupplyChainExtras() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Customer intelligence — top trade accounts table with risk badges
+// Customer intelligence, top trade accounts table with risk badges
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ACCOUNTS_RAW = [
@@ -286,7 +286,7 @@ export function CustomerExtras() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Finance — cash bridge waterfall + departmental spend tiles
+// Finance, cash bridge waterfall + departmental spend tiles
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CASH_BRIDGE_RAW = [
@@ -398,7 +398,7 @@ export function FinanceExtras() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Receivables — AR aging buckets + top debtors
+// Receivables, AR aging buckets + top debtors
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AGING_RAW = [
@@ -490,7 +490,7 @@ export function ReceivablesExtras() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Talent & HR — recruitment funnel + open roles grid + attrition by team
+// Talent & HR, recruitment funnel + open roles grid + attrition by team
 // ─────────────────────────────────────────────────────────────────────────────
 
 const FUNNEL_RAW = [
@@ -629,9 +629,15 @@ export function TalentHRExtras() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Registry — Layer.tsx looks up by layer key
+// Registry, Layer.tsx looks up by layer key
 // ─────────────────────────────────────────────────────────────────────────────
 
+// EXTRAS, per-layer optional "extra" panels rendered AFTER §6 (Heroes) on
+// the default Meridian Industrial profile only. To add a new extra:
+//   1. Author a top-level component above (e.g. function MyLayerExtra() { ... })
+//   2. Register it here keyed by the layer.key it belongs to.
+// Layer.tsx looks up EXTRAS[layer.key] inside `isDefault` only, so non-default
+// (preview-mode) tenants never see these panels.
 export const EXTRAS: Record<string, React.FC> = {
   "brand-social":          BrandSocialExtras,
   "supply-chain":          SupplyChainExtras,

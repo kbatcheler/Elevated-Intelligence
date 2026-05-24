@@ -5,7 +5,7 @@ import { useApp } from "../context/AppContext";
 import { useNarrative, useIsDefaultProfile } from "../context/CompanyContext";
 import { TRACK_RECORD } from "../data/trackRecord";
 
-// Scenario presets — each snaps multiple levers at once so the operator can
+// Scenario presets, each snaps multiple levers at once so the operator can
 // step through framed Q4 stories instead of moving sliders one at a time.
 // Values are intentionally aggressive at the high end so the bridge moves
 // visibly and the trade-offs (margin vs cash vs caution warnings) are loud.
@@ -41,7 +41,7 @@ const PRESETS: Preset[] = [
   {
     id: "aggressive-cash",
     label: "Aggressive cash",
-    blurb: "Maximise working-capital release — accept the named-account churn risk.",
+    blurb: "Maximise working-capital release, accept the named-account churn risk.",
     Icon: Banknote,
     values: {
       "match-cap": 22, "counter-promo": 2, "phoenix-shifts": 11,
@@ -51,7 +51,7 @@ const PRESETS: Preset[] = [
   {
     id: "growth-push",
     label: "Growth push",
-    blurb: "Stack every revenue lever — counter-promo full, dual-source aggressively, reallocate hard.",
+    blurb: "Stack every revenue lever, counter-promo full, dual-source aggressively, reallocate hard.",
     Icon: Zap,
     values: {
       "match-cap": 26, "counter-promo": 4, "phoenix-shifts": 14,
@@ -63,7 +63,7 @@ const PRESETS: Preset[] = [
 // Pulls the most recent closed outcome from the track record for a given
 // lever, matched by layer. TRACK_RECORD is authored in chronological order
 // (oldest first), so we scan from the end to surface the latest comparable
-// — that's what gives the "last time we moved this layer" claim its bite.
+//, that's what gives the "last time we moved this layer" claim its bite.
 const historicalForLayer = (layer: string) => {
   for (let i = TRACK_RECORD.length - 1; i >= 0; i--) {
     const t = TRACK_RECORD[i];
@@ -95,7 +95,7 @@ export default function WarRoom({ onNavigate }: { onNavigate: (key: string) => v
   const activePresetId = PRESETS.find(p =>
     LEVERS.every(l => values[l.id] === (p.values[l.id] ?? l.defaultValue)),
   )?.id;
-  // Presets are hand-authored against the Meridian Industrial lever IDs — they don't
+  // Presets are hand-authored against the Meridian Industrial lever IDs, they don't
   // apply to alternate narratives whose levers may have different keys or
   // counts. Only render the preset row when the narrative's lever set
   // matches what the presets target.
@@ -141,7 +141,7 @@ export default function WarRoom({ onNavigate }: { onNavigate: (key: string) => v
         </div>
       </div>
 
-      {/* Scenario presets — one-click stacks of the six levers. Lets the
+      {/* Scenario presets, one-click stacks of the six levers. Lets the
           operator step through framed Q4 stories before tweaking sliders.
           Only renders for narratives whose levers match the preset shape. */}
       {presetsApply && (
@@ -226,7 +226,7 @@ function Bridge({ impact }: { impact: ReturnType<typeof computeImpact> }) {
           </div>
         </div>
 
-        {/* Visual bridge — colour by sign so a recovery is always teal, a regression always coral */}
+        {/* Visual bridge, colour by sign so a recovery is always teal, a regression always coral */}
         <div className="col-span-9">
           <div className="flex items-end h-[120px] gap-1">
             <BridgeBar label="Baseline" value={0} max={Math.max(2, Math.abs(impact.ebitda) + 0.5)} color="var(--slate-light)" />
@@ -295,7 +295,7 @@ function LeverRow({ lever, value, onChange, onNavigate }: { lever: Lever; value:
     lever.direction === "margin" ? "var(--coral)" :
     lever.direction === "cash"   ? "var(--teal)"  :
                                    "var(--navy)";
-  // Most recent comparable from the track record on the same layer — used as
+  // Most recent comparable from the track record on the same layer, used as
   // a credibility anchor underneath the lever ("last time we moved this
   // layer it delivered X vs Y predicted").
   const prior = historicalForLayer(lever.layer);

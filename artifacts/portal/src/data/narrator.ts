@@ -15,10 +15,10 @@ export interface NarratorContent {
 export const NARRATOR: Record<string, NarratorContent> = {
   "business-performance": {
     summary:
-      "Q3 closed 8% behind plan with margin off 380 basis points. The variance is not diffuse: three layers — demand, supply, pricing — account for almost the entire gap. Cash held only because working capital tightened. Pricing is the fastest reversible lever this quarter.",
+      "Q3 closed 8% behind plan with margin off 380 basis points. The variance is not diffuse: three layers, demand, supply, pricing, account for almost the entire gap. Cash held only because working capital tightened. Pricing is the fastest reversible lever this quarter.",
     cross: [
-      { icon: "link",  title: "60% of revenue gap traces to Demand", body: "Two channels — DIY and Home Improvement — carry most of the variance. Demand layer holds the diagnostic.", targetLayer: "demand-intelligence", targetField: "metric:0" },
-      { icon: "alert", title: "Margin loss has a single root in Pricing",  body: "240bps margin decline aligns with promotional matching depth — Pricing layer quantifies the recovery.", targetLayer: "pricing-margin", targetField: "cause:0" },
+      { icon: "link",  title: "60% of revenue gap traces to Demand", body: "Two channels, DIY and Home Improvement, carry most of the variance. Demand layer holds the diagnostic.", targetLayer: "demand-intelligence", targetField: "metric:0" },
+      { icon: "alert", title: "Margin loss has a single root in Pricing",  body: "240bps margin decline aligns with promotional matching depth, Pricing layer quantifies the recovery.", targetLayer: "pricing-margin", targetField: "cause:0" },
     ],
     next: [
       { title: "Why did promo matching deepen by 14pp?", targetLayer: "pricing-margin" },
@@ -41,7 +41,7 @@ export const NARRATOR: Record<string, NarratorContent> = {
   },
   "competitive-intelligence": {
     summary:
-      "Share fell 2.1pp to 14.3% driven primarily by Home Depot private-label expansion in the Southeast and Lowe's price aggression in Texas. The story is asymmetric — concentrated in three families and three regions. Recovery requires either matched pricing or differentiation, not both.",
+      "Share fell 2.1pp to 14.3% driven primarily by Home Depot private-label expansion in the Southeast and Lowe's price aggression in Texas. The story is asymmetric, concentrated in three families and three regions. Recovery requires either matched pricing or differentiation, not both.",
     cross: [
       { icon: "trend", title: "Ace availability advantage is our supply problem", body: "Ace captured switchers during weeks 30–34 OOS window. Supply chain layer fixes this directly.", targetLayer: "supply-chain", targetField: "metric:0" },
       { icon: "link",  title: "Brand sentiment decline tracks share loss",        body: "Sentiment cluster around availability echoes the same SE/TX geography as share loss.", targetLayer: "brand-social", targetField: "cause:0" },
@@ -60,14 +60,14 @@ export const NARRATOR: Record<string, NarratorContent> = {
       { icon: "link",  title: "73% of negative brand sentiment ties to this",      body: "Sentiment cluster correlates with same service issues. Recovery here brings sentiment with it.", targetLayer: "brand-social", targetField: "metric:0" },
     ],
     next: [
-      { title: "Top 200 at-risk accounts — who owns each?",     targetLayer: "people-operations" },
+      { title: "Top 200 at-risk accounts, who owns each?",     targetLayer: "people-operations" },
       { title: "Can delivery SLA restore inside 30 days?",      targetLayer: "supply-chain" },
       { title: "What does pricing trust recovery look like?",   targetLayer: "pricing-margin" },
     ],
   },
   "brand-social": {
     summary:
-      "Brand health softened across every measure. 73% of the negative sentiment cluster relates to product availability and delivery, not brand affinity — the supply chain story showing up in the brand layer. Recovery lags supply chain recovery by 4–6 weeks, so PR investment alongside operational recovery is justified now.",
+      "Brand health softened across every measure. 73% of the negative sentiment cluster relates to product availability and delivery, not brand affinity, the supply chain story showing up in the brand layer. Recovery lags supply chain recovery by 4–6 weeks, so PR investment alongside operational recovery is justified now.",
     cross: [
       { icon: "link",  title: "Supply chain is the upstream cause here too",         body: "Stockouts in weeks 30–34 generated the regional press coverage now feeding sentiment.", targetLayer: "supply-chain", targetField: "metric:0" },
       { icon: "trend", title: "Search ranking loss correlates with content backlog", body: "Engineering attrition slowed the SEO content refresh; People layer surfaces the constraint.", targetLayer: "people-operations", targetField: "cause:2" },
@@ -82,7 +82,7 @@ export const NARRATOR: Record<string, NarratorContent> = {
     summary:
       "Supply chain is the operational source of most of the customer and brand decline. Supplier B delays compounded with Dallas DC capacity constraint during peak weeks 28–34. The story is two simultaneous constraints, not a single failure. Activating Supplier C is the largest single lever and is already in legal review.",
     cross: [
-      { icon: "alert", title: "The 41 OOS days here drive the Demand variance", body: "The same root cause appears in three layers — Demand, Customer, Brand — propagated from this one.", targetLayer: "business-performance", targetField: "cause:1" },
+      { icon: "alert", title: "The 41 OOS days here drive the Demand variance", body: "The same root cause appears in three layers, Demand, Customer, Brand, propagated from this one.", targetLayer: "business-performance", targetField: "cause:1" },
       { icon: "link",  title: "DC labour shortage links to People layer",        body: "14 unfilled DC roles in peak weeks. Compensation review in two regions is in People layer.", targetLayer: "people-operations", targetField: "cause:0" },
     ],
     next: [
@@ -112,7 +112,7 @@ export const NARRATOR: Record<string, NarratorContent> = {
       { icon: "alert", title: "Win-rate erosion mirrors competitor activity",       body: "Lowe's intensity in TX overlaps directly with the 4 named-account losses.", targetLayer: "competitive-intelligence", targetField: "cause:1" },
     ],
     next: [
-      { title: "Top 20 stalled deals — which are CRO-eligible?", targetLayer: "people-operations" },
+      { title: "Top 20 stalled deals, which are CRO-eligible?", targetLayer: "people-operations" },
       { title: "Pricing flexibility on the 8 large deals?",      targetLayer: "pricing-margin" },
       { title: "Trade segment buying-intent signal coverage?",   targetLayer: "marketing-performance" },
     ],
@@ -134,8 +134,8 @@ export const NARRATOR: Record<string, NarratorContent> = {
     summary:
       "Workforce stretch in operations roles correlates directly with service quality issues in Customer. Attrition concentrated in DC and customer service. 24 open critical roles span four DC regions plus central pricing. Recovery needs investment, not exhortation; compensation review in two DC regions is the highest-leverage move.",
     cross: [
-      { icon: "alert", title: "DC attrition is the Supply chain throughput cap", body: "Dallas DC throughput dropped to 82% during the 14-role vacancy window — same root cause.", targetLayer: "supply-chain", targetField: "cause:1" },
-      { icon: "link",  title: "Engineering loss slows pricing model retrain",    body: "Three senior data engineers lost in Q3 — same backlog blocks margin elasticity refresh.", targetLayer: "pricing-margin", targetField: "gap:1" },
+      { icon: "alert", title: "DC attrition is the Supply chain throughput cap", body: "Dallas DC throughput dropped to 82% during the 14-role vacancy window, same root cause.", targetLayer: "supply-chain", targetField: "cause:1" },
+      { icon: "link",  title: "Engineering loss slows pricing model retrain",    body: "Three senior data engineers lost in Q3, same backlog blocks margin elasticity refresh.", targetLayer: "pricing-margin", targetField: "gap:1" },
     ],
     next: [
       { title: "Which 50 roles get retention bonus first?",  targetLayer: "supply-chain" },
@@ -145,10 +145,10 @@ export const NARRATOR: Record<string, NarratorContent> = {
   },
   "finance": {
     summary:
-      "Cash closed Q3 ahead of plan by $3.8M, but the strength is working-capital tightening, not operational outperformance. EBITDA finished $6.5M behind plan, with Technology + Data and Operations overspending while Marketing and HR came in under. Two opex lines — cloud infrastructure and DC contract labour — account for almost all the variance and are both addressable in Q4. Reset the Technology budget envelope before Q4 board, not after.",
+      "Cash closed Q3 ahead of plan by $3.8M, but the strength is working-capital tightening, not operational outperformance. EBITDA finished $6.5M behind plan, with Technology + Data and Operations overspending while Marketing and HR came in under. Two opex lines, cloud infrastructure and DC contract labour, account for almost all the variance and are both addressable in Q4. Reset the Technology budget envelope before Q4 board, not after.",
     cross: [
-      { icon: "alert", title: "Receivables drag is the cash story", body: "$10.9M past 60-day terms — three of six largest debtors also appear as critical churn risk.", targetLayer: "receivables", targetField: "metric:1" },
-      { icon: "link",  title: "DC contract labour traces to Talent", body: "Contract pickers covered the 14-role DC vacancy gap at 1.6x rate — close the roles, close the overspend.", targetLayer: "talent-hr", targetField: "cause:0" },
+      { icon: "alert", title: "Receivables drag is the cash story", body: "$10.9M past 60-day terms, three of six largest debtors also appear as critical churn risk.", targetLayer: "receivables", targetField: "metric:1" },
+      { icon: "link",  title: "DC contract labour traces to Talent", body: "Contract pickers covered the 14-role DC vacancy gap at 1.6x rate, close the roles, close the overspend.", targetLayer: "talent-hr", targetField: "cause:0" },
     ],
     next: [
       { title: "Which cloud platforms drive the +18% overrun?", targetLayer: "finance" },
@@ -158,10 +158,10 @@ export const NARRATOR: Record<string, NarratorContent> = {
   },
   "receivables": {
     summary:
-      "The receivables book swelled to $40.5M in Q3, with $10.9M past 60-day terms — a 41% rise on Q2. Deterioration is concentrated: six trade customers carry 62% of past-due value, and three of those six are also critical churn risks. Collections should be sequenced with account recovery, not run as a parallel adversarial workflow. Reactivating the dunning cadence and joint AM+finance calls on the top six is this week's move.",
+      "The receivables book swelled to $40.5M in Q3, with $10.9M past 60-day terms, a 41% rise on Q2. Deterioration is concentrated: six trade customers carry 62% of past-due value, and three of those six are also critical churn risks. Collections should be sequenced with account recovery, not run as a parallel adversarial workflow. Reactivating the dunning cadence and joint AM+finance calls on the top six is this week's move.",
     cross: [
       { icon: "alert", title: "Top debtors are top churn risks",     body: "Heritage Pro, Mountain West Trades and Kessler all carry open service tickets and unpaid invoices in parallel.", targetLayer: "customer-intelligence", targetField: "header" },
-      { icon: "link",  title: "Service breach correlates with delay", body: "Accounts with Q3 SLA breaches paid 18 days slower on average — supply chain is upstream.", targetLayer: "supply-chain", targetField: "cause:0" },
+      { icon: "link",  title: "Service breach correlates with delay", body: "Accounts with Q3 SLA breaches paid 18 days slower on average, supply chain is upstream.", targetLayer: "supply-chain", targetField: "cause:0" },
     ],
     next: [
       { title: "Top 6 debtor recovery call sequence?", targetLayer: "receivables" },
@@ -171,9 +171,9 @@ export const NARRATOR: Record<string, NarratorContent> = {
   },
   "talent-hr": {
     summary:
-      "Q4 delivery risk concentrates in 24 unfilled critical roles. Six have been open more than 60 days, all in Operations, Data Engineering and Commercial — the same functions whose gaps drive Q3 variance. Funnel conversion halved versus Q2; the failure point is sourcing quality and offer competitiveness, not late-stage drop-off. Targeted comp moves in two DC regions plus an executive search on the senior data engineering role would close 80% of the Q4 staffing risk.",
+      "Q4 delivery risk concentrates in 24 unfilled critical roles. Six have been open more than 60 days, all in Operations, Data Engineering and Commercial, the same functions whose gaps drive Q3 variance. Funnel conversion halved versus Q2; the failure point is sourcing quality and offer competitiveness, not late-stage drop-off. Targeted comp moves in two DC regions plus an executive search on the senior data engineering role would close 80% of the Q4 staffing risk.",
     cross: [
-      { icon: "alert", title: "Open DC roles cap Supply throughput", body: "14 unfilled DC roles map directly to the throughput shortfall in Dallas — same root cause.", targetLayer: "supply-chain", targetField: "cause:1" },
+      { icon: "alert", title: "Open DC roles cap Supply throughput", body: "14 unfilled DC roles map directly to the throughput shortfall in Dallas, same root cause.", targetLayer: "supply-chain", targetField: "cause:1" },
       { icon: "link",  title: "Data engineering loss blocks Pricing", body: "Senior data engineer vacancy is the gating constraint on margin elasticity model retrain.", targetLayer: "pricing-margin", targetField: "gap:1" },
     ],
     next: [
@@ -182,11 +182,79 @@ export const NARRATOR: Record<string, NarratorContent> = {
       { title: "Internal mobility candidates for 14 lateral moves?", targetLayer: "people-operations" },
     ],
   },
+  "engagement-pipeline": {
+    summary:
+      "The pipeline is the joint roadmap between Different Day and the operating team, every architectural gap and missing feed across the 14 layers, sized by recovery value and sequenced into three 30-day windows. The total $32M is indicative, not contracted; the 90-day ship plan is what we actually commit to.",
+    cross: [
+      { icon: "trend", title: "Top item: stage progression data quality",        body: "$1.8M expected recovery, +3pp confidence. Lands in window 1.",          targetLayer: "sales-pipeline", targetField: "gap:0" },
+      { icon: "alert", title: "Receivables ↔ CRM bridge is gating cash recovery",body: "Without it, AMs see invoice status one click away, not in account view.", targetLayer: "receivables",    targetField: "gap:1" },
+      { icon: "link",  title: "FEED and GAP work deliberately interleaved",      body: "Each 30-day window mixes feed plumbing with model/workflow work so no single sprint becomes 'all plumbing'.", targetLayer: "engagement-pipeline" },
+    ],
+    next: [
+      { title: "Why is the pipeline indicative, not contracted?",      targetLayer: "engagement-pipeline" },
+      { title: "Show me the dependency graph behind these gaps",       targetLayer: "dependency-graph" },
+      { title: "Which gaps map to existing solution capabilities?",    targetLayer: "dependency-graph" },
+    ],
+  },
+  "dependency-graph": {
+    summary:
+      "The cross-layer map shows how a diagnosis in one layer feeds the next, and which data feeds bound each layer's confidence. 14 nodes, weighted dependencies, with the recoverable headroom (sum of per-gap confidence lifts) visible on isolation. Use this view to find which capability investments unblock the most layers at once.",
+    cross: [
+      { icon: "link",  title: "Demand → Business performance carries 60% of the gap",         body: "Highest-weight edge in the system. Fix Demand and the headline number moves.", targetLayer: "demand-intelligence" },
+      { icon: "alert", title: "Talent gates Supply, Pricing and People at the same time",     body: "Three downstream edges from one constrained layer. High-leverage place to act.", targetLayer: "talent-hr" },
+      { icon: "trend", title: "Contracts quietly amplifies three other diagnoses",            body: "Supplier paper compounds Supply damage; evergreen MSAs cap Receivables; rate-cards drove $1.4M Finance opex.", targetLayer: "contract-management" },
+    ],
+    next: [
+      { title: "Which capability unblocks the most layers?",        targetLayer: "dependency-graph" },
+      { title: "How is 'recoverable headroom' calculated?",         targetLayer: "dependency-graph" },
+      { title: "Walk me through the top weighted edge",             targetLayer: "demand-intelligence" },
+    ],
+  },
+  "committed-actions": {
+    summary:
+      "The committed-actions board is the executable side of the diagnosis: every action from every layer's §1 recommendation, plus the owner, the window, and the expected recovery. Filter by status to see what's in-flight, blocked or shipped this week. This is where the system stops talking and starts being measured.",
+    cross: [
+      { icon: "alert", title: "Two actions blocked on the same Talent gap",      body: "Comp review approvals for TX + AZ are gating both the DC throughput action and the pricing analyst replacement.", targetLayer: "talent-hr" },
+      { icon: "trend", title: "Receivables top-6 contact sequence in flight",    body: "$1.4M cash recovery; first three contacts logged, AM + finance pairing working.", targetLayer: "receivables", targetField: "action:0" },
+      { icon: "link",  title: "Pipeline-acceleration push on 20 stalled deals",  body: "$1.4M Q4. CEO + CRO sponsorship list confirmed; first reviews this week.", targetLayer: "sales-pipeline", targetField: "action:0" },
+    ],
+    next: [
+      { title: "Which actions are unblocked by next Friday?",       targetLayer: "committed-actions" },
+      { title: "Total committed recovery this quarter?",            targetLayer: "committed-actions" },
+      { title: "What's the conversion rate on past commitments?",   targetLayer: "track-record" },
+    ],
+  },
+  "scenario-warroom": {
+    summary:
+      "The war-room runs counter-factuals against the live diagnosis: what if Demand misses by 5pp again, what if Supplier C exits paper, what if FX swings 200bps. Each scenario re-prices the pipeline and resurfaces which actions become higher-priority. Use this when you need to defend the plan in front of a board that's already seen the headline number.",
+    cross: [
+      { icon: "alert", title: "Worst-case Demand stress shifts $4.1M into Q1",     body: "Pricing and Sales-pipeline actions move up; Supply actions become deferrable.", targetLayer: "demand-intelligence" },
+      { icon: "trend", title: "Supplier C exit removes 6pp of supply confidence",  body: "Contract acceleration becomes the top-ranked action across the whole portfolio.", targetLayer: "supply-chain" },
+    ],
+    next: [
+      { title: "Show the worst-case Q4 scenario",                  targetLayer: "scenario-warroom" },
+      { title: "Which actions are robust across all scenarios?",   targetLayer: "scenario-warroom" },
+      { title: "How is scenario probability weighted?",            targetLayer: "intelligence-architecture" },
+    ],
+  },
+  "track-record": {
+    summary:
+      "The outcome track record is the receipts page: every commitment Different Day has made on this engagement, what it was forecast to deliver, what it actually delivered, and the variance. For Meridian Industrial the system has closed two quarters; for newly-seeded tenants this populates after the first quarter closes, the canonical Meridian numbers stay visible as the portfolio benchmark.",
+    cross: [
+      { icon: "trend", title: "Q2 committed-vs-delivered: 87% hit rate",          body: "11 of 13 commitments delivered to or above the forecast band.", targetLayer: "track-record" },
+      { icon: "link",  title: "The two misses both trace to a single feed gap",   body: "Pricing-elasticity model retrain slipped 11 days; both downstream actions slipped with it.", targetLayer: "pricing-margin" },
+    ],
+    next: [
+      { title: "Which commitments slipped, and why?",              targetLayer: "track-record" },
+      { title: "Average forecast variance across all commitments?",targetLayer: "track-record" },
+      { title: "How does this compare across other engagements?",  targetLayer: "track-record" },
+    ],
+  },
   "intelligence-architecture": {
     summary:
-      "The architecture page makes the reasoning chain visible. Five named components — Cortex Lens, Confounder, Challenger, Synthesist, Evaluator — work together on every diagnostic question. The user-facing narrative is the synthesis of all five; confidence and gap detection are emergent properties of the chain working correctly.",
+      "The architecture page makes the reasoning chain visible. Five named components, Cortex Lens, Confounder, Challenger, Synthesist, Evaluator, work together on every diagnostic question. The user-facing narrative is the synthesis of all five; confidence and gap detection are emergent properties of the chain working correctly.",
     cross: [
-      { icon: "trend", title: "Confidence visible on every layer header", body: "Evaluator scores feed the confidence band on every layer header — including the one you saw last.", targetLayer: "business-performance" },
+      { icon: "trend", title: "Confidence visible on every layer header", body: "Evaluator scores feed the confidence band on every layer header, including the one you saw last.", targetLayer: "business-performance" },
       { icon: "link",  title: "Gaps logged here become pipeline value",   body: "Each layer's 'Architectural gaps surfaced' card is sourced from Evaluator's dead-end pipeline.", targetLayer: "pricing-margin" },
     ],
     next: [

@@ -6,9 +6,11 @@ export interface Cause  { title: string; impact: string; detail: string; }
 export interface Action { title: string; detail: string; impact: string; }
 export interface Gap    { category: GapCategory; title: string; detail: string; confidenceLiftPp: number; solution: string; }
 
+export type ChartDatum = Record<string, unknown>;
+
 export interface ChartSpec {
   kind: "composed" | "line" | "stacked-bar" | "bar" | "area";
-  data: any[];
+  data: ChartDatum[];
   series: { key: string; name: string; color: string; type?: "line" | "bar" }[];
   xKey: string;
   yLabel?: string;
@@ -48,8 +50,8 @@ export const LAYERS: LayerData[] = [
     title: "Business performance",
     question: "How is the business performing against plan?",
     confidence: 87,
-    sources: 14,
-    diagnosedAt: "Oct 14, 2026 · 06:42 CT",
+    sources: 8,
+    diagnosedAt: "Oct 14, 2026 · 02:37 CT",
     analystTake: "Three layers explain almost the entire $11M gap, and the fastest reversible lever this quarter is pricing \u2014 not demand, not supply.",
     metrics: [
       { label: "Revenue",        value: "$127M",  sub: "vs $138M plan",       tone: "bad"  },
@@ -98,7 +100,7 @@ export const LAYERS: LayerData[] = [
     ],
     gapsPipelineUsd: "$2.4M indicative pipeline",
     counterArgs: [
-      { title: "Macro contraction in trade segment", ci: "9% CI", detail: "Tested against trade segment performance — rejected at 91% confidence. Trade orders flat YoY across the period." },
+      { title: "Macro contraction in trade segment", ci: "9% CI", detail: "Tested against trade segment performance, rejected at 91% confidence. Trade orders flat YoY across the period." },
       { title: "Single-month outlier in August", ci: "14% CI", detail: "Variance persists in September at 9.3%, eliminating outlier as primary explanation." },
       { title: "Brand-led demand erosion", ci: "11% CI", detail: "Brand sentiment decline lagged demand decline by 4–6 weeks, indicating reverse causality." },
     ],
@@ -109,7 +111,7 @@ export const LAYERS: LayerData[] = [
     title: "Demand intelligence",
     question: "Where is demand strong, weak, or moving?",
     confidence: 84,
-    sources: 11,
+    sources: 8,
     diagnosedAt: "Oct 14, 2026 · 05:18 CT",
     analystTake: "Most of the $2.8M demand miss is competitive-promo response and stockout damage, not a soft consumer \u2014 and two of those three causes are fixable inside Q4.",
     metrics: [
@@ -170,7 +172,7 @@ export const LAYERS: LayerData[] = [
     title: "Competitive intelligence",
     question: "How is our market position shifting?",
     confidence: 79,
-    sources: 9,
+    sources: 8,
     diagnosedAt: "Oct 13, 2026 · 22:51 CT",
     analystTake: "Share loss is concentrated in three product families and three regions, so the recovery must be targeted; broad-spectrum spend would over-invest and still under-perform.",
     metrics: [
@@ -232,7 +234,7 @@ export const LAYERS: LayerData[] = [
     title: "Customer intelligence",
     question: "Which customers are growing, churning, or worth defending?",
     confidence: 82,
-    sources: 10,
+    sources: 8,
     diagnosedAt: "Oct 14, 2026 · 03:09 CT",
     analystTake: "Trade churn is service-driven, not price-driven \u2014 which means customer recovery is gated on supply chain recovery being visible to those accounts within 30 days.",
     metrics: [
@@ -355,7 +357,7 @@ export const LAYERS: LayerData[] = [
     title: "Supply chain",
     question: "Where is the supply chain failing, and what is it costing?",
     confidence: 89,
-    sources: 12,
+    sources: 8,
     diagnosedAt: "Oct 14, 2026 · 04:22 CT",
     analystTake: "Two simultaneous constraints, not a single failure \u2014 and the Supplier C activation that the Q4 plan rests on is already in legal review.",
     metrics: [
@@ -412,7 +414,7 @@ export const LAYERS: LayerData[] = [
     title: "Pricing and margin",
     question: "Where is margin leaking, and which actions recover it?",
     confidence: 91,
-    sources: 13,
+    sources: 8,
     diagnosedAt: "Oct 14, 2026 · 06:11 CT",
     analystTake: "Promotional matching defended unit volume but compressed margin 240bps with no share recovery \u2014 the discipline reset is overdue, not aggressive.",
     metrics: [
@@ -469,7 +471,7 @@ export const LAYERS: LayerData[] = [
     title: "Sales pipeline",
     question: "Is the pipeline healthy enough to make the forecast?",
     confidence: 73,
-    sources: 7,
+    sources: 8,
     diagnosedAt: "Oct 13, 2026 · 21:08 CT",
     analystTake: "Headline coverage looks healthy, but stage-by-stage progression has decayed in the regions doing most of the lifting \u2014 the risk is hidden by the average.",
     metrics: [
@@ -531,7 +533,7 @@ export const LAYERS: LayerData[] = [
     title: "Marketing performance",
     question: "What is marketing actually returning?",
     confidence: 74,
-    sources: 9,
+    sources: 8,
     diagnosedAt: "Oct 13, 2026 · 23:47 CT",
     analystTake: "Top-of-funnel spend is intact; channel mix and creative fatigue are eating the return \u2014 the issue is allocation, not budget.",
     metrics: [
@@ -653,8 +655,8 @@ export const LAYERS: LayerData[] = [
     title: "Finance",
     question: "Where is cash, margin, and spend tracking against plan?",
     confidence: 91,
-    sources: 11,
-    diagnosedAt: "Oct 14, 2026 · 06:42 CT",
+    sources: 8,
+    diagnosedAt: "Oct 14, 2026 · 00:14 CT",
     analystTake: "Cash is holding only because working capital tightened, not because earnings did \u2014 and the cushion narrows fast if any Q4 recovery lever slips.",
     metrics: [
       { label: "Operating cash flow", value: "$24.2M", sub: "vs $19.4M plan",   tone: "good" },
@@ -663,7 +665,7 @@ export const LAYERS: LayerData[] = [
       { label: "Opex variance",       value: "+$3.6M", sub: "vs plan, Q3",      tone: "bad"  },
     ],
     narrative:
-      "Cash position closed Q3 ahead of plan by $3.8M, but that strength is a consequence of working capital tightening, not operational outperformance. EBITDA finished $6.5M behind plan, with Technology + Data and Operations both overspending while Marketing and HR came in under. The opex variance is concentrated in two budget lines — cloud infrastructure and DC contract labour — both of which are addressable in Q4 without structural cuts. Finance leadership should reset the Technology budget envelope before Q4 board, not after.",
+      "Cash position closed Q3 ahead of plan by $3.8M, but that strength is a consequence of working capital tightening, not operational outperformance. EBITDA finished $6.5M behind plan, with Technology + Data and Operations both overspending while Marketing and HR came in under. The opex variance is concentrated in two budget lines, cloud infrastructure and DC contract labour, both of which are addressable in Q4 without structural cuts. Finance leadership should reset the Technology budget envelope before Q4 board, not after.",
     causes: [
       { title: "Technology + Data overspend",     impact: "+$3.2M",
         detail: "Cloud and data platform run-rate +18% vs plan, driven by unrationalised pipelines and three duplicate model serving stacks." },
@@ -715,8 +717,8 @@ export const LAYERS: LayerData[] = [
     title: "Receivables and invoicing",
     question: "How healthy is the order-to-cash cycle?",
     confidence: 84,
-    sources: 7,
-    diagnosedAt: "Oct 14, 2026 · 06:42 CT",
+    sources: 8,
+    diagnosedAt: "Oct 13, 2026 · 20:46 CT",
     analystTake: "Six accounts concentrate most of the past-due exposure, and four are protected by evergreen MSAs \u2014 recovery here is goodwill, not contract.",
     metrics: [
       { label: "Total outstanding", value: "$40.5M", sub: "724 open invoices",   tone: "neutral" },
@@ -725,7 +727,7 @@ export const LAYERS: LayerData[] = [
       { label: "Collection rate",   value: "87%",    sub: "vs 94% Q2",            tone: "bad"     },
     ],
     narrative:
-      "The receivables book swelled to $40.5M in Q3, with $10.9M past 60-day terms — a 41% increase on Q2. The deterioration is not broad; six trade customers carry 62% of the past-due value. Three of those six also appear in Customer intelligence as critical churn risks, suggesting the receivables stress is a symptom of the same underlying service quality and supply reliability issues. Collections should be sequenced with account recovery, not run as a parallel adversarial workflow.",
+      "The receivables book swelled to $40.5M in Q3, with $10.9M past 60-day terms, a 41% increase on Q2. The deterioration is not broad; six trade customers carry 62% of the past-due value. Three of those six also appear in Customer intelligence as critical churn risks, suggesting the receivables stress is a symptom of the same underlying service quality and supply reliability issues. Collections should be sequenced with account recovery, not run as a parallel adversarial workflow.",
     causes: [
       { title: "Concentration in 6 large debtors",  impact: "$2.8M past terms",
         detail: "Heritage Pro, Mountain West Trades and Kessler together account for 35% of overdue receivables and all three have open service tickets." },
@@ -780,8 +782,8 @@ export const LAYERS: LayerData[] = [
     title: "Talent and HR",
     question: "Is the organisation staffed to deliver the Q4 plan?",
     confidence: 79,
-    sources: 9,
-    diagnosedAt: "Oct 14, 2026 · 06:42 CT",
+    sources: 8,
+    diagnosedAt: "Oct 14, 2026 · 05:53 CT",
     analystTake: "Funnel quality, not late-stage drop-off, is the constraint \u2014 and two DC regions plus the lead data-engineer slot close 80% of the Q4 staffing risk.",
     metrics: [
       { label: "Open critical roles", value: "24",   sub: "vs 8 target",       tone: "bad"  },
@@ -790,10 +792,10 @@ export const LAYERS: LayerData[] = [
       { label: "Internal mobility",   value: "11%",  sub: "vs 18% target",     tone: "warn" },
     ],
     narrative:
-      "Q4 delivery risk concentrates in a small number of unfilled roles. Twenty-four critical positions are open, of which six have been open more than 60 days; those six map onto Operations, Data Engineering and Commercial — exactly the functions whose performance gaps drive the Q3 variance. Funnel conversion has halved versus Q2, suggesting the issue is sourcing quality and offer competitiveness, not late-stage drop-off. Targeted compensation moves in two DC regions plus an executive search for the lead data engineer slot would close 80% of the Q4 staffing risk.",
+      "Q4 delivery risk concentrates in a small number of unfilled roles. Twenty-four critical positions are open, of which six have been open more than 60 days; those six map onto Operations, Data Engineering and Commercial, exactly the functions whose performance gaps drive the Q3 variance. Funnel conversion has halved versus Q2, suggesting the issue is sourcing quality and offer competitiveness, not late-stage drop-off. Targeted compensation moves in two DC regions plus an executive search for the lead data engineer slot would close 80% of the Q4 staffing risk.",
     causes: [
       { title: "Sourcing pipeline thinning",         impact: "-540 applicants vs Q2",
-        detail: "Top of funnel down 30% — Greenhouse + LinkedIn pipeline shows fewer qualified candidates in target zip codes." },
+        detail: "Top of funnel down 30%, Greenhouse + LinkedIn pipeline shows fewer qualified candidates in target zip codes." },
       { title: "Offer acceptance rate decline",      impact: "Accept rate 59%",
         detail: "Down from 78% Q2; two-thirds of decliners cite compensation, one-third cite remote flexibility." },
       { title: "Manager bandwidth on interviews",    impact: "Cycle +12 days",
@@ -854,7 +856,7 @@ export const LAYERS: LayerData[] = [
       { label: "Evergreen auto-renew",   value: "62",    sub: "no review in last 18 months",        tone: "warn"    },
     ],
     narrative:
-      "Contract exposure is silently amplifying the Q3 variance. Three clusters concentrate the risk. First, Supplier B is invoking its force-majeure clause to defer a $1.4M production-shortfall penalty, blocking the credit that would have offset part of the OOS damage. Second, Dallas and Phoenix DC contract-labour rate cards auto-renewed at peak-demand premiums without negotiation, contributing $1.4M of the opex overrun flagged in Finance. Third, four of the six past-due trade customers operate under evergreen master service agreements with rolling 60-day terms — there is no contractual lever to enforce earlier payment, which leaves the receivables recovery dependent on goodwill alone. The Supplier C activation that the whole Q4 plan rests on is also a contract problem: the qualified-supplier agreement has been in legal review for 23 days against a 10-day target, and every additional day costs roughly $60K in further OOS damage on Home Improvement.",
+      "Contract exposure is silently amplifying the Q3 variance. Three clusters concentrate the risk. First, Supplier B is invoking its force-majeure clause to defer a $1.4M production-shortfall penalty, blocking the credit that would have offset part of the OOS damage. Second, Dallas and Phoenix DC contract-labour rate cards auto-renewed at peak-demand premiums without negotiation, contributing $1.4M of the opex overrun flagged in Finance. Third, four of the six past-due trade customers operate under evergreen master service agreements with rolling 60-day terms, there is no contractual lever to enforce earlier payment, which leaves the receivables recovery dependent on goodwill alone. The Supplier C activation that the whole Q4 plan rests on is also a contract problem: the qualified-supplier agreement has been in legal review for 23 days against a 10-day target, and every additional day costs roughly $60K in further OOS damage on Home Improvement.",
     causes: [
       { title: "Supplier B force-majeure invocation",     impact: "$1.4M credit deferred",
         detail: "Production-shortfall penalty deferred under FM clause until Q4 close; legal recovery probability assessed at 55%." },
@@ -884,7 +886,7 @@ export const LAYERS: LayerData[] = [
     },
     actions: [
       { title: "Close Supplier C legal review this week", detail: "Escalate indemnity and audit clauses to GC; target 5-day close to unlock shipment", impact: "$0.8M Q4" },
-      { title: "Renegotiate DC labour rate cards",        detail: "Phoenix card renews Nov 1 — reset to off-peak benchmark before counter-signing",  impact: "$0.6M Q4" },
+      { title: "Renegotiate DC labour rate cards",        detail: "Phoenix card renews Nov 1, reset to off-peak benchmark before counter-signing",  impact: "$0.6M Q4" },
       { title: "Pursue Supplier B FM partial recovery",   detail: "Counter-letter on shortfall penalty; settlement target 60% of the $1.4M deferred", impact: "$0.5M cash" },
       { title: "Convert top-6 debtor MSAs to net-30",     detail: "Bundle into recovery plan with service-restoration milestones tied to payment terms", impact: "$0.4M DSO" },
     ],

@@ -7,7 +7,7 @@ import { deepResolveWith, DEFAULT_PROFILE_ID } from "../data/companies";
 import type { LayerData } from "../data/layers";
 
 // Build a set of suggested chat prompts grounded in the actually-seeded
-// company's layer data — metric movers, top causes, top recommended actions.
+// company's layer data, metric movers, top causes, top recommended actions.
 // Unlike static SUGGESTED (which is just vocab-swapped Meridian Industrial copy), these
 // reference the seeded company's real signals so they feel like "questions
 // the system already has answers to."
@@ -139,7 +139,7 @@ export default function ChatAssistant({ onNavigate }: { onNavigate: (key: string
         text: "",
         response: {
           text:
-            "I'm the **Different Day** assistant. I can answer the questions an executive actually asks of this portal — diagnosis, recovery, risk, what-if, where to start. " +
+            "I'm the **Different Day** assistant. I can answer the questions an executive actually asks of this portal, diagnosis, recovery, risk, what-if, where to start. " +
             "Try one of the suggestions below, or just type.",
           citations: [],
           followups: groundedSuggestions,
@@ -246,7 +246,7 @@ export default function ChatAssistant({ onNavigate }: { onNavigate: (key: string
             )}
           </div>
 
-          {/* Rotating grounded suggestions — visible whenever the chat is
+          {/* Rotating grounded suggestions, visible whenever the chat is
               open and the user isn't actively typing. Two chips at a time,
               cycling every 6s through the 6 suggestions derived from the
               seeded company's actual layer signals. Click → fires the

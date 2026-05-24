@@ -9,7 +9,7 @@ import { ChevronDown, Eye } from "lucide-react";
 // used to prepend a "For you" group to the sidebar surfacing the layer keys
 // this persona cares about most.
 //
-// We deliberately don't *hide* other layers — analysts still need full
+// We deliberately don't *hide* other layers, analysts still need full
 // access. The lens just promotes what's relevant. Setting is persisted in
 // localStorage so demos that come back the next day still see "their" view.
 // ----------------------------------------------------------------------------

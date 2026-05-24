@@ -4,8 +4,8 @@ export default function ConfidenceBand({ value, inputs }: { value: number; input
   const [open, setOpen] = useState(false);
   const x = Math.max(2, Math.min(58, (value / 100) * 60));
   const defaults = [
-    "Real-time competitor pricing latency (4–7 days) — would lift confidence ~6pp",
-    "Margin elasticity model refresh (pre-supply-shock) — would lift confidence ~4pp",
+    "Real-time competitor pricing latency (4–7 days), would lift confidence ~6pp",
+    "Margin elasticity model refresh (pre-supply-shock), would lift confidence ~4pp",
   ];
   const list = inputs && inputs.length ? inputs : defaults;
   return (

@@ -4,7 +4,7 @@ import {
   type CompanyProfile,
 } from "../data/companies";
 
-// Source data modules — imported once, deep-swapped per active profile.
+// Source data modules, imported once, deep-swapped per active profile.
 import { LAYERS as RAW_LAYERS } from "../data/layers";
 import { NARRATOR as RAW_NARRATOR } from "../data/narrator";
 import { PEERS as RAW_PEERS } from "../data/peers";
@@ -31,15 +31,15 @@ const STORAGE_KEY_CUSTOM = "differentday.customProfiles.v1";
 // PEERS, EVIDENCE, ANOMALIES, LEVERS, PATTERNS, ...) are written entirely in
 // Meridian Industrial-shaped language with brand-specific tokens (Home Depot, Phoenix DC,
 // Greater Plains Co., Kelly Services, cordless drill, ...). The vocab swap
-// layer cannot translate those — it can only substring-replace mapped vocab.
+// layer cannot translate those, it can only substring-replace mapped vocab.
 //
 // For any non-default profile we substitute these collections with neutral
 // generic equivalents below. SIGNAL_POOL and ACTIVITY_STREAM MUST stay
 // non-empty (their consumers index into [0] / use idx % length and would
-// crash on an empty array). Everything else is safe to leave empty — the
+// crash on an empty array). Everything else is safe to leave empty, the
 // consuming renderers all handle empty record/array gracefully.
 const NEUTRAL_SIGNAL_POOL: typeof RAW_SIGNAL_POOL = [
-  { ts: "04:18", source: "ERP",                 layer: "business-performance",    text: "General ledger refresh complete — quarter close window updated.",                       tone: "info" },
+  { ts: "04:18", source: "ERP",                 layer: "business-performance",    text: "General ledger refresh complete, quarter close window updated.",                       tone: "info" },
   { ts: "04:25", source: "POS aggregator",      layer: "demand-intelligence",     text: "Hourly demand signals refreshed against the current weekly plan.",                     tone: "info" },
   { ts: "04:33", source: "CRM",                 layer: "sales-pipeline",          text: "Pipeline coverage ratio refreshed against the current quarter commit.",                tone: "info" },
   { ts: "04:40", source: "WMS",                 layer: "supply-chain",            text: "Inventory snapshot updated across the fulfilment network.",                            tone: "info" },
@@ -142,8 +142,8 @@ export interface NarrativeBundle {
 }
 
 // Per-step state of the live seed flow. Each entry corresponds to a real
-// unit of work — homepage fetch, identify call, seed call, brief prefetch,
-// vocabulary indexing — and is updated by the orchestrator as that work
+// unit of work, homepage fetch, identify call, seed call, brief prefetch,
+// vocabulary indexing, and is updated by the orchestrator as that work
 // actually completes. NO fake setTimeout ticks: every status change here is
 // tied to a network round-trip resolving or a sync computation finishing.
 export type SeedStepKind = "ground" | "identify" | "disambiguate" | "seed" | "narrate" | "prefetch" | "indexing";
@@ -153,7 +153,7 @@ export interface SeedStep {
   status: SeedStepStatus;
   label: string;
   detail?: string;
-  // Tiny inline receipts shown below the step — e.g. "Source · humanco.com",
+  // Tiny inline receipts shown below the step, e.g. "Source · humanco.com",
   // "Round-trip · 4.2s", "Tokens in/out · 1,694 → 191". These are the proof
   // that real work happened.
   stats?: Array<{ label: string; value: string }>;
@@ -167,7 +167,7 @@ export interface BootSplashState {
   // When present, splash renders the real seed flow with per-step receipts.
   // When null, splash renders the simple library-switch view (no work in flight).
   seedFlow: SeedStep[] | null;
-  // While the flow is in-flight we MUST NOT auto-dismiss — the work isn't done.
+  // While the flow is in-flight we MUST NOT auto-dismiss, the work isn't done.
   // Flipped to true by endSeedFlow / failSeedFlow once everything resolves.
   autoDismiss: boolean;
 }
@@ -184,7 +184,7 @@ interface CompanyContextValue {
   narrative: NarrativeBundle;
   bootSplash: BootSplashState | null;
   triggerBootSplash: (profileName: string) => void;
-  // Seed-flow orchestration — called by CompanyPicker as real work progresses.
+  // Seed-flow orchestration, called by CompanyPicker as real work progresses.
   beginSeedFlow: (profileName: string, initialSteps: SeedStep[]) => void;
   updateSeedStep: (kind: SeedStepKind, patch: Partial<Omit<SeedStep, "kind">>) => void;
   endSeedFlow: (meta?: CompanyProfile["_meta"]) => void;
@@ -245,7 +245,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     let layersOut = swap(RAW_LAYERS);
     // 2. For seeded profiles, overlay per-layer LLM-rewritten narrative /
     //    metrics / causes / actions on top of the vocab swap. Missing layers
-    //    fall through — for the default profile that's vocab-swapped Meridian Industrial
+    //    fall through, for the default profile that's vocab-swapped Meridian Industrial
     //    copy (logical filler); for non-default profiles we replace the
     //    narrative + causes + actions with neutral placeholders so the
     //    wrong-brand Meridian Industrial story can't leak through.
@@ -270,7 +270,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     //    scale; for a seeded company we scale every numeric value in dollar-
     //    denominated charts proportionally so the bars/lines/areas match the
     //    rebased headlines. Percentage / count charts are left untouched
-    //    (detected via yLabel — only "USD"/"$" charts get rescaled).
+    //    (detected via yLabel, only "USD"/"$" charts get rescaled).
     const scaleFactor = computeRevenueScaleFactor(profile);
     if (scaleFactor !== 1) {
       layersOut = layersOut.map(layer => {
@@ -295,21 +295,32 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     // For non-default profiles, substitute neutral fallbacks for every
     // Meridian Industrial-shaped bulk collection. SIGNAL_POOL and ACTIVITY_STREAM use
     // explicit neutral arrays (their consumers can't tolerate empty);
-    // everything else is safe to leave empty — the consuming renderers all
+    // everything else is safe to leave empty, the consuming renderers all
     // handle empty record/array gracefully (see explorer notes).
     if (!isDefault) {
+      // Preview-mode bundle for non-default tenants. The portal is operating
+      // on a vocabulary swap of the canonical Meridian Industrial corpus —
+      // feeds, peers and architecture all rewrite their named entities
+      // through the resolver so the page stops referencing the wrong brand.
+      // The fully-authored, per-tenant outputs (narrator commentary, pipeline
+      // deep-dives, anomalies, track record, etc.) require real data wiring
+      // and are intentionally withheld until the seed completes; their pages
+      // already render clean empty/preview states. Track record is the one
+      // exception, the canonical Meridian Industrial outcomes stay visible
+      // as the system's portfolio receipts, surfaced by the track-record page
+      // itself with the appropriate empty-state for the active tenant.
       return {
         LAYERS:          layersOut,
         NARRATOR:        {},
-        PEERS:           {},
-        FEEDS:           {},
+        PEERS:           swap(RAW_PEERS),
+        FEEDS:           swap(RAW_FEEDS),
         ACTIVITY_STREAM: NEUTRAL_ACTIVITY_STREAM,
         NEXT_STEPS:      {},
         PIPELINE_DEEP:   {},
         SIGNAL_POOL:     NEUTRAL_SIGNAL_POOL,
         ANOMALIES:       [],
         EVIDENCE:        {},
-        TRACK_RECORD:    [],
+        TRACK_RECORD:    swap(RAW_TRACK_RECORD),
         ARCH_COMPONENTS: swap(RAW_ARCH_COMPONENTS),
         SAMPLE_QUESTION: "What is the biggest driver of this quarter's plan variance?",
         LEVERS:          [],
@@ -343,7 +354,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     setActiveId(id);
     try { window.localStorage.setItem(STORAGE_KEY_ACTIVE, id); } catch { /* ignore */ }
     if (id !== DEFAULT_PROFILE_ID) {
-      // Library switch — no live work in flight, so seedFlow is null and the
+      // Library switch, no live work in flight, so seedFlow is null and the
       // splash renders the simplified "loaded saved profile" view.
       setBootSplash({ open: true, profileName: next.name, meta: next._meta, seedFlow: null, autoDismiss: true });
     }
@@ -351,7 +362,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   }, [customProfiles]);
 
   // Save the newly seeded profile and make it active. The boot splash is
-  // NOT opened here — for the seed-from-name+URL path the splash is already
+  // NOT opened here, for the seed-from-name+URL path the splash is already
   // open (driven by the orchestrator in CompanyPicker). For the library
   // path setProfileId opens the splash itself.
   const addCustomProfile = useCallback((p: CompanyProfile) => {
@@ -378,7 +389,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     try { window.localStorage.removeItem("differentday.intelligenceBrief.v1." + id); } catch { /* ignore */ }
 
     // 2. Server-side brief cache (keyed by company-identity tuple). Fire-and-
-    //    forget — invalidation failure shouldn't block the delete from the UI.
+    //    forget, invalidation failure shouldn't block the delete from the UI.
     if (victim) {
       const base = import.meta.env.BASE_URL;
       void fetch(`${base}api/intelligence/brief/invalidate`, {
@@ -395,7 +406,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           founded:     victim.founded,
           tagline:     victim.tagline,
         }),
-      }).catch(() => { /* ignore — best-effort */ });
+      }).catch(() => { /* ignore, best-effort */ });
     }
 
     // 3. Remove the profile itself from saved list and storage.
@@ -450,12 +461,12 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     setBootSplash(prev => {
       if (!prev?.seedFlow) return prev;
       // Mark the named step failed, AND terminalize any OTHER step still
-      // marked "running" — otherwise an early identify failure can leave
+      // marked "running", otherwise an early identify failure can leave
       // the "ground" step spinning forever, which keeps `anyRunning` true
       // and prevents the splash from being dismissed.
       const next = prev.seedFlow.map(s => {
         if (s.kind === kind) return { ...s, status: "failed" as const, errorReason: reason };
-        if (s.status === "running") return { ...s, status: "skipped" as const, detail: s.detail ?? "Not reached — earlier step failed" };
+        if (s.status === "running") return { ...s, status: "skipped" as const, detail: s.detail ?? "Not reached, earlier step failed" };
         return s;
       });
       return { ...prev, seedFlow: next, autoDismiss: false };
@@ -546,7 +557,7 @@ export function useSwap<T>(value: T): T {
 /**
  * Per-component dataset lookup. If the active profile defines an override at
  * `profile.datasets[key]`, that override is returned (deep-swapped through
- * the active vocab — usually a no-op since overrides are already in-profile).
+ * the active vocab, usually a no-op since overrides are already in-profile).
  * Otherwise the supplied RAW fallback is deep-swapped and returned.
  *
  * Use this for hero/extras datasets where token-level vocab can't translate

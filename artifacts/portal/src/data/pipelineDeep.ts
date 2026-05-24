@@ -1,4 +1,4 @@
-// Deep "pipeline detail" — the data the Demand product would surface for the
+// Deep "pipeline detail", the data the Demand product would surface for the
 // four operationally-deep layers. Surfaced in the portal as a "Pipeline detail"
 // panel that sits between the narrative and the recommended-actions column.
 
@@ -31,7 +31,7 @@ export const PIPELINE_DEEP: Record<string, PipelineDeep> = {
       "Underneath the variance number is a five-category, eight-DC forecast model with a 14-day rolling MAPE and a separate competitor-promo signal. Below is the slice driving Q3.",
     primary: {
       title: "Category-level forecast quality",
-      subtitle: "Rolling 14-day MAPE vs plan share — Q3 2026",
+      subtitle: "Rolling 14-day MAPE vs plan share, Q3 2026",
       headers: ["Category", "Plan share", "Actual share", "MAPE 14d", "Drift vs Q2"],
       rows: [
         { cols: ["Home Improvement",   "28%", "21%", "13pp", "+5pp"], tone: "bad"  },
@@ -49,22 +49,22 @@ export const PIPELINE_DEEP: Record<string, PipelineDeep> = {
       subtitle: "Ranked by absolute dollar gap to plan",
       headers: ["SKU", "Description", "Plan units", "Actual", "Gap $"],
       rows: [
-        { cols: ["4128", "Cordless drill 18V — pro",         "12,400", "8,210", "−$420K"], tone: "bad"  },
-        { cols: ["4131", "Circular saw kit — pro",           "8,200",  "5,640", "−$310K"], tone: "bad"  },
-        { cols: ["6204", "Impact driver — trade",            "9,100",  "6,820", "−$280K"], tone: "bad"  },
+        { cols: ["4128", "Cordless drill 18V, pro",         "12,400", "8,210", "−$420K"], tone: "bad"  },
+        { cols: ["4131", "Circular saw kit, pro",           "8,200",  "5,640", "−$310K"], tone: "bad"  },
+        { cols: ["6204", "Impact driver, trade",            "9,100",  "6,820", "−$280K"], tone: "bad"  },
         { cols: ["7821", "Trim router + bits",               "5,400",  "3,940", "−$210K"], tone: "bad"  },
-        { cols: ["4129", "Cordless drill 18V — homeowner",   "14,200", "11,820","−$190K"], tone: "warn" },
+        { cols: ["4129", "Cordless drill 18V, homeowner",   "14,200", "11,820","−$190K"], tone: "warn" },
         { cols: ["6210", "Hammer drill 20V",                 "6,800",  "5,440", "−$180K"], tone: "warn" },
         { cols: ["8104", "Reciprocating saw kit",            "4,200",  "3,180", "−$170K"], tone: "warn" },
         { cols: ["7305", "Cordless multi-tool",              "5,100",  "4,080", "−$140K"], tone: "warn" },
         { cols: ["4140", "Drill driver combo",               "3,800",  "2,960", "−$130K"], tone: "warn" },
         { cols: ["6215", "Angle grinder 4.5″",               "5,600",  "4,840", "−$110K"], tone: "warn" },
       ],
-      footnote: "Combined gap on these 10 SKUs: $2.14M — 76% of the total variance. All 10 are in the DIY/Cordless promo overlap with Home Depot.",
+      footnote: "Combined gap on these 10 SKUs: $2.14M, 76% of the total variance. All 10 are in the DIY/Cordless promo overlap with Home Depot.",
     },
     modelNote: {
       title: "Demand model status",
-      detail: "Last full retrain: March 2025 — pre-supply-shock baseline. Recommended retrain cadence is weekly when MAPE drifts > 3pp. Current drift is 5pp on Home Improvement and the model has not been touched in two quarters.",
+      detail: "Last full retrain: March 2025, pre-supply-shock baseline. Recommended retrain cadence is weekly when MAPE drifts > 3pp. Current drift is 5pp on Home Improvement and the model has not been touched in two quarters.",
     },
   },
 
@@ -72,25 +72,25 @@ export const PIPELINE_DEEP: Record<string, PipelineDeep> = {
   "supply-chain": {
     eyebrow: "FROM THE SUPPLY PIPELINE",
     intro:
-      "OTD, fill rate and lead time per supplier — plus capacity per DC. Two issues sit underneath the headline stockout number: one supplier and one labour shortfall.",
+      "OTD, fill rate and lead time per supplier, plus capacity per DC. Two issues sit underneath the headline stockout number: one supplier and one labour shortfall.",
     primary: {
       title: "Top supplier scorecard",
       subtitle: "Trailing 8 weeks · top-50 SKUs only",
       headers: ["Supplier", "OTD", "Fill rate", "Lead 14d", "Trend"],
       rows: [
-        { cols: ["Supplier B — Cordless / DIY tools",   "78%", "84%", "21d", "Down 6pp"], tone: "bad"  },
-        { cols: ["Supplier C — Alternative DIY (qual.)","94%", "98%", "14d", "Ready"   ], tone: "good" },
-        { cols: ["Supplier D — Garden equipment",       "91%", "96%", "9d",  "Up 2pp"  ], tone: "good" },
-        { cols: ["Supplier E — Paint",                  "88%", "94%", "12d", "Steady"  ], tone: "warn" },
-        { cols: ["Supplier F — Hand tools",             "96%", "99%", "8d",  "Steady"  ], tone: "good" },
-        { cols: ["Supplier G — Hardware",               "92%", "97%", "10d", "Steady"  ], tone: "good" },
-        { cols: ["Supplier H — Consumables",            "93%", "98%", "10d", "Steady"  ], tone: "good" },
+        { cols: ["Supplier B, Cordless / DIY tools",   "78%", "84%", "21d", "Down 6pp"], tone: "bad"  },
+        { cols: ["Supplier C, Alternative DIY (qual.)","94%", "98%", "14d", "Ready"   ], tone: "good" },
+        { cols: ["Supplier D, Garden equipment",       "91%", "96%", "9d",  "Up 2pp"  ], tone: "good" },
+        { cols: ["Supplier E, Paint",                  "88%", "94%", "12d", "Steady"  ], tone: "warn" },
+        { cols: ["Supplier F, Hand tools",             "96%", "99%", "8d",  "Steady"  ], tone: "good" },
+        { cols: ["Supplier G, Hardware",               "92%", "97%", "10d", "Steady"  ], tone: "good" },
+        { cols: ["Supplier H, Consumables",            "93%", "98%", "10d", "Steady"  ], tone: "good" },
       ],
       footnote: "Supplier B drives most of the Q3 stockout pattern on the cordless range. Supplier C is fully qualified, contract in legal review, can ship within 14 days.",
     },
     secondary: {
       title: "DC operational view",
-      subtitle: "Capacity, labour, throughput — this week",
+      subtitle: "Capacity, labour, throughput, this week",
       headers: ["DC", "Capacity util.", "Shifts filled", "Throughput", "Stockout days"],
       rows: [
         { cols: ["Phoenix",  "94%", "61%",  "82%", "23d"], tone: "bad"  },
@@ -104,7 +104,7 @@ export const PIPELINE_DEEP: Record<string, PipelineDeep> = {
     },
     modelNote: {
       title: "Pipeline trigger",
-      detail: "Alternative Supplier C is fully qualified with a contract in legal — 14-day activation. Combined with the Phoenix shift fix, the operational pipeline closes ~80% of the variance gap inside three weeks.",
+      detail: "Alternative Supplier C is fully qualified with a contract in legal, 14-day activation. Combined with the Phoenix shift fix, the operational pipeline closes ~80% of the variance gap inside three weeks.",
     },
   },
 
@@ -136,14 +136,14 @@ export const PIPELINE_DEEP: Record<string, PipelineDeep> = {
       subtitle: "Rule coverage and override rate by SKU group",
       headers: ["SKU group", "Rule coverage", "Auto-match", "Override rate", "Margin floor"],
       rows: [
-        { cols: ["Top 50 — cordless tools",  "100%", "100%", "0%",  "16%"], tone: "bad"  },
-        { cols: ["Top 50 — power tools",     "100%", "92%",  "8%",  "18%"], tone: "warn" },
-        { cols: ["Top 50 — garden",          "100%", "78%",  "22%", "24%"], tone: "good" },
-        { cols: ["Top 50 — paint",           "100%", "84%",  "16%", "22%"], tone: "good" },
-        { cols: ["Tier 2 — hand tools",      "92%",  "71%",  "29%", "26%"], tone: "good" },
-        { cols: ["Tier 2 — consumables",     "88%",  "82%",  "18%", "28%"], tone: "good" },
+        { cols: ["Top 50, cordless tools",  "100%", "100%", "0%",  "16%"], tone: "bad"  },
+        { cols: ["Top 50, power tools",     "100%", "92%",  "8%",  "18%"], tone: "warn" },
+        { cols: ["Top 50, garden",          "100%", "78%",  "22%", "24%"], tone: "good" },
+        { cols: ["Top 50, paint",           "100%", "84%",  "16%", "22%"], tone: "good" },
+        { cols: ["Tier 2, hand tools",      "92%",  "71%",  "29%", "26%"], tone: "good" },
+        { cols: ["Tier 2, consumables",     "88%",  "82%",  "18%", "28%"], tone: "good" },
       ],
-      footnote: "Cordless tools group has 0% override — match rule fires every time. That's exactly the cohort with the worst margin slip.",
+      footnote: "Cordless tools group has 0% override, match rule fires every time. That's exactly the cohort with the worst margin slip.",
     },
     modelNote: {
       title: "Pricing engine state",
@@ -155,7 +155,7 @@ export const PIPELINE_DEEP: Record<string, PipelineDeep> = {
   "sales-pipeline": {
     eyebrow: "FROM THE SALES PIPELINE",
     intro:
-      "Stage-by-stage conversion, deal-level commit list and slipped-deal pattern. The Q4 commit number rests on seven deals — six of which are above $300K.",
+      "Stage-by-stage conversion, deal-level commit list and slipped-deal pattern. The Q4 commit number rests on seven deals, six of which are above $300K.",
     primary: {
       title: "Q4 commit deal stack",
       subtitle: "Top 10 deals · meddpicc-qualified",
@@ -185,7 +185,7 @@ export const PIPELINE_DEEP: Record<string, PipelineDeep> = {
         { cols: ["Negotiation → Verbal",     "24",  "67%", "72%", "11d"], tone: "warn" },
         { cols: ["Verbal → Closed-won",      "16",  "87%", "89%", "6d" ], tone: "good" },
       ],
-      footnote: "The slip is concentrated at Proposal→Negotiation — directly downstream of the pricing-quote re-work pattern. Pricing layer's quote-tool fix sits on the critical path.",
+      footnote: "The slip is concentrated at Proposal→Negotiation, directly downstream of the pricing-quote re-work pattern. Pricing layer's quote-tool fix sits on the critical path.",
     },
     modelNote: {
       title: "Pipeline-coverage view",

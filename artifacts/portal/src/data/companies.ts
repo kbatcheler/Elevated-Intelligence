@@ -83,7 +83,7 @@ export interface CompanyProfile {
   tagline: string;             // one-line elevator pitch
   accentColor?: string;        // optional brand accent override
 
-  // Vocabulary — substring swaps applied at render time via resolve()
+  // Vocabulary, substring swaps applied at render time via resolve()
   // Empty for the default profile (Meridian Industrial): no swaps, copy renders as-is.
   vocab: Record<string, string>;
 
@@ -102,10 +102,10 @@ export interface CompanyProfile {
   sourceSystems: string;             // e.g. "14 systems · 312 feeds"
   analyst: string;                   // e.g. "Katherine Boyd · Lead analyst"
 
-  // Competitive context — our share-of-market for the head-to-head scoreboard
-  marketSharePct?: number;           // e.g. 14.3 — defaults to 14.3 if unset
+  // Competitive context, our share-of-market for the head-to-head scoreboard
+  marketSharePct?: number;           // e.g. 14.3, defaults to 14.3 if unset
 
-  // Per-component dataset overrides — for items vocab substitution can't
+  // Per-component dataset overrides, for items vocab substitution can't
   // translate (e.g. hardware SKUs → music SKUs). Keyed by a stable string
   // (the dataset's name in heroes/extras). When absent, the component falls
   // back to deep-swapping its module-level RAW data through the vocab.
@@ -133,9 +133,9 @@ export interface CompanyProfile {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// MERIDIAN INDUSTRIAL — default profile. Identity vocab (no swaps).
+// MERIDIAN INDUSTRIAL, default profile. Identity vocab (no swaps).
 // The hardcoded layer narrative everywhere in the codebase is the Meridian Industrial
-// narrative, so this profile defines no overrides — everything renders as-is.
+// narrative, so this profile defines no overrides, everything renders as-is.
 // ───────────────────────────────────────────────────────────────────────────
 export const MERIDIAN: CompanyProfile = {
   id: "meridian-industrial",
@@ -150,7 +150,7 @@ export const MERIDIAN: CompanyProfile = {
   period: "Q3 2026",
   channelLabel: "All channels",
   tagline: "US hardware & garden retail · 218 stores · 14 metros",
-  vocab: {},     // identity — no swaps
+  vocab: {},     // identity, no swaps
   headlines: {
     revenueActual: "$127M",   revenuePlan: "$138M",
     revenueVarPct: "−8%",     revenueVarDollars: "−$11M",
@@ -164,7 +164,7 @@ export const MERIDIAN: CompanyProfile = {
 };
 
 // ───────────────────────────────────────────────────────────────────────────
-// GUITAR CENTER — full re-skin. Token swaps + per-surface overrides.
+// GUITAR CENTER, full re-skin. Token swaps + per-surface overrides.
 // ───────────────────────────────────────────────────────────────────────────
 export const GUITAR_CENTER: CompanyProfile = {
   id: "guitar-center",
@@ -226,7 +226,7 @@ export const GUITAR_CENTER: CompanyProfile = {
     npsActual: 31,            npsDelta: "−4 vs prior quarter",
   },
   executiveRead:
-    "Q3 closed eight percent behind plan and three hundred and eighty basis points behind margin target. The variance is not diffuse: three layers — Demand, Pricing, and Supply — account for almost the entire gap. Sweetwater's pro-segment promo intensity in the Southeast pulled mid-tier electric volume out of our stores. Cash held only because working capital tightened. Of the three, Pricing is the fastest reversible lever this quarter.",
+    "Q3 closed eight percent behind plan and three hundred and eighty basis points behind margin target. The variance is not diffuse: three layers, Demand, Pricing, and Supply, account for almost the entire gap. Sweetwater's pro-segment promo intensity in the Southeast pulled mid-tier electric volume out of our stores. Cash held only because working capital tightened. Of the three, Pricing is the fastest reversible lever this quarter.",
   pullQuote:
     "Sixty-two percent of the revenue gap traces to Demand, sixty-eight percent of the EBITDA gap traces to Pricing, and the system is ninety-six percent confident those are the right two levers.",
   topFindings: {
@@ -248,7 +248,7 @@ export const GUITAR_CENTER: CompanyProfile = {
       impact: "−240bps · $5.2M recoverable in Q4",
     },
     "supply-chain": {
-      finding: "Inland Empire + Nashville 36 OOS days on top 5 electric SKUs in weeks 30–34. Labour shortfall projected next week — 9 unfilled DC shifts at Kansas City.",
+      finding: "Inland Empire + Nashville 36 OOS days on top 5 electric SKUs in weeks 30–34. Labour shortfall projected next week, 9 unfilled DC shifts at Kansas City.",
       impact: "−$3.9M variance · throughput risk",
     },
     "customer-intelligence": {
@@ -260,11 +260,11 @@ export const GUITAR_CENTER: CompanyProfile = {
       impact: "−$26.4M EBITDA",
     },
     "receivables": {
-      finding: "DSO at 51d (vs 38d target). $4.2M >60d. Memphis Performing Arts Cooperative 52d overdue ($340K) — credit hold recommended.",
+      finding: "DSO at 51d (vs 38d target). $4.2M >60d. Memphis Performing Arts Cooperative 52d overdue ($340K), credit hold recommended.",
       impact: "$4.2M >60d · 3 holds recommended",
     },
     "people-operations": {
-      finding: "DC Operations attrition annualised at 28% (vs 14% target) — second consecutive week. 22 critical roles open.",
+      finding: "DC Operations attrition annualised at 28% (vs 14% target), second consecutive week. 22 critical roles open.",
       impact: "+14pp attrition · 22 critical open",
     },
     "talent-hr": {
@@ -272,7 +272,7 @@ export const GUITAR_CENTER: CompanyProfile = {
       impact: "4 critical roles >70d open",
     },
     "brand-social": {
-      finding: "Sentiment fell 8pts on emerging 'lesson program quality' narrative — 22 negative mentions/6h, Inland Empire cluster.",
+      finding: "Sentiment fell 8pts on emerging 'lesson program quality' narrative, 22 negative mentions/6h, Inland Empire cluster.",
       impact: "−8pts sentiment · cluster forming",
     },
     "sales-pipeline": {
@@ -287,10 +287,10 @@ export const GUITAR_CENTER: CompanyProfile = {
   rootCauses: [
     { n: 1, title: "Sweetwater free-shipping + 0% APR campaign",          impact: "−$24.8M",
       body: "Sweetwater ran sustained free-shipping plus 0% APR financing across mid-tier electric guitars for 16 consecutive weeks in five SE markets. MI SalesTrak panel confirms the cross-shop pattern; Guitar Center's match-not-beat policy locked us into matching the financing depth without matching the brand pull. The cohort that hurt most: the 32 top Stratocaster-class SKUs where mid-tier elasticity is highest." } as any,
-    { n: 2, title: "Compound supply disruption — Fender + Kansas City DC", impact: "−$13.6M",
-      body: "Fender's allocation team de-prioritised our Q3 mid-tier orders coincident with a Kansas City DC labour shortfall. Top-5 electric SKUs accumulated 36 OOS days in weeks 30–34 across Inland Empire and Nashville. Inventory did not partially offset the demand softness — it amplified it. Two simultaneous constraints, not one." } as any,
+    { n: 2, title: "Compound supply disruption, Fender + Kansas City DC", impact: "−$13.6M",
+      body: "Fender's allocation team de-prioritised our Q3 mid-tier orders coincident with a Kansas City DC labour shortfall. Top-5 electric SKUs accumulated 36 OOS days in weeks 30–34 across Inland Empire and Nashville. Inventory did not partially offset the demand softness, it amplified it. Two simultaneous constraints, not one." } as any,
     { n: 3, title: "Margin defence via promotional matching",             impact: "−$5.6M",
-      body: "Margin compressed 240bps as the match policy was applied reflexively against Sweetwater's 0% APR. Volume held; margin paid for it. This is the most reversible of the three causes — a single policy change closes the gap in three trading weeks." } as any,
+      body: "Margin compressed 240bps as the match policy was applied reflexively against Sweetwater's 0% APR. Volume held; margin paid for it. This is the most reversible of the three causes, a single policy change closes the gap in three trading weeks." } as any,
   ].map(({ title, impact, body }) => ({ title, impact, body })),
   recoveryLevers: [
     { title: "Cap the electric-guitar promo match at 20% APR-equivalent",
@@ -309,7 +309,7 @@ export const GUITAR_CENTER: CompanyProfile = {
   analyst: "Katherine Boyd · Lead analyst",
   marketSharePct: 12.8,
   datasets: {
-    // Demand-intelligence channel breakdown — music retail categories
+    // Demand-intelligence channel breakdown, music retail categories
     CHANNELS: [
       { name: "Electric guitars",     delta: -27, val: "-$5.1M" },
       { name: "Recording & live sound", delta: -19, val: "-$3.2M" },
@@ -318,7 +318,7 @@ export const GUITAR_CENTER: CompanyProfile = {
       { name: "Pro Coverage (B2B)",   delta: -3,  val: "-$0.4M" },
       { name: "Keys & synths",        delta: -12, val: "-$1.6M" },
     ],
-    // Competitive intelligence — music-industry rivals with brand colors
+    // Competitive intelligence, music-industry rivals with brand colors
     RIVALS: [
       { name: "Sweetwater",         share: 34.2, move: +1.8, depth: 22, color: "#0066B3" },
       { name: "Amazon Music Gear",  share: 18.6, move: +0.9, depth: 16, color: "#FF9900" },
@@ -326,7 +326,7 @@ export const GUITAR_CENTER: CompanyProfile = {
       { name: "Reverb (in-house)",  share: 8.4,  move: +0.2, depth: 7,  color: "#FF5A00" },
       { name: "Music & Arts",       share: 5.2,  move: -0.1, depth: 9,  color: "#5B2C82" },
     ],
-    // Pricing & margin — music-product SKU ladder
+    // Pricing & margin, music-product SKU ladder
     SKUS: [
       { name: "Fender Player Strat MIM",   meridian: 849,  hd: 799,  lowes: 829,  walmart: 779, margin: 18, tone: "bad" as const  },
       { name: "Shure SM7B dynamic mic",    meridian: 419,  hd: 399,  lowes: 409,  walmart: 379, margin: 22, tone: "warn" as const },
@@ -334,7 +334,7 @@ export const GUITAR_CENTER: CompanyProfile = {
       { name: "Yamaha P-125a digital piano", meridian: 749, hd: 799, lowes: 779,  walmart: 729, margin: 28, tone: "good" as const },
       { name: "D'Addario EXL110 strings 3pk", meridian: 19, hd: 17, lowes: 18,    walmart: 15,  margin: 21, tone: "warn" as const },
     ],
-    // Sales pipeline — Pro Coverage funnel (B2B account stages)
+    // Sales pipeline, Pro Coverage funnel (B2B account stages)
     STAGES: [
       { stage: "Lead",        deals: 1284, value: 86.4, conv: 100 },
       { stage: "Qualified",   deals: 472,  value: 58.2, conv: 37 },
@@ -347,7 +347,7 @@ export const GUITAR_CENTER: CompanyProfile = {
 };
 
 // ───────────────────────────────────────────────────────────────────────────
-// SWEETGREEN — second hand-crafted profile, very different sector.
+// SWEETGREEN, second hand-crafted profile, very different sector.
 // ───────────────────────────────────────────────────────────────────────────
 export const SWEETGREEN: CompanyProfile = {
   id: "sweetgreen",
@@ -413,7 +413,7 @@ export const SWEETGREEN: CompanyProfile = {
     npsActual: 42,            npsDelta: "−3 vs prior quarter",
   },
   executiveRead:
-    "Q3 closed nine percent behind plan and three hundred and sixty basis points behind margin target. The variance is not diffuse: three layers — Demand, Supply, and Pricing — account for almost the entire gap. Cava's protein-bowl launch pulled lunch traffic in Austin and Houston while a romaine-supply gap from Sumas Mountain Farms created twenty-two days of 86'd seasonal items. Cash held only because we tightened working capital. Of the three, Pricing is the fastest reversible lever this quarter.",
+    "Q3 closed nine percent behind plan and three hundred and sixty basis points behind margin target. The variance is not diffuse: three layers, Demand, Supply, and Pricing, account for almost the entire gap. Cava's protein-bowl launch pulled lunch traffic in Austin and Houston while a romaine-supply gap from Sumas Mountain Farms created twenty-two days of 86'd seasonal items. Cash held only because we tightened working capital. Of the three, Pricing is the fastest reversible lever this quarter.",
   pullQuote:
     "Fifty-eight percent of the revenue gap traces to Demand, seventy-one percent of the four-wall margin gap traces to Pricing, and the system is ninety-five percent confident those are the right two levers.",
   topFindings: {
@@ -435,7 +435,7 @@ export const SWEETGREEN: CompanyProfile = {
       impact: "−240bps · $2.4M recoverable in Q4",
     },
     "supply-chain": {
-      finding: "Austin commissary + Houston commissary: 22 days of 86'd items on top-5 seasonal SKUs in weeks 30–34. Labour shortfall projected next week — 14 unfilled commissary shifts.",
+      finding: "Austin commissary + Houston commissary: 22 days of 86'd items on top-5 seasonal SKUs in weeks 30–34. Labour shortfall projected next week, 14 unfilled commissary shifts.",
       impact: "−$2.1M variance · throughput risk",
     },
     "customer-intelligence": {
@@ -447,11 +447,11 @@ export const SWEETGREEN: CompanyProfile = {
       impact: "−$11.8M EBITDA",
     },
     "receivables": {
-      finding: "Outpost catering DSO at 41d (vs 28d target). $1.4M >60d. Wells Fargo Catering 38d overdue ($210K) — credit hold recommended.",
+      finding: "Outpost catering DSO at 41d (vs 28d target). $1.4M >60d. Wells Fargo Catering 38d overdue ($210K), credit hold recommended.",
       impact: "$1.4M >60d · 4 holds recommended",
     },
     "people-operations": {
-      finding: "Commissary attrition annualised at 31% (vs 18% target) — second consecutive week. 19 critical roles open.",
+      finding: "Commissary attrition annualised at 31% (vs 18% target), second consecutive week. 19 critical roles open.",
       impact: "+13pp attrition · 19 critical open",
     },
     "talent-hr": {
@@ -459,7 +459,7 @@ export const SWEETGREEN: CompanyProfile = {
       impact: "3 critical roles >80d open",
     },
     "brand-social": {
-      finding: "Sentiment fell 5pts on emerging 'shrinkflation' narrative — 19 negative mentions/6h, Austin cluster.",
+      finding: "Sentiment fell 5pts on emerging 'shrinkflation' narrative, 19 negative mentions/6h, Austin cluster.",
       impact: "−5pts sentiment · cluster forming",
     },
     "sales-pipeline": {
@@ -474,10 +474,10 @@ export const SWEETGREEN: CompanyProfile = {
   rootCauses: [
     { title: "Cava protein-bowl marketing intensity",                       impact: "−$8.4M",
       body: "Cava ran a sustained 2.1× baseline marketing push on its protein-bowl line for the last 11 weeks of Q3 in Austin and Houston. Black Box Intelligence panel confirms the lunch-occasion shift; Sweetgreen's value-perception index in those metros softened 4pts. The cohort that hurt most: the 18 top warm-bowl items where lunch occasion is most price-elastic." },
-    { title: "Compound supply disruption — Sumas + Austin commissary",      impact: "−$4.6M",
-      body: "Sumas Mountain Farms' romaine harvest came in 22% short of contracted volume coincident with an Austin commissary labour shortfall. Top-5 seasonal items accumulated 22 days of 86'd-status in weeks 30–34 across Austin and Houston. Throughput did not partially offset the demand softness — it amplified it. Two simultaneous constraints, not one." },
+    { title: "Compound supply disruption, Sumas + Austin commissary",      impact: "−$4.6M",
+      body: "Sumas Mountain Farms' romaine harvest came in 22% short of contracted volume coincident with an Austin commissary labour shortfall. Top-5 seasonal items accumulated 22 days of 86'd-status in weeks 30–34 across Austin and Houston. Throughput did not partially offset the demand softness, it amplified it. Two simultaneous constraints, not one." },
     { title: "Menu-economics under-pricing on protein modifiers",           impact: "−$2.8M",
-      body: "Four-wall margin compressed 240bps as the team held back protein-modifier price increases while ingredient cost rose 6.1%. Same-store traffic held; margin paid for it. This is the most reversible of the three causes — a modifier price uplift closes the gap in two trading weeks." },
+      body: "Four-wall margin compressed 240bps as the team held back protein-modifier price increases while ingredient cost rose 6.1%. Same-store traffic held; margin paid for it. This is the most reversible of the three causes, a modifier price uplift closes the gap in two trading weeks." },
   ],
   recoveryLevers: [
     { title: "Lift protein-modifier prices by $0.50 on the top-12 items",
@@ -501,7 +501,7 @@ export const LIBRARY: CompanyProfile[] = [MERIDIAN, GUITAR_CENTER, SWEETGREEN];
 export const DEFAULT_PROFILE_ID = MERIDIAN.id;
 
 // ───────────────────────────────────────────────────────────────────────────
-// resolve() — apply a profile's vocab swaps to a hardcoded string.
+// resolve(), apply a profile's vocab swaps to a hardcoded string.
 // Identity for the Meridian Industrial profile (empty vocab). Longest-key-first to avoid
 // partial-overlap collisions (e.g. "Phoenix DC" must match before "Phoenix").
 // ───────────────────────────────────────────────────────────────────────────
@@ -541,7 +541,7 @@ export function makeResolver(profile: CompanyProfile): (text: string) => string 
   };
 }
 
-// deepResolveWith — recursively walks any value, applying a resolver to every
+// deepResolveWith, recursively walks any value, applying a resolver to every
 // string it finds. Arrays and plain objects are cloned; primitives pass through.
 // Functions and class instances pass through unchanged (we never deep-swap those).
 export function deepResolveWith<T>(value: T, resolve: (s: string) => string): T {

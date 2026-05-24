@@ -1,4 +1,4 @@
-// Scenario war-room — multi-lever planner. Each lever has a min/max/default
+// Scenario war-room, multi-lever planner. Each lever has a min/max/default
 // position and a per-unit dollar impact on Q4 EBITDA, with a confidence band.
 // Levers stack additively for revenue and margin, multiplicatively for cash.
 
@@ -22,7 +22,7 @@ export interface Lever {
   // human descriptions of the extremes
   minLabel: string;
   maxLabel: string;
-  // ceiling guidance — beyond which the lever has real risk
+  // ceiling guidance, beyond which the lever has real risk
   cautionAbove?: number;
   cautionNote?: string;
 }
@@ -35,8 +35,8 @@ export const LEVERS: Lever[] = [
     unit: "% cap", min: 18, max: 32, step: 1, defaultValue: 22,
     impactPerUnit: -0.30, uncertaintyPerUnit: 0.05,
     direction: "margin",
-    minLabel: "Aggressive — 18% cap, volume risk",
-    maxLabel: "Permissive — 32% cap, full match",
+    minLabel: "Aggressive, 18% cap, volume risk",
+    maxLabel: "Permissive, 32% cap, full match",
     cautionAbove: 26, cautionNote: "Above 26%, modelled margin recovery falls below $0.6M and the lever stops being worth the operational cost.",
   },
   {
@@ -48,7 +48,7 @@ export const LEVERS: Lever[] = [
     direction: "revenue",
     minLabel: "Skip the counter-promo entirely",
     maxLabel: "Six-week SE-only run",
-    cautionAbove: 4, cautionNote: "Beyond 4 weeks, halo effects on full-price categories begin compressing — net revenue uplift starts decaying.",
+    cautionAbove: 4, cautionNote: "Beyond 4 weeks, halo effects on full-price categories begin compressing, net revenue uplift starts decaying.",
   },
   {
     id: "phoenix-shifts", layer: "supply-chain", layerLabel: "Supply",
@@ -91,7 +91,7 @@ export const LEVERS: Lever[] = [
     direction: "cash",
     minLabel: "No credit holds",
     maxLabel: "All 12 >45d accounts on hold",
-    cautionAbove: 6, cautionNote: "Above 6 holds, named-account churn risk becomes material — modelled $1.4M ARR exposure.",
+    cautionAbove: 6, cautionNote: "Above 6 holds, named-account churn risk becomes material, modelled $1.4M ARR exposure.",
   },
 ];
 

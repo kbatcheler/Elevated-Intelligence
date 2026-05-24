@@ -22,7 +22,7 @@ const toneBg = (t: string) =>
                  : "var(--cream-dark)";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. Business performance — Executive scorecard, 2×2 status quadrants
+// 1. Business performance, Executive scorecard, 2×2 status quadrants
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function BusinessPerformanceHero({ layer }: HeroProps) {
@@ -39,7 +39,7 @@ export function BusinessPerformanceHero({ layer }: HeroProps) {
         </div>
         {/* These three pills carry Meridian Industrial-specific scorecard numbers (8%
             behind plan, 380bps margin gap, Cash +$3.8M). For non-default
-            profiles we suppress them — the per-metric "% vs plan" tags below
+            profiles we suppress them, the per-metric "% vs plan" tags below
             are derived from each metric's tone and remain valid. */}
         {isDefault && (
           <div className="flex items-center gap-2">
@@ -99,7 +99,7 @@ export function BusinessPerformanceHero({ layer }: HeroProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. Demand intelligence — Variance hero + channel breakdown ribbon
+// 2. Demand intelligence, Variance hero + channel breakdown ribbon
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CHANNELS_RAW = [
@@ -178,7 +178,7 @@ export function DemandIntelligenceHero({ layer }: HeroProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. Competitive intelligence — Head-to-head scoreboard
+// 3. Competitive intelligence, Head-to-head scoreboard
 // ─────────────────────────────────────────────────────────────────────────────
 
 const RIVALS_RAW = [
@@ -297,7 +297,7 @@ export function CompetitiveIntelligenceHero({ layer: _layer }: HeroProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. Pricing & margin — SKU price ladder vs competitor markers
+// 4. Pricing & margin, SKU price ladder vs competitor markers
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SKUS_RAW = [
@@ -386,7 +386,7 @@ function Marker({ pos, symbol, color, label, big }: { pos: number; symbol: strin
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. Sales pipeline — Horizontal funnel hero
+// 5. Sales pipeline, Horizontal funnel hero
 // ─────────────────────────────────────────────────────────────────────────────
 
 const STAGES_RAW = [
@@ -469,7 +469,7 @@ export function SalesPipelineHero({ layer: _layer }: HeroProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 6. Marketing performance — Channel donut + ROI per-channel table
+// 6. Marketing performance, Channel donut + ROI per-channel table
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MKT_CHANNELS_RAW = [
@@ -525,7 +525,7 @@ export function MarketingPerformanceHero({ layer: _layer }: HeroProps) {
           <div className="font-sans font-semibold text-[15px] text-[var(--navy)]">Channel ROAS · revenue per $1 spend</div>
           <span className="pill pill-teal">Email 8.25× · re-invest</span>
         </div>
-        <div className="font-sans italic text-[11px] text-[var(--slate-light)] mb-3">Brand and Display below 2.0× return — reallocation candidates</div>
+        <div className="font-sans italic text-[11px] text-[var(--slate-light)] mb-3">Brand and Display below 2.0× return, reallocation candidates</div>
         <ul className="space-y-2.5">
           {[...MKT_CHANNELS].sort((a, b) => b.roas - a.roas).map(c => {
             const tone = c.roas >= 3 ? "good" : c.roas >= 2 ? "warn" : "bad";
@@ -558,7 +558,7 @@ export function MarketingPerformanceHero({ layer: _layer }: HeroProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 7. People and operations — 8-team breakdown grid
+// 7. People and operations, 8-team breakdown grid
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TEAMS_RAW = [
@@ -649,6 +649,12 @@ export function PeopleOperationsHero({ layer: _layer }: HeroProps) {
 // Registry
 // ─────────────────────────────────────────────────────────────────────────────
 
+// HEROES, per-layer §6 hero card (the bespoke executive visualisation that
+// closes each layer). To add a new hero:
+//   1. Author the component above as `function MyLayerHero({ layer }: HeroProps)`
+//   2. Register it here keyed by the layer.key it belongs to.
+// Layer.tsx looks up HEROES[layer.key] for every tenant; if the key is
+// missing, the hero section is silently skipped.
 export const HEROES: Record<string, React.FC<HeroProps>> = {
   "business-performance":     BusinessPerformanceHero,
   "demand-intelligence":      DemandIntelligenceHero,

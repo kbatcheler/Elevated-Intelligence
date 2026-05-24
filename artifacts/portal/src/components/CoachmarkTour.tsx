@@ -7,12 +7,12 @@ import { X, ArrowRight, ArrowLeft, Sparkles } from "lucide-react";
 // First-visit education for the portal. Each step targets an element by
 // data-tour selector and renders:
 //   1. A dim overlay over the rest of the screen (box-shadow inset trick on
-//      a transparent rect matching the target rect — keeps the target crisp
+//      a transparent rect matching the target rect, keeps the target crisp
 //      while dimming everything else, with no clip-path).
 //   2. A gold ring around the target.
 //   3. A popover anchored to the target with title + body + nav buttons.
 //
-// We don't lock pointer events on the target — clicking the target is fine
+// We don't lock pointer events on the target, clicking the target is fine
 // and dismisses the tour, which is the natural behavior an attentive user
 // would expect. Skip and Done dismiss explicitly. The "seen" flag is
 // localStorage-keyed so it persists between sessions; the "?" help button in
@@ -33,7 +33,7 @@ const STEPS: Step[] = [
   {
     selector: '[data-tour="brief"]',
     title: "Morning brief",
-    body: "The daily executive read. One page, ready before 7am — the lede, the deltas, the actions.",
+    body: "The daily executive read. One page, ready before 7am, the lede, the deltas, the actions.",
   },
   {
     selector: '[data-tour="sidebar"]',
@@ -43,12 +43,12 @@ const STEPS: Step[] = [
   {
     selector: '[data-tour="chat"]',
     title: "Ask Different Day",
-    body: "Conversational interface to every signal — pre-grounded in the seeded company. Try the rotating suggestions.",
+    body: "Conversational interface to every signal, pre-grounded in the seeded company. Try the rotating suggestions.",
   },
   {
     selector: '[data-tour="switch"]',
     title: "Try another company",
-    body: "Reseed the portal with any company — typed or one of the showcase chips — and watch the whole product re-skin live.",
+    body: "Reseed the portal with any company, typed or one of the showcase chips, and watch the whole product re-skin live.",
   },
 ];
 
@@ -65,25 +65,19 @@ export default function CoachmarkTour({ forceOpen, onClose }: Props) {
   const [stepIdx, setStepIdx] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
 
-  // First-visit auto-open: wait two animation frames so the rest of the
-  // shell has time to mount, then check the flag.
+  // The tour only opens when the user explicitly asks for it via the "?"
+  // help button in the header (forceOpen). It used to self-mount on first
+  // visit, but auto-popping a four-step modal in front of an executive
+  // landing on the page was the wrong first impression, the rest of the
+  // UI already explains itself through the headings, badges and copy.
+  // The TOUR_FLAG localStorage key is kept here as legacy bookkeeping so
+  // we can re-introduce a softer first-visit nudge later without colliding.
   useEffect(() => {
     if (forceOpen) {
       setStepIdx(0);
       setOpen(true);
-      return;
+      try { localStorage.setItem(TOUR_FLAG, "1"); } catch { /* ignore */ }
     }
-    const id = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        try {
-          if (!localStorage.getItem(TOUR_FLAG)) {
-            setStepIdx(0);
-            setOpen(true);
-          }
-        } catch { /* localStorage might be blocked; just skip the tour */ }
-      });
-    });
-    return () => cancelAnimationFrame(id);
   }, [forceOpen]);
 
   // Resolve current step's target rect. Re-measure on resize and on each
@@ -98,7 +92,7 @@ export default function CoachmarkTour({ forceOpen, onClose }: Props) {
     const measure = () => {
       const el = document.querySelector(step.selector) as HTMLElement | null;
       if (!el) {
-        // Step's target is gone — advance silently.
+        // Step's target is gone, advance silently.
         setStepIdx(i => i + 1);
         return;
       }
@@ -161,7 +155,7 @@ export default function CoachmarkTour({ forceOpen, onClose }: Props) {
     popLeft = rect.left - POP_W - pad;
   }
   if (popLeft < 16) {
-    // Neither side fits — drop below the target, centered horizontally.
+    // Neither side fits, drop below the target, centered horizontally.
     popLeft = Math.max(16, Math.min(winW - POP_W - 16, rect.left + rect.width / 2 - POP_W / 2));
     popTop = rect.bottom + pad;
   }
@@ -194,7 +188,7 @@ export default function CoachmarkTour({ forceOpen, onClose }: Props) {
         }}
       />
 
-      {/* Click-catcher for the dim area — dismisses the tour. Sits below
+      {/* Click-catcher for the dim area, dismisses the tour. Sits below
           the popover but above the page. Excludes the spotlight area. */}
       <div className="absolute inset-0" onClick={finish} style={{ cursor: "pointer" }} />
 

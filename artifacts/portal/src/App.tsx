@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { type LucideIcon } from "lucide-react";
 import {
   BarChart3, TrendingUp, Crosshair, Users, Megaphone,
   Truck, Tag, GitBranch, Target, UserCog, Cpu, ChevronDown, Briefcase,
@@ -29,11 +30,11 @@ import Tour from "./tour/Tour";
 import CompanyPicker from "./components/CompanyPicker";
 import CompanyBootSplash from "./components/CompanyBootSplash";
 import { useApp } from "./context/AppContext";
-import { useCompany } from "./context/CompanyContext";
+import { useCompany, useIsDefaultProfile } from "./context/CompanyContext";
 import { MERIDIAN } from "./data/companies";
 import { DEFAULT_PROFILE_ID } from "./data/companies";
 
-type NavItem = { key: string; label: string; group: string; icon: any; status: "good" | "warn" | "bad" };
+type NavItem = { key: string; label: string; group: string; icon: LucideIcon; status: "good" | "warn" | "bad" };
 
 const NAV: NavItem[] = [
   { key: "business-performance",     label: "Business performance",     group: "Executive",      icon: BarChart3, status: "warn" },
@@ -72,7 +73,7 @@ export default function App() {
   // Coachmark tour: forced-open flag flips when the user clicks the "?".
   // CoachmarkTour itself also auto-opens on first visit via localStorage.
   const [tourForceOpen, setTourForceOpen] = useState(false);
-  // Persona lens: persisted across sessions. null means "All views" — no
+  // Persona lens: persisted across sessions. null means "All views", no
   // re-ordering of the sidebar.
   const [persona, setPersona] = usePersistedPersona();
   const {
@@ -206,10 +207,11 @@ export default function App() {
           </button>
           <span className="font-sans text-[12px] text-[var(--cream)] opacity-70">{profile.analyst}</span>
           <span className="h-8 w-8 rounded-full flex items-center justify-center font-sans font-semibold text-[12px]"
-                style={{ background: "var(--gold)", color: "var(--navy-deep)" }}>KB</span>
+                style={{ background: "var(--gold)", color: "var(--navy-deep)" }}>{profile.logoMonogram}</span>
         </div>
       </header>
 
+      <PreviewModeBanner />
       <SystemHeartbeat onNavigate={handleNavigate} />
       <SignalTicker onNavigate={handleNavigate} />
 
@@ -263,9 +265,9 @@ export default function App() {
               </div>
             );
           })()}
-          {GROUPS.map(group => (
-            <div key={group} className="pt-5 px-3">
-              <div className="eyebrow text-[var(--slate-light)] px-3 mb-2">{group}</div>
+          {GROUPS.map((group, gIdx) => (
+            <div key={group} className={"pt-5 px-3 " + (gIdx > 0 ? "mt-3 border-t border-[var(--cream-dark)]" : "")}>
+              <div className="eyebrow text-[var(--slate-light)] px-3 mb-2 mt-2">{group}</div>
               <ul>
                 {NAV.filter(n => n.group === group).map(n => {
                   const isActive = active === n.key;
@@ -306,7 +308,7 @@ export default function App() {
           ))}
           <div className="px-6 py-6 mt-4 border-t border-[var(--cream-dark)]">
             <div className="eyebrow text-[var(--slate-light)] mb-1">Period</div>
-            <div className="font-sans text-[12px] text-[var(--slate)]">1 Jul – 30 Sep 2026</div>
+            <div className="font-sans text-[12px] text-[var(--slate)]">{profile.period}</div>
             <div className="eyebrow text-[var(--slate-light)] mt-3 mb-1">Sources</div>
             <div className="font-sans text-[12px] text-[var(--slate)]">{profile.sourceSystems}</div>
             <button onClick={openInbox}
@@ -330,14 +332,11 @@ export default function App() {
           </div>
         </main>
 
-        {/* Narrator */}
-        <Narrator layerKey={
-          active === "engagement-pipeline" || active === "dependency-graph" ||
-          active === "committed-actions"   || active === "scenario-warroom"  ||
-          active === "track-record"
-            ? "intelligence-architecture"
-            : active
-        } onNavigate={handleNavigate} />
+        {/* Narrator, pass the active key directly. The narrator now carries
+            its own per-page context for system pages (engagement pipeline,
+            dependency graph, committed actions, war room, track record) so
+            it no longer falls back to the architecture overview. */}
+        <Narrator layerKey={active} onNavigate={handleNavigate} />
       </div>
 
       {/* Global overlays */}
@@ -348,12 +347,35 @@ export default function App() {
       {boardPackOpen && <BoardPack onClose={() => setBoardPackOpen(false)} />}
       {intelOpen && <IntelligenceBrief onClose={() => setIntelOpen(false)} />}
       <ChatAssistant onNavigate={handleNavigate} />
-      {/* Coachmark tour — self-mounts on first visit (localStorage flag) and
-          can be replayed from the "?" button in the header. */}
+      {/* Coachmark tour: opens only when the user clicks the "?" button in
+          the header (forceOpen). First-visit auto-open was removed (DK-1) so
+          the very first frame of the product is the Meridian Industrial
+          diagnosis, not a four-step modal. */}
       <CoachmarkTour forceOpen={tourForceOpen} onClose={() => setTourForceOpen(false)} />
       <Tour />
       <CompanyPicker />
       <CompanyBootSplash />
+    </div>
+  );
+}
+
+// PreviewModeBanner, visible on every non-default tenant. Resolves DK-2
+// honestly: rather than silently shrinking large parts of the surface area
+// (analyst's take, hero cards, time-travel, NextSteps, etc.), we name the
+// state so the absence reads as framing, not as a broken demo. The default
+// Meridian Industrial profile renders nothing.
+function PreviewModeBanner() {
+  const { profile } = useCompany();
+  const isDefault = useIsDefaultProfile();
+  if (isDefault) return null;
+  return (
+    <div className="px-6 py-2.5 flex items-center gap-3 text-[12px]"
+         style={{ background: "var(--gold-faint, #FBF3DC)", borderBottom: "1px solid var(--gold)" }}>
+      <span className="font-sans font-bold uppercase tracking-wider text-[10px] px-2 py-0.5 rounded-sm"
+            style={{ background: "var(--gold)", color: "var(--navy-deep)" }}>Preview mode</span>
+      <span className="font-sans text-[var(--ink)]">
+        You are looking at <span className="font-semibold">{profile.name}</span> rendered through the canonical Meridian Industrial diagnosis as a structural preview. Numbers, anomalies, hero cards, and the analyst's take stay anchored to Meridian; feeds, layer titles, and narrator copy are re-vocabularied into the {profile.name} world. The receipts page below is shared across tenants on purpose, it is the evidence behind the methodology you are previewing.
+      </span>
     </div>
   );
 }

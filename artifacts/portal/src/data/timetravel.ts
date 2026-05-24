@@ -18,7 +18,7 @@ const OLD_LABEL = "−7 days · Oct 7";
 
 export const TIMELINES: Record<string, Timeline> = {
   "business-performance": [
-    { label: OLD_LABEL, diagnosedAt: "Oct 7, 2026 · 06:42 CT",  confidence: 71, headline: "Revenue tracking 4% behind plan; cause unclear — three candidate layers." },
+    { label: OLD_LABEL, diagnosedAt: "Oct 7, 2026 · 06:42 CT",  confidence: 71, headline: "Revenue tracking 4% behind plan; cause unclear, three candidate layers." },
     { label: MID_LABEL, diagnosedAt: "Oct 11, 2026 · 06:42 CT", confidence: 79, headline: "Demand and Pricing isolated as primary drivers. Supply secondary.", delta: "+8pp · Demand isolated" },
     { label: NOW_LABEL, diagnosedAt: "Oct 14, 2026 · 06:42 CT", confidence: 87, headline: "8% behind plan, 380bps margin gap. Pricing is the fastest reversible lever.", delta: "+8pp · Pricing identified as lever" },
   ],
@@ -55,7 +55,7 @@ export const TIMELINES: Record<string, Timeline> = {
   "sales-pipeline": [
     { label: OLD_LABEL, diagnosedAt: "Oct 7, 2026 · 16:14 CT",  confidence: 65, headline: "Win rate sliding; cause unclear (competitor vs cycle vs pricing)." },
     { label: MID_LABEL, diagnosedAt: "Oct 11, 2026 · 16:14 CT", confidence: 73, headline: "Cycle days +13d (vs Q2); proposal-to-negotiation drop primary.", delta: "+8pp · stage isolated" },
-    { label: NOW_LABEL, diagnosedAt: "Oct 14, 2026 · 16:14 CT", confidence: 78, headline: "Q4 coverage 2.4× vs 3.1× target — commit at risk without acceleration.", delta: "+5pp · Q4 risk sized" },
+    { label: NOW_LABEL, diagnosedAt: "Oct 14, 2026 · 16:14 CT", confidence: 78, headline: "Q4 coverage 2.4× vs 3.1× target, commit at risk without acceleration.", delta: "+5pp · Q4 risk sized" },
   ],
   "marketing-performance": [
     { label: OLD_LABEL, diagnosedAt: "Oct 7, 2026 · 12:08 CT",  confidence: 71, headline: "Channel mix imbalance visible; ROAS by channel still aggregating." },

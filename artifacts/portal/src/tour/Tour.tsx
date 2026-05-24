@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, X, Sparkles } from "lucide-react";
 import { useSwap } from "../context/CompanyContext";
 
-// Six-step welcome walkthrough. Editorial cards in the centre — no spotlight,
+// Six-step welcome walkthrough. Editorial cards in the centre, no spotlight,
 // no DOM-anchoring fragility. Each step has a one-line synopsis and a longer
 // paragraph that explains the concept. First-visit only via localStorage.
 
@@ -17,12 +17,12 @@ const STEPS_RAW: Step[] = [
   {
     eyebrow: "Welcome",
     title: "This is the framework, not the report.",
-    body: "Different Day decomposes a business into 13 intelligence layers — each with one question it answers, a confidence band, and a set of recommended next steps. Underneath, the operational depth lives in Demand by Different Day for demand, supply, pricing and sales.",
+    body: "Different Day decomposes a business into 13 intelligence layers, each with one question it answers, a confidence band, and a set of recommended next steps. Underneath, the operational depth lives in Demand by Different Day for demand, supply, pricing and sales.",
   },
   {
     eyebrow: "How to read a layer",
     title: "Question · diagnosis · confidence · next steps.",
-    body: "Every layer asks one question. The answer carries a confidence band (gold = high-confidence; coral = needs work). Below it sits the diagnosis, the data feeds that power it, and a three-horizon prescriptive playbook — what to do today, this week, this month.",
+    body: "Every layer asks one question. The answer carries a confidence band (gold = high-confidence; coral = needs work). Below it sits the diagnosis, the data feeds that power it, and a three-horizon prescriptive playbook, what to do today, this week, this month.",
     hint: "Click any number with a gold dot to see the math behind it.",
   },
   {
@@ -33,7 +33,7 @@ const STEPS_RAW: Step[] = [
   {
     eyebrow: "Ask anything",
     title: "Natural-language access to the whole stack.",
-    body: "The 'Ask Different Day' button (bottom-right) takes any executive question — what's the headline, where should I start, what if we cut price by 5%, show me Phoenix — and answers with citations, follow-ups, and the ability to jump you straight into the relevant layer.",
+    body: "The 'Ask Different Day' button (bottom-right) takes any executive question, what's the headline, where should I start, what if we cut price by 5%, show me Phoenix, and answers with citations, follow-ups, and the ability to jump you straight into the relevant layer.",
   },
   {
     eyebrow: "Commit and track",
@@ -43,7 +43,7 @@ const STEPS_RAW: Step[] = [
   {
     eyebrow: "Scenario thinking",
     title: "Stack levers in the war-room.",
-    body: "The Scenario war-room lets you stack every reversible lever — pricing, demand, supply, marketing, receivables — and see the combined Q4 EBITDA bridge update live, with a confidence band. Commit the whole scenario in one click.",
+    body: "The Scenario war-room lets you stack every reversible lever, pricing, demand, supply, marketing, receivables, and see the combined Q4 EBITDA bridge update live, with a confidence band. Commit the whole scenario in one click.",
   },
 ];
 

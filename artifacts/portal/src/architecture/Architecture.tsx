@@ -171,7 +171,7 @@ export default function Architecture() {
         <div className="font-sans font-semibold text-[16px] text-[var(--navy)] mb-2">What this means</div>
         <p className="font-serif text-[19px] leading-[1.55] text-[var(--ink)]">
           The narrative you read on every intelligence layer is the synthesis of all five components working in
-          sequence — not an LLM summarising a dashboard. Confidence and gap detection are emergent properties of
+          sequence, not an LLM summarising a dashboard. Confidence and gap detection are emergent properties of
           the chain operating correctly: when Confounder rules out alternatives and Challenger cannot break the
           diagnosis, Evaluator scores confidence high. When either stage leaves residual uncertainty, that
           uncertainty becomes a logged architectural gap routed to the Different Day engagement pipeline.

@@ -3,13 +3,13 @@ import { useCompany, type SeedStep, type SeedStepStatus } from "../context/Compa
 
 // Boot splash. Two modes:
 //
-// 1. Live seed flow (seedFlow present) — driven by CompanyPicker as real work
+// 1. Live seed flow (seedFlow present), driven by CompanyPicker as real work
 //    progresses. Every step's status and inline stats reflect a genuine
 //    network round-trip or sync computation: homepage fetch, identify call,
 //    seed call, narrative indexing, brief prefetch. No fake setTimeout
 //    sequencing. The splash will not auto-close while work is in flight.
 //
-// 2. Library switch (seedFlow null) — the user picked a saved profile so
+// 2. Library switch (seedFlow null), the user picked a saved profile so
 //    there's no live work to show; the splash renders a compact "loaded
 //    saved profile" view with the historical receipt from when the profile
 //    was first seeded.
@@ -63,11 +63,11 @@ export default function CompanyBootSplash() {
           </ul>
         ) : (
           <div className="text-center font-serif italic text-[13px] text-[var(--cream)]/70 py-3">
-            No live fetch this time — receipts below come from the original seed.
+            No live fetch this time, receipts below come from the original seed.
           </div>
         )}
 
-        {/* Final summary receipt — shown only after the flow is complete OR
+        {/* Final summary receipt, shown only after the flow is complete OR
             for library switches. Matches the brand of the seed _meta. */}
         {meta && (!liveMode || allTerminal) && (
           <div className="mt-5 p-4 rounded-sm"
@@ -109,7 +109,7 @@ export default function CompanyBootSplash() {
                   </div>
                 ) : (
                   <div className="font-sans text-[11px] text-[var(--cream)]/55 italic">
-                    {meta.grounding.domain} returned no usable content — the brief leans on training-data knowledge and should be reviewed before the meeting.
+                    {meta.grounding.domain} returned no usable content, the brief leans on training-data knowledge and should be reviewed before the meeting.
                   </div>
                 )}
               </div>
@@ -121,18 +121,18 @@ export default function CompanyBootSplash() {
           {liveMode
             ? (allTerminal
                 ? (anyFailed
-                    ? "Some steps failed — the framework is still usable but receipts above show the gaps."
+                    ? "Some steps failed, the framework is still usable but receipts above show the gaps."
                     : "All work above is real and just happened. Splash will close in a moment.")
                 : (anyFailed && !anyRunning
-                    // Parked failure — some step failed and nothing's in flight,
+                    // Parked failure, some step failed and nothing's in flight,
                     // but later steps were never reached. Don't claim work is
                     // still progressing.
-                    ? "The flow stopped on a failed step — dismiss to return to the picker and try again."
-                    : "Each step advances when its underlying call resolves — nothing here is faked."))
+                    ? "The flow stopped on a failed step, dismiss to return to the picker and try again."
+                    : "Each step advances when its underlying call resolves, nothing here is faked."))
             : (meta ? "Receipt above is from when this profile was originally seeded." : "Saved profile loaded.")}
         </div>
 
-        {/* Manual dismiss — appears whenever there's nothing in flight (either
+        {/* Manual dismiss, appears whenever there's nothing in flight (either
             the flow finished cleanly, or a failure parked it). Critical
             escape hatch: without this, a failed identify call would leave
             the splash undismissable since remaining steps stay pending. */}

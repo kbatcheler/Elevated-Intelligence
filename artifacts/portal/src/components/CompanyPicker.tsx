@@ -7,7 +7,7 @@ import { LAYERS as RAW_LAYERS } from "../data/layers";
 // Curated showcase companies offered as one-click chips on the seed tab.
 // These are the fastest path for new users / live demos to see the system
 // work on a company they actually recognise. Each chip pre-fills the form
-// AND triggers identify+seed immediately — no typing required. We pick a
+// AND triggers identify+seed immediately, no typing required. We pick a
 // deliberately diverse spread (mega-cap tech, payments, DTC, retail,
 // software, regional bank) so demos can show the framework adapting across
 // very different operating shapes.
@@ -19,7 +19,6 @@ interface ShowcaseChip {
   hint: string;
 }
 const SHOWCASE_COMPANIES: ShowcaseChip[] = [
-  { name: "Apple",       url: "apple.com",      sector: "consumer electronics",     emoji: "", hint: "Mega-cap, hardware + services" },
   { name: "Stripe",      url: "stripe.com",     sector: "payments infrastructure",  emoji: "", hint: "Platform fintech" },
   { name: "Shopify",     url: "shopify.com",    sector: "commerce software",        emoji: "", hint: "Multi-product SaaS" },
   { name: "Patagonia",   url: "patagonia.com",  sector: "outdoor apparel",          emoji: "", hint: "DTC + wholesale, values-led" },
@@ -81,7 +80,7 @@ export default function CompanyPicker() {
   const closePicker = () => {
     const disambigStep = bootSplash?.seedFlow?.find(s => s.kind === "disambiguate");
     if (disambigStep?.status === "running") {
-      failSeedFlow("disambiguate", "Cancelled — picker closed before a candidate was confirmed.");
+      failSeedFlow("disambiguate", "Cancelled, picker closed before a candidate was confirmed.");
     }
     setPickerOpen(false);
   };
@@ -94,7 +93,7 @@ export default function CompanyPicker() {
   const [error, setError] = useState<string | null>(null);
 
   // Live elapsed-seconds counter for the in-flight LLM call. Real (not fake)
-  // — it ticks every 100ms against the wall clock so the user can see the
+  //, it ticks every 100ms against the wall clock so the user can see the
   // round-trip is actually taking N seconds of network + model time.
   const [elapsedMs, setElapsedMs] = useState(0);
   const startRef = useRef<number | null>(null);
@@ -115,12 +114,12 @@ export default function CompanyPicker() {
   };
 
   // Step 1: ask the server to identify the company. The "ground" + "identify"
-  // splash steps both resolve from this single round-trip — the server fetches
+  // splash steps both resolve from this single round-trip, the server fetches
   // the homepage and runs the LLM identify in one shot. If verdict is
   // unambiguous + high confidence, we proceed straight to seed; otherwise we
   // close the splash and route to disambiguation in the picker.
   // Accepts optional explicit values so the showcase chips can trigger
-  // identify with the chip's values directly — without waiting for the
+  // identify with the chip's values directly, without waiting for the
   // setState-induced re-render that would normally update name/url/sector
   // closures. Falls back to component state for the normal typed-input flow.
   const identify = async (explicit?: { name: string; url: string; sector?: string }) => {
@@ -128,7 +127,7 @@ export default function CompanyPicker() {
     const trimmedUrl  = (explicit?.url  ?? url).trim();
     const trimmedSec  = (explicit?.sector ?? sector).trim();
     if (!trimmedName) { setError("Company name is required."); return; }
-    if (!trimmedUrl)  { setError("Homepage URL is required — it's the only way to disambiguate from same-named companies."); return; }
+    if (!trimmedUrl)  { setError("Homepage URL is required, it's the only way to disambiguate from same-named companies."); return; }
     // Light client-side domain shape check. The server enforces this strictly;
     // catching it here gives a faster, kinder error than a 400 round-trip.
     const cleaned = trimmedUrl.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
@@ -183,7 +182,7 @@ export default function CompanyPicker() {
         updateSeedStep("ground", {
           status: "failed",
           errorReason: g ? `homepage returned HTTP ${g.status}` : "no grounding receipt returned",
-          detail: "Proceeding from training-data memory only — review the brief before sending.",
+          detail: "Proceeding from training-data memory only, review the brief before sending.",
         });
       }
       // Stamp the identify receipt with REAL timing + token counts.
@@ -207,7 +206,7 @@ export default function CompanyPicker() {
         cands.length === 1 &&
         top.confidence >= AUTO_PROCEED_CONFIDENCE
       ) {
-        // Auto-confirmed — disambiguate step is skipped honestly.
+        // Auto-confirmed, disambiguate step is skipped honestly.
         updateSeedStep("disambiguate", {
           status: "skipped",
           detail: `Auto-confirmed at ${Math.round(top.confidence * 100)}% confidence (threshold ${Math.round(AUTO_PROCEED_CONFIDENCE * 100)}%)`,
@@ -215,12 +214,12 @@ export default function CompanyPicker() {
         await seedConfirmed(top, { fromAutoProceed: true });
         return;
       }
-      // Ambiguous — pause the splash and route the user back to the picker
+      // Ambiguous, pause the splash and route the user back to the picker
       // disambiguation list. The splash stays open in a paused state until
       // the user picks (or dismisses).
       updateSeedStep("disambiguate", {
         status: "running",
-        detail: `${cands.length} possible matches — pick one in the picker`,
+        detail: `${cands.length} possible matches, pick one in the picker`,
       });
       setPickerOpen(true);
       setStage("disambiguate");
@@ -239,7 +238,7 @@ export default function CompanyPicker() {
     setError(null);
     setStage("seeding");
     if (!opts?.fromAutoProceed) {
-      // User-picked disambiguation — close the picker, mark disambiguate done.
+      // User-picked disambiguation, close the picker, mark disambiguate done.
       updateSeedStep("disambiguate", {
         status: "done",
         detail: `Picked ${c.name} (${Math.round(c.confidence * 100)}% confidence)`,
@@ -295,13 +294,13 @@ export default function CompanyPicker() {
       ] : [],
     });
 
-    // Narrate step — second LLM call. Rewrites every layer's narrative + 3
+    // Narrate step, second LLM call. Rewrites every layer's narrative + 3
     // causes + 4 actions in this company's authentic voice so each report
     // page actually reads as if it were written for them. Without this step
     // the deep panels still tell a Meridian Industrial-shaped story with word swaps only.
     //
     // We post the (already vocab-swapped) skeleton so the LLM has a concrete
-    // structural template to rewrite — keeping LAYERS as the single source of
+    // structural template to rewrite, keeping LAYERS as the single source of
     // truth and avoiding a duplicate server-side copy that could drift.
     //
     // Failure here is non-fatal: the seeded profile is still usable; layers
@@ -332,7 +331,7 @@ export default function CompanyPicker() {
             revenueBand:   seeded.revenueBand,
             executiveRead: seeded.executiveRead,
             vocab:         seeded.vocab,
-            // Headlines are the magnitude anchor — every layer's rebased
+            // Headlines are the magnitude anchor, every layer's rebased
             // numbers derive proportionally from these.
             headlines:     seeded.headlines,
           },
@@ -374,7 +373,7 @@ export default function CompanyPicker() {
       });
     }
 
-    // Indexing step — real but instant. We measure the wall-clock cost of the
+    // Indexing step, real but instant. We measure the wall-clock cost of the
     // narrative deep-swap that happens as a side-effect of activating the
     // profile (the useMemo in CompanyContext re-runs on the next render).
     updateSeedStep("indexing", { status: "running" });
@@ -395,7 +394,7 @@ export default function CompanyPicker() {
       ],
     });
 
-    // Prefetch step — the real Executive intelligence brief. This is a
+    // Prefetch step, the real Executive intelligence brief. This is a
     // genuine LLM round-trip that returns the same payload the report page
     // will display. It also primes the server-side brief cache so the first
     // layer view comes back from cache instead of waiting another 10-15s.
@@ -403,7 +402,7 @@ export default function CompanyPicker() {
     const pfStart = performance.now();
     // Client-side timeout. Replit's proxy 502s long-running requests at 120s
     // but the browser fetch can still appear "in flight" with no error
-    // surfacing — which is exactly the symptom that left the splash hanging
+    // surfacing, which is exactly the symptom that left the splash hanging
     // on "Pre-warming the Executive intelligence brief" for 20+ minutes.
     // Abort at 115s so we surface a real "failed" step inside the proxy
     // window and the splash can complete. Non-fatal: the brief will just
@@ -593,7 +592,7 @@ function SeedInputView({
           Walk in with a finished implementation.
         </h2>
         <p className="font-serif italic text-[14px] text-[var(--slate)] leading-relaxed">
-          Type the prospect's name <strong>and</strong> their homepage URL. The URL is the authoritative identifier — both are required and the framework is seeded directly from that domain.
+          Type the prospect's name <strong>and</strong> their homepage URL. The URL is the authoritative identifier, both are required and the framework is seeded directly from that domain.
         </p>
       </div>
 
@@ -644,7 +643,7 @@ function SeedInputView({
                    style={{ background: "var(--cream-light)", border: "1px solid var(--cream-dark)" }} />
           </div>
         </Field>
-        <Field label="Sector hint" hint="Optional — helps disambiguate if the name is common">
+        <Field label="Sector hint" hint="Optional, helps disambiguate if the name is common">
           <input value={sector} onChange={(e) => setSector(e.target.value)} placeholder="e.g. specialty music retail"
                  disabled={busy}
                  className="w-full px-3 py-2.5 rounded-sm font-sans text-[14px] text-[var(--navy)] disabled:opacity-60"
@@ -680,7 +679,7 @@ function SeedInputView({
         </button>
 
         <p className="font-serif italic text-[11px] text-[var(--slate-light)] text-center leading-snug pt-2">
-          Step 1: confirm the right company. Step 2: seed the framework. Public sources only — the rep should review before the meeting.
+          Step 1: confirm the right company. Step 2: seed the framework. Public sources only, the rep should review before the meeting.
         </p>
       </div>
     </div>
@@ -711,8 +710,8 @@ function DisambiguateView({
         </h2>
         <p className="font-serif italic text-[13px] text-[var(--slate)] leading-relaxed">
           {candidates.length > 1
-            ? `We found ${candidates.length} possible matches${typedUrl ? "" : " — supplying a homepage URL avoids this step next time"}. Pick the right one to seed.`
-            : "We're not fully confident on this one — confirm or go back and add the homepage URL."}
+            ? `We found ${candidates.length} possible matches${typedUrl ? "" : ", supplying a homepage URL avoids this step next time"}. Pick the right one to seed.`
+            : "We're not fully confident on this one, confirm or go back and add the homepage URL."}
         </p>
       </div>
 
@@ -757,7 +756,7 @@ function DisambiguateView({
       )}
 
       <p className="font-serif italic text-[11px] text-[var(--slate-light)] text-center leading-snug pt-5">
-        Picking a candidate seeds the framework against that exact entity — no silent substitution.
+        Picking a candidate seeds the framework against that exact entity, no silent substitution.
       </p>
     </div>
   );

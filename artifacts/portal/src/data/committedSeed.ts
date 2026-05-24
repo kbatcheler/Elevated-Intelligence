@@ -1,11 +1,11 @@
 // Pre-seeded committed actions for the Meridian Industrial demo profile. Without these,
 // the Committed Actions page is empty until a user manually clicks "commit"
-// inside a layer — which defeats the point of the page as a stand-alone view
+// inside a layer, which defeats the point of the page as a stand-alone view
 // the leadership team should be able to walk into cold.
 //
 // Every entry here is drawn from a real action recommendation that already
-// lives inside one of the LAYERS (data/layers.ts) — same titles, same dollar
-// impacts, same dates — so the tray is consistent with what the operator
+// lives inside one of the LAYERS (data/layers.ts), same titles, same dollar
+// impacts, same dates, so the tray is consistent with what the operator
 // would see if they navigated to that layer and committed by hand.
 
 import type { CommittedAction } from "../context/AppContext";
@@ -38,7 +38,7 @@ export const MERIDIAN_COMMITTED_SEED: CommittedSeed[] = [
     layer: "contract-management",
     layerTitle: "Contract management",
     title: "Close Supplier C legal review this week",
-    detail: "Escalate indemnity and audit clauses to GC; target 5-day close. Day 2 of 5 — both clauses out for redline.",
+    detail: "Escalate indemnity and audit clauses to GC; target 5-day close. Day 2 of 5, both clauses out for redline.",
     impact: "$0.8M Q4 unlock",
     owner: "GC + Procurement",
     due: "21 Oct 2026",
@@ -90,7 +90,7 @@ export const MERIDIAN_COMMITTED_SEED: CommittedSeed[] = [
     layer: "contract-management",
     layerTitle: "Contract management",
     title: "Renegotiate DC labour rate cards",
-    detail: "Phoenix rate card renews 1 Nov — reset to off-peak benchmark before counter-signing.",
+    detail: "Phoenix rate card renews 1 Nov, reset to off-peak benchmark before counter-signing.",
     impact: "$0.6M Q4 opex",
     owner: "Procurement + DC Ops",
     due: "01 Nov 2026",

@@ -37,7 +37,7 @@ export const PEERS: Record<string, PeerBlock> = {
       { metric: "Customer NPS",        meridian: "38",    median: "44",    best: "56",    bestLabel: "Ace Hardware",   unit: "pts",
         position: 38, tone: "behind", comment: "Ace's local-store model commands a structural NPS premium. Median gap is the relevant target." },
       { metric: "Inventory turns",     meridian: "4.8×",  median: "5.1×",  best: "6.4×",  bestLabel: "Home Depot",     unit: "×",
-        position: 48, tone: "median", comment: "On-median; Q3 stockout pattern would have lifted turns artificially — adjust for that." },
+        position: 48, tone: "median", comment: "On-median; Q3 stockout pattern would have lifted turns artificially, adjust for that." },
     ],
   },
 
@@ -45,10 +45,10 @@ export const PEERS: Record<string, PeerBlock> = {
     peerSet: PEER_SET, asOf: AS_OF,
     metrics: [
       { metric: "Forecast accuracy (MAPE)", meridian: "11pp", median: "8pp", best: "5pp", bestLabel: "Home Depot", unit: "pp",
-        position: 22, tone: "behind", comment: "Median is the credible near-term target — HD's 5pp reflects 4 years of ML investment." },
+        position: 22, tone: "behind", comment: "Median is the credible near-term target, HD's 5pp reflects 4 years of ML investment." },
       { metric: "Stockout days top-100",     meridian: "41",   median: "22",  best: "12",  bestLabel: "Home Depot", unit: "days",
-        position: 18, tone: "behind", comment: "Concentrated in DIY/cordless. Once Supplier C is live, projected to fall to 18 — back inside the peer band." },
-      { metric: "Share of category — DIY",   meridian: "11.4%",median: "12.6%",best: "38.9%",bestLabel: "Home Depot", unit: "%",
+        position: 18, tone: "behind", comment: "Concentrated in DIY/cordless. Once Supplier C is live, projected to fall to 18, back inside the peer band." },
+      { metric: "Share of category, DIY",   meridian: "11.4%",median: "12.6%",best: "38.9%",bestLabel: "Home Depot", unit: "%",
         position: 42, tone: "behind", comment: "HD is the outlier; median is the live competitive set Meridian Industrial is fighting on the ground." },
     ],
   },
@@ -56,10 +56,10 @@ export const PEERS: Record<string, PeerBlock> = {
   "pricing-margin": {
     peerSet: PEER_SET, asOf: AS_OF,
     metrics: [
-      { metric: "Gross margin — top-50 SKUs", meridian: "18.4%", median: "21.1%", best: "24.6%", bestLabel: "Tractor Supply", unit: "%",
-        position: 24, tone: "behind", comment: "Match-and-bleed on cordless is the proximate cause. Match-cap brings this to 21% — sector median." },
+      { metric: "Gross margin, top-50 SKUs", meridian: "18.4%", median: "21.1%", best: "24.6%", bestLabel: "Tractor Supply", unit: "%",
+        position: 24, tone: "behind", comment: "Match-and-bleed on cordless is the proximate cause. Match-cap brings this to 21%, sector median." },
       { metric: "Price index vs market",       meridian: "+1.4%",  median: "−0.2%", best: "−0.8%", bestLabel: "Lowe's",         unit: "%",
-        position: 32, tone: "behind", comment: "Meridian Industrial prices slightly above market — fine on premium SKUs, costly on cordless where elasticity is highest." },
+        position: 32, tone: "behind", comment: "Meridian Industrial prices slightly above market, fine on premium SKUs, costly on cordless where elasticity is highest." },
       { metric: "Margin pull-through rate",    meridian: "84%",    median: "91%",   best: "96%",   bestLabel: "Home Depot",     unit: "%",
         position: 38, tone: "behind", comment: "How much of headline margin actually lands after promotion + return rate. HD's discipline is industry-leading." },
     ],
@@ -92,7 +92,7 @@ export const PEERS: Record<string, PeerBlock> = {
   "customer-intelligence": {
     peerSet: PEER_SET, asOf: AS_OF,
     metrics: [
-      { metric: "NPS — trade segment",     meridian: "44", median: "48", best: "61", bestLabel: "Ace Hardware", unit: "pts",
+      { metric: "NPS, trade segment",     meridian: "44", median: "48", best: "61", bestLabel: "Ace Hardware", unit: "pts",
         position: 42, tone: "behind", comment: "Trade NPS holds better than retail. Ace's local-store model is the benchmark to study, not match." },
       { metric: "12-month repeat rate",     meridian: "61%", median: "68%", best: "78%", bestLabel: "Home Depot", unit: "%",
         position: 38, tone: "behind", comment: "Concentrated drop in two metros (Phoenix, Atlanta). National rate masks the local issue." },

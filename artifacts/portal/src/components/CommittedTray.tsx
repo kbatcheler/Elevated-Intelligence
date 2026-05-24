@@ -10,7 +10,7 @@ const statusIcon = (s: CommittedAction["status"]) =>
   s === "done" ? CheckCircle2 : s === "in-flight" ? Clock3 : Circle;
 
 // Pulls the leading dollar number out of strings like "$1.2M margin",
-// "$0.5M cash" or "$1.1M ARR retained" — used for the KPI roll-up only.
+// "$0.5M cash" or "$1.1M ARR retained", used for the KPI roll-up only.
 // Returns 0 if the impact is a non-dollar string (e.g. "+11 NPS").
 const parseDollar = (impact: string): number => {
   const m = impact.match(/\$([0-9]+\.?[0-9]*)\s*M/i);
@@ -18,7 +18,7 @@ const parseDollar = (impact: string): number => {
 };
 
 // Bucket actions by how soon they need to land, derived from the due date.
-// We don't need true date parsing here — the seed uses display strings, so
+// We don't need true date parsing here, the seed uses display strings, so
 // we use a lightweight heuristic against a fixed "now" for the demo.
 type Horizon = "in-flight" | "this-week" | "next-30" | "this-quarter" | "done";
 const HORIZON_LABEL: Record<Horizon, string> = {
@@ -33,7 +33,7 @@ const HORIZON_ORDER: Horizon[] = ["in-flight", "this-week", "next-30", "this-qua
 const horizonFor = (c: CommittedAction): Horizon => {
   if (c.status === "in-flight") return "in-flight";
   if (c.status === "done")      return "done";
-  // Cheap month-name based bucketing — Oct = this week, Nov = next 30, Dec = this quarter.
+  // Cheap month-name based bucketing, Oct = this week, Nov = next 30, Dec = this quarter.
   const due = c.due.toLowerCase();
   if (due.includes("oct")) return "this-week";
   if (due.includes("nov")) return "next-30";
@@ -66,7 +66,7 @@ export default function CommittedTray({ onNavigate }: { onNavigate: (key: string
     };
   }, [committed]);
 
-  // Group the list by horizon for the main view — replaces the flat table.
+  // Group the list by horizon for the main view, replaces the flat table.
   const grouped = useMemo(() => {
     const m = new Map<Horizon, CommittedAction[]>();
     committed.forEach(c => {
@@ -87,12 +87,12 @@ export default function CommittedTray({ onNavigate }: { onNavigate: (key: string
           <div className="eyebrow text-[var(--coral)] mb-2">Intelligence layer · System</div>
           <h1 className="font-serif text-[40px] leading-[1.05] text-[var(--navy)] font-semibold">Committed actions</h1>
           <p className="font-serif italic text-[20px] text-[var(--slate-light)] mt-1.5">
-            What the business has agreed to do about it — every recommendation that's been moved from advice to commitment, with named owners, due dates and predicted impact.
+            What the business has agreed to do about it, every recommendation that's been moved from advice to commitment, with named owners, due dates and predicted impact.
           </p>
         </div>
       </div>
 
-      {/* KPI strip — replaces the count-only tiles with dollar weight + people + most-loaded layer. */}
+      {/* KPI strip, replaces the count-only tiles with dollar weight + people + most-loaded layer. */}
       <div className="grid grid-cols-4 gap-4">
         <KpiCard
           label="Total committed value"
@@ -135,7 +135,7 @@ export default function CommittedTray({ onNavigate }: { onNavigate: (key: string
         </div>
       ) : (
         <>
-          {/* Status flow ribbon — committed → in-flight → done as a visual pipeline */}
+          {/* Status flow ribbon, committed → in-flight → done as a visual pipeline */}
           <div className="card">
             <div className="flex items-center justify-between mb-3">
               <div>
@@ -153,7 +153,7 @@ export default function CommittedTray({ onNavigate }: { onNavigate: (key: string
             </div>
           </div>
 
-          {/* Grouped by horizon — replaces the flat table */}
+          {/* Grouped by horizon, replaces the flat table */}
           <div className="space-y-5">
             {grouped.map(g => (
               <div key={g.horizon}>
@@ -209,7 +209,7 @@ function FlowBar({ status, count, total }: { status: CommittedAction["status"]; 
   const pct = (count / total) * 100;
   return (
     <div className="h-full flex items-center justify-center font-sans font-bold text-[10px] uppercase tracking-wider"
-         title={`${status} — ${count}`}
+         title={`${status}, ${count}`}
          style={{ width: `${pct}%`, background: statusColor(status), color: "white" }}>
       {count} {status}
     </div>

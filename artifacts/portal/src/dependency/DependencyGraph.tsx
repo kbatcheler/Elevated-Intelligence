@@ -28,7 +28,7 @@ type Node = {
 type Edge = { from: string; to: string; weight: number; note?: string };
 
 const NODES: Node[] = [
-  // Executive band — top
+  // Executive band, top
   { key: "business-performance", label: "Business perf",     band: "exec",   x: 360, y: 80,  status: "warn" },
   { key: "finance",              label: "Finance",           band: "exec",   x: 620, y: 80,  status: "bad" },
   // Market-facing band
@@ -37,14 +37,15 @@ const NODES: Node[] = [
   { key: "customer-intelligence",    label: "Customer",      band: "market", x: 490, y: 240, status: "warn" },
   { key: "brand-social",             label: "Brand & Social",band: "market", x: 670, y: 240, status: "warn" },
   // Operational band
-  { key: "supply-chain",         label: "Supply chain",      band: "ops",    x: 100, y: 420, status: "bad" },
-  { key: "pricing-margin",       label: "Pricing & margin",  band: "ops",    x: 260, y: 420, status: "warn" },
-  { key: "sales-pipeline",       label: "Sales pipeline",    band: "ops",    x: 410, y: 420, status: "bad" },
-  { key: "marketing-performance",label: "Marketing perf",    band: "ops",    x: 560, y: 420, status: "warn" },
-  { key: "people-operations",    label: "People & ops",      band: "ops",    x: 690, y: 420, status: "bad" },
-  // System / financial close band — bottom
-  { key: "receivables", label: "Receivables", band: "system", x: 280, y: 580, status: "bad" },
-  { key: "talent-hr",   label: "Talent & HR", band: "system", x: 520, y: 580, status: "bad" },
+  { key: "supply-chain",         label: "Supply chain",      band: "ops",    x:  90, y: 420, status: "bad"  },
+  { key: "pricing-margin",       label: "Pricing & margin",  band: "ops",    x: 230, y: 420, status: "warn" },
+  { key: "sales-pipeline",       label: "Sales pipeline",    band: "ops",    x: 370, y: 420, status: "bad"  },
+  { key: "marketing-performance",label: "Marketing perf",    band: "ops",    x: 510, y: 420, status: "warn" },
+  { key: "people-operations",    label: "People & ops",      band: "ops",    x: 650, y: 420, status: "bad"  },
+  // System / financial close band, bottom
+  { key: "receivables",          label: "Receivables",       band: "system", x: 220, y: 580, status: "bad"  },
+  { key: "contract-management",  label: "Contracts",         band: "system", x: 410, y: 580, status: "warn" },
+  { key: "talent-hr",            label: "Talent & HR",       band: "system", x: 600, y: 580, status: "bad"  },
 ];
 
 const EDGES: Edge[] = [
@@ -74,6 +75,14 @@ const EDGES: Edge[] = [
   { from: "talent-hr",                to: "pricing-margin",       weight: 0.25, note: "Senior buyer open" },
   { from: "people-operations",        to: "supply-chain",         weight: 0.45, note: "11 unfilled shifts" },
   { from: "receivables",              to: "sales-pipeline",       weight: 0.20 },
+
+  // Contracts, quiet amplifier of three other layers' diagnoses. Supplier
+  // paper amplifies the supply-chain damage; customer MSAs constrain the
+  // receivables recovery; rate-card contracts contributed $1.4M to the
+  // Finance opex variance. Surfaces in the side panel when isolated.
+  { from: "contract-management",      to: "supply-chain",         weight: 0.30, note: "Supplier C agreement in 23-day legal review" },
+  { from: "contract-management",      to: "receivables",          weight: 0.35, note: "Evergreen MSAs cap recovery levers" },
+  { from: "contract-management",      to: "finance",              weight: 0.20, note: "DC labour rate-card auto-renew · $1.4M opex" },
 ];
 
 const statusColor = (s: Node["status"]) =>
@@ -81,7 +90,7 @@ const statusColor = (s: Node["status"]) =>
 const statusFill = (s: Node["status"]) =>
   s === "bad" ? "var(--coral-faint)" : s === "warn" ? "var(--amber-faint)" : "var(--teal-faint)";
 
-// Pastel chip color per product category — keeps the side panel readable when
+// Pastel chip color per product category, keeps the side panel readable when
 // many product chips appear together.
 const categoryStyle = (c: ProductCategory): { bg: string; border: string; fg: string } => {
   switch (c) {
@@ -119,11 +128,17 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
           <div className="eyebrow text-[var(--coral)] mb-2">Intelligence layer · System</div>
           <h1 className="font-serif text-[40px] leading-[1.05] text-[var(--navy)] font-semibold">Cross-layer dependency graph</h1>
           <p className="font-serif italic text-[20px] text-[var(--slate-light)] mt-1.5">
-            How a diagnosis in one layer feeds the next — and where missing data feeds bound its confidence.
+            How a diagnosis in one layer feeds the next, and where missing data feeds bound its confidence.
           </p>
           <div className="mt-4 flex items-center gap-4 text-[12px] text-[var(--slate-light)]">
             <span>{NODES.length} nodes · {EDGES.length} weighted dependencies · hover to isolate</span>
-            {showGaps && <span>· {totalGapCount} data gaps · +{totalUplift}pp recoverable confidence</span>}
+            {showGaps && (
+              <span>
+                · {totalGapCount} data gaps ·{" "}
+                <span className="text-[var(--teal)] font-semibold">+{totalUplift}pp recoverable headroom</span>
+                <span className="text-[var(--slate-light)]"> (sum across gaps, not a layer-level confidence figure)</span>
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2 bg-[var(--cream-light)] border border-[var(--cream-dark)] rounded-full p-1">
@@ -214,7 +229,7 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
                           className="font-sans" style={{ fontSize: 12, fontWeight: 600, fill: "var(--navy)" }}>
                       {n.label}
                     </text>
-                    {/* Data-gap badge — only when overlay is on and node has gaps */}
+                    {/* Data-gap badge, only when overlay is on and node has gaps */}
                     {showGaps && nodeGaps.length > 0 && (
                       <g>
                         <circle cx={n.x + 56} cy={n.y - 16} r={9} fill="var(--coral)" stroke="white" strokeWidth={1.5} />
@@ -274,7 +289,7 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
                     <div className="flex items-baseline justify-between mb-2">
                       <div className="eyebrow text-[var(--coral)]">Unmet data feeds ({focusedGaps.length})</div>
                       {focusedUplift > 0 && (
-                        <span className="font-sans tabular-nums text-[10px] font-bold text-[var(--coral)]">+{focusedUplift}pp</span>
+                        <span className="font-sans tabular-nums text-[10px] font-bold text-[var(--teal)]" title="Recoverable headroom, sum of per-gap confidence lifts on this layer">+{focusedUplift}pp headroom</span>
                       )}
                     </div>
                     {focusedGaps.length === 0 && (
@@ -344,7 +359,7 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
       </div>
 
       {/* Solution catalog (conceptual layer). Visible when the overlay is on.
-          The 13 capability-style "solutions" the team frames around — these
+          The 13 capability-style "solutions" the team frames around, these
           are how we talk about the platform internally and on the dependency
           graph. Each one is mapped to feed gaps above. */}
       {showGaps && (
@@ -396,10 +411,10 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
                         : `Plugs ${usedBy.length} ${usedBy.length === 1 ? "gap" : "gaps"}`}
                     </span>
                     {uplift > 0 && (
-                      <span className="font-sans tabular-nums font-bold text-[var(--coral)]">+{uplift}pp</span>
+                      <span className="font-sans tabular-nums font-bold text-[var(--teal)]" title="Recoverable headroom across the gaps this capability addresses">+{uplift}pp headroom</span>
                     )}
                   </div>
-                  {/* "Ships as" — which real apps in the live library instantiate
+                  {/* "Ships as", which real apps in the live library instantiate
                        this capability. Empty for cross-cutting access products. */}
                   {shippedAs.length > 0 && (
                     <div className="pt-2 border-t border-[var(--cream-dark)]">
@@ -425,7 +440,7 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
         </div>
       )}
 
-      {/* DiffDay App Library — the real deployed apps. Always visible (not
+      {/* DiffDay App Library, the real deployed apps. Always visible (not
           gated on the data-gap overlay) because it's the ground-truth catalog
           a buyer sees on demo.diffday.dev. Grouped by industry domain so the
           21-app surface stays scannable. */}

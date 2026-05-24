@@ -11,10 +11,10 @@ import type { LayerData, Tone } from "../data/layers";
 // layer. It traces the metric through the cause graph:
 //
 //   1. Identity (label, value, sub, tone, trend)
-//   2. Drivers — the layer's own causes (the diagnosis the layer has built)
-//   3. Cross-layer context — other layers whose metrics/causes mention any
+//   2. Drivers, the layer's own causes (the diagnosis the layer has built)
+//   3. Cross-layer context, other layers whose metrics/causes mention any
 //      token from this metric's label, surfaced as click-through chips
-//   4. Counter-arguments — confidence band against alternative explanations
+//   4. Counter-arguments, confidence band against alternative explanations
 //   5. CTA to open the deeper evidence panel when raw evidence is attached
 //
 // Designed as additive surface: it does NOT replace the evidence panel,

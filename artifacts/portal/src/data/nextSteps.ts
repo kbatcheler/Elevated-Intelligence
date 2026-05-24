@@ -41,7 +41,7 @@ export const NEXT_STEPS: Record<string, NextStepsBlock> = {
   "demand-intelligence": {
     now: {
       title: "Trigger the first full forecast retrain since March",
-      detail: "The DIY/Home Improvement model has not been retrained since March 2025 — pre-supply-shock baseline. Run a full Blue Yonder retrain with the last 14 days of EPOS, weather and competitor-promo signals. MAPE on Home Improvement is at 13pp vs 8pp baseline.",
+      detail: "The DIY/Home Improvement model has not been retrained since March 2025, pre-supply-shock baseline. Run a full Blue Yonder retrain with the last 14 days of EPOS, weather and competitor-promo signals. MAPE on Home Improvement is at 13pp vs 8pp baseline.",
       owner: "M. Tanaka (Demand Planning)", effort: "2d",
       outcome: "Forecast bias resets; recovers an estimated $0.6M of the $2.8M Q3 variance through better Q4 buy quantities.",
     },
@@ -148,7 +148,7 @@ export const NEXT_STEPS: Record<string, NextStepsBlock> = {
   "pricing-margin": {
     now: {
       title: "Cap the cordless-tools promo match at 22% today",
-      detail: "Current match is running at 28% (matching Home Depot exactly). Cap restores a 4pp gross margin on the 24 SKUs driving the slip — $1.2M annualised recovery.",
+      detail: "Current match is running at 28% (matching Home Depot exactly). Cap restores a 4pp gross margin on the 24 SKUs driving the slip, $1.2M annualised recovery.",
       owner: "Head of Pricing", effort: "1d",
       outcome: "Gross margin on cordless range recovers from 16% to ≥20% within one trading week.",
     },
@@ -181,7 +181,7 @@ export const NEXT_STEPS: Record<string, NextStepsBlock> = {
     },
     month: {
       title: "Add a $50K cap to the Q4 pipeline coverage metric",
-      detail: "Six deals above $300K distort the 2.4× coverage ratio. Capping the metric at $50K per deal gives a true 1.9× — flagging the real coverage hole one quarter ahead of plan.",
+      detail: "Six deals above $300K distort the 2.4× coverage ratio. Capping the metric at $50K per deal gives a true 1.9×, flagging the real coverage hole one quarter ahead of plan.",
       owner: "Sales Ops + FP&A", effort: "1mo",
       outcome: "Q1 27 coverage hole flagged in October, not January. Demand-gen reallocation can land before Q1 starts.",
     },
@@ -202,7 +202,7 @@ export const NEXT_STEPS: Record<string, NextStepsBlock> = {
     },
     month: {
       title: "Rebuild attribution model to MMM + 14-day window",
-      detail: "Current attribution coverage is 64% — Brand spend is undercredited. New model with MMM overlay restores credibility and lets us defend Brand investment with data.",
+      detail: "Current attribution coverage is 64%, Brand spend is undercredited. New model with MMM overlay restores credibility and lets us defend Brand investment with data.",
       owner: "Marketing Analytics", effort: "1mo",
       outcome: "Attribution coverage to 90%+; Brand budget conversation in Q1 planning becomes evidence-led.",
     },
@@ -253,7 +253,7 @@ export const NEXT_STEPS: Record<string, NextStepsBlock> = {
   "receivables": {
     now: {
       title: "Place credit holds on the three accounts over 45d",
-      detail: "Greater Plains Co., Continental Trade, Mason+Co. — collectively $810K. Templated hold + named AR contact for each.",
+      detail: "Greater Plains Co., Continental Trade, Mason+Co., collectively $810K. Templated hold + named AR contact for each.",
       owner: "AR Manager", effort: "1d",
       outcome: "Stops further accumulation; signals seriousness without legal escalation.",
     },
@@ -274,7 +274,7 @@ export const NEXT_STEPS: Record<string, NextStepsBlock> = {
   "talent-hr": {
     now: {
       title: "Approve the comp uplift on the senior buyer role",
-      detail: "84 days open. Offer-to-accept stage is the funnel bottleneck — comp gap is 12% vs market. Approve +15% on this single role to break the blocker.",
+      detail: "84 days open. Offer-to-accept stage is the funnel bottleneck, comp gap is 12% vs market. Approve +15% on this single role to break the blocker.",
       owner: "CHRO + Head of Pricing", effort: "1d",
       outcome: "Role likely filled within 21 days; Pricing transformation roadmap unblocked.",
     },

@@ -57,11 +57,11 @@ export interface DiffDayProduct {
 
 export interface DataGap {
   id: string;
-  layerKey: LayerKey;          // typed against LAYER_KEYS — typos won't compile
+  layerKey: LayerKey;          // typed against LAYER_KEYS, typos won't compile
   feed: string;                // the missing data feed (short, < 50 chars)
   blocks: string;              // what this gap prevents the layer from diagnosing
   confidenceUplift: number;    // percentage-points of layer confidence recovered if closed
-  productFit: ProductId[];     // typed against PRODUCT_IDS — typos won't compile
+  productFit: ProductId[];     // typed against PRODUCT_IDS, typos won't compile
 }
 
 // 13 DiffDay products, exactly as positioned by the team.
@@ -121,7 +121,7 @@ export const DATA_GAPS: DataGap[] = [
 ];
 
 // Cross-cutting access products: they don't plug a single layer-specific
-// feed gap — they're how analysts consume everything above. Shown as a
+// feed gap, they're how analysts consume everything above. Shown as a
 // footer band so the story is complete.
 export const ACCESS_PRODUCT_IDS = ["unified-chat", "nl-search", "ai-companion"] as const;
 
@@ -133,7 +133,7 @@ export function totalLayerUplift(layerKey: string): number {
   return gapsForLayer(layerKey).reduce((s, g) => s + g.confidenceUplift, 0);
 }
 
-// Top N gaps system-wide by confidence uplift — used in the default
+// Top N gaps system-wide by confidence uplift, used in the default
 // side-panel view to show the highest-leverage product slot-ins.
 export function topGaps(n: number): DataGap[] {
   return [...DATA_GAPS].sort((a, b) => b.confidenceUplift - a.confidenceUplift).slice(0, n);

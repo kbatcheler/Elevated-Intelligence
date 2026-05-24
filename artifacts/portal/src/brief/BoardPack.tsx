@@ -22,17 +22,17 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
     { title: "Competitor promotional intensity", impact: "−$6.2M",
       body: "Home Depot ran a sustained 1.8× baseline promo depth across five SE markets for the last 14 days of Q3. Numerator panel confirms the depth; Meridian Industrial's match-not-beat policy locked us into matching every move. The cohort that hurt most: the 24 top cordless-tools SKUs where elasticity is highest." },
     { title: "Compound supply disruption", impact: "−$3.1M",
-      body: "Supplier B's production delay coincided with a Dallas + Phoenix DC labour shortfall. Top-5 SKUs accumulated 41 OOS days in weeks 30–34. Inventory did not partially offset the demand softness — it amplified it. Two simultaneous constraints, not one." },
+      body: "Supplier B's production delay coincided with a Dallas + Phoenix DC labour shortfall. Top-5 SKUs accumulated 41 OOS days in weeks 30–34. Inventory did not partially offset the demand softness, it amplified it. Two simultaneous constraints, not one." },
     { title: "Margin defence via promotional matching", impact: "−$1.8M",
-      body: "Margin compressed 240bps as the match policy was applied reflexively. Volume held; margin paid for it. This is the most reversible of the three causes — a single policy change closes the gap in two trading weeks." },
+      body: "Margin compressed 240bps as the match policy was applied reflexively. Volume held; margin paid for it. This is the most reversible of the three causes, a single policy change closes the gap in two trading weeks." },
   ];
   const genericRootCauses = [
     { title: "Demand softness in core categories", impact: "—",
-      body: "Top-of-funnel demand fell behind plan in the categories carrying the most revenue weight. The shortfall is concentrated, not diffuse — a small number of buyer cohorts account for most of the gap." },
+      body: "Top-of-funnel demand fell behind plan in the categories carrying the most revenue weight. The shortfall is concentrated, not diffuse, a small number of buyer cohorts account for most of the gap." },
     { title: "Compound operational disruption", impact: "—",
       body: "Two simultaneous constraints on the operational side amplified the demand softness rather than absorbing it. Throughput and on-time delivery both slipped in the same window." },
     { title: "Reflexive margin defence", impact: "—",
-      body: "Pricing was held flat against the competitive set rather than re-anchored to a margin floor. Volume was preserved at the cost of margin — the most reversible of the three causes." },
+      body: "Pricing was held flat against the competitive set rather than re-anchored to a margin floor. Volume was preserved at the cost of margin, the most reversible of the three causes." },
   ];
   const meridianRecoveryLevers = [
     { title: "Cap the cordless-tools promo match at 22%",
@@ -133,7 +133,7 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
             <div className="grid grid-cols-2 gap-6">
               <Card label="Revenue"           value={h.revenueActual}  delta={`${h.revenueVarPct} vs plan`}        tone="bad"  detail={isDefault ? resolve(`${h.revenueVarDollars} behind plan; gap concentrated in DIY and Home Improvement categories.`) : `${h.revenueVarDollars} behind plan; gap concentrated in a small number of categories.`} />
               <Card label="Operating margin"  value={h.marginActual}   delta={`${h.marginVarBps} vs target`}       tone="bad"  detail={isDefault ? resolve("Match-and-bleed pricing on top-50 cordless SKUs drove most of the slip.") : "Reflexive price matching against the competitive set drove most of the slip."} />
-              <Card label="Cash position"     value={h.cashActual}     delta={h.cashVar}                            tone={h.cashTone} detail="Held only because working capital tightened — not because trading performed." />
+              <Card label="Cash position"     value={h.cashActual}     delta={h.cashVar}                            tone={h.cashTone} detail="Held only because working capital tightened, not because trading performed." />
               <Card label="Customer NPS"      value={String(h.npsActual)} delta={h.npsDelta}                        tone="warn" detail={isDefault ? resolve("Detractor cluster localised to Phoenix metro, tied to service-call spike.") : "Detractor cluster localised to a single region, tied to a service-call spike."} />
             </div>
             <div className="mt-8 p-5 rounded-sm" style={{ background: "var(--cream-light)", border: "1px solid var(--cream-dark)" }}>
@@ -142,7 +142,7 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
                 {profile.executiveRead
                   ? profile.executiveRead
                   : isDefault
-                    ? <>Q3 closed <strong>8% behind plan</strong> and <strong>380bps behind margin target</strong>. The variance is not diffuse — three layers (Demand, Pricing, Supply) account for almost the entire gap. The fastest reversible lever this quarter is in pricing, not demand or supply.</>
+                    ? <>Q3 closed <strong>8% behind plan</strong> and <strong>380bps behind margin target</strong>. The variance is not diffuse, three layers (Demand, Pricing, Supply) account for almost the entire gap. The fastest reversible lever this quarter is in pricing, not demand or supply.</>
                     : <>The quarter closed behind plan, with the variance concentrated in a small number of layers. The diagnosis, the three reversible levers, and the named owners follow on the pages overleaf.</>}
               </p>
             </div>
@@ -209,7 +209,7 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
                   Track record will populate here once the system has closed its first quarter of recommendations for {profile.name}.
                 </div>
                 <p className="font-serif italic text-[14px] text-[var(--slate)] mt-3 leading-snug">
-                  Every recommendation issued — predicted dollar impact, named owner, time horizon — is recorded at the moment it's committed, then graded against the actual outcome when the window closes. The history is auditable end-to-end; what you'd see here is the receipts.
+                  Every recommendation issued, predicted dollar impact, named owner, time horizon, is recorded at the moment it's committed, then graded against the actual outcome when the window closes. The history is auditable end-to-end; what you'd see here is the receipts.
                 </p>
               </div>
             )}

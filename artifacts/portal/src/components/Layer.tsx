@@ -49,7 +49,7 @@ export default function Layer({
   // TIMELINES contains Meridian Industrial-shaped "Diagnosis timeline" headlines
   // ("8% behind plan, 380bps margin gap …") that the vocab swap cannot
   // translate. For non-default profiles we suppress the timeline entirely
-  // — TimeTravel below renders null when its layer key is absent, and
+  //, TimeTravel below renders null when its layer key is absent, and
   // `snap` below stays null so layer.narrative is used as-is.
   const TIMELINES_SWAPPED = useSwap(TIMELINES_RAW);
   const TIMELINES: Record<string, Timeline> = isDefaultProfile ? TIMELINES_SWAPPED : {};
@@ -227,7 +227,7 @@ export default function Layer({
 
   // Heroes + Extras are populated from hardcoded Meridian Industrial fixtures (named
   // suppliers, DC cities, competitor brands, SKUs etc). For any non-default
-  // profile we hide them rather than render wrong-brand copy — see
+  // profile we hide them rather than render wrong-brand copy, see
   // useIsDefaultProfile for the full rationale. BusinessPerformanceHero is
   // the lone exception: it reads only `layer.metrics`, which is overridden
   // per seeded company, so it stays universal.
@@ -239,12 +239,12 @@ export default function Layer({
   return (
     <div className="space-y-6 pb-12">
       {/* ────────────────────────────────────────────────────────────────
-          Header — orientation only
+          Header, orientation only
          ──────────────────────────────────────────────────────────────── */}
       <div className={"flex items-start justify-between gap-6 " + (highlight === "header" ? "gold-underline" : "")}>
         <div>
           <div className="eyebrow text-[var(--coral)] mb-2">Intelligence layer · {layer.group}</div>
-          <h1 className="font-serif text-[40px] leading-[1.05] text-[var(--navy)] font-semibold">{layer.title}</h1>
+          <h1 className="font-serif text-[40px] leading-[1.05] text-[var(--navy)] font-semibold max-w-[760px] break-words">{layer.title}</h1>
           <p className="font-serif italic text-[20px] text-[var(--slate-light)] mt-1.5">{layer.question}</p>
           <div className="mt-4 flex items-center gap-4 text-[12px] text-[var(--slate-light)]">
             <span className="flex items-center gap-1.5">
@@ -271,7 +271,7 @@ export default function Layer({
       <TimeTravel layerKey={layer.key} />
 
       {/* ────────────────────────────────────────────────────────────────
-          Analyst's take — the one-sentence lead, above §1.
+          Analyst's take, the one-sentence lead, above §1.
           Hidden for non-default tenants: the analyst leads are written
           in Meridian Industrial-shaped language (named channels, named
           competitors, "$11M gap"…) that the vocab swap cannot translate.
@@ -290,10 +290,10 @@ export default function Layer({
       )}
 
       {/* ────────────────────────────────────────────────────────────────
-          §1 RECOMMENDATION — what to do (BLUF)
+          §1 RECOMMENDATION, what to do (BLUF)
           Narrative + actions paired at the top, then committed next steps.
          ──────────────────────────────────────────────────────────────── */}
-      <SectionHeading index="§1" label="Recommendation" sub="What to do — the call, with dollars attached" />
+      <SectionHeading index="§1" label="Recommendation" sub="What to do, the call, with dollars attached" />
       {/* Narrative + actions sit side-by-side; NextSteps lives BELOW the grid
           at full width. Earlier we tucked NextSteps into the narrative column
           to absorb dead space, but at 2/3 width its three time-horizon cards
@@ -306,25 +306,31 @@ export default function Layer({
       <NextSteps layerKey={layer.key} layerTitle={layer.title} />
 
       {/* ────────────────────────────────────────────────────────────────
-          §2 SITUATION — descriptive: where we stand right now
+          §2 SITUATION, descriptive: where we stand right now
          ──────────────────────────────────────────────────────────────── */}
-      <SectionHeading index="§2" label="Situation" sub="The numbers — what's happening, against plan and against peers" />
+      <SectionHeading index="§2" label="Situation" sub="The numbers, what's happening, against plan and against peers" />
       {Hero ? <Hero layer={layer} /> : metricStrip}
       {Extra && <Extra />}
       {chartCard}
       {PEERS[layer.key] && <PeerBenchmark layerKey={layer.key} />}
 
       {/* ────────────────────────────────────────────────────────────────
-          §3 DIAGNOSIS — why: root causes and intervention modelling
+          §3 DIAGNOSIS, why: root causes and intervention modelling
          ──────────────────────────────────────────────────────────────── */}
-      <SectionHeading index="§3" label="Diagnosis" sub="Why it's happening — root causes and intervention tests" />
+      <SectionHeading
+        index="§3"
+        label="Diagnosis"
+        sub={showWhatIf
+          ? "Why it's happening, root causes and intervention tests"
+          : "Why it's happening, root causes (intervention tests ship on this layer in a later release)"}
+      />
       {causesCard}
       {showWhatIf && <WhatIfLevers scenario={layer.key === "pricing-margin" ? "pricing" : "demand"} />}
 
       {/* ────────────────────────────────────────────────────────────────
-          §4 DETAIL — drill-down, source proof, and what's missing
+          §4 DETAIL, drill-down, source proof, and what's missing
          ──────────────────────────────────────────────────────────────── */}
-      <SectionHeading index="§4" label="Detail" sub="The proof — source data, drill-downs, and architectural gaps" />
+      <SectionHeading index="§4" label="Detail" sub="The proof, source data, drill-downs, and architectural gaps" />
       <PipelineDetail layerKey={layer.key} />
       <DataFeedsCard layerKey={layer.key} />
       {gapsCard}

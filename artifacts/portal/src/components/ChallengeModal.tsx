@@ -95,7 +95,7 @@ export default function ChallengeModal({ layer, onClose }: { layer: LayerData; o
                   <div className="font-sans text-[12px] text-[var(--slate)] italic leading-snug">{c.detail}</div>
                   <div className="mt-2 pt-2 border-t border-[var(--cream-dark)] flex items-center gap-2">
                     <span className="font-sans font-bold text-[10px] uppercase tracking-wider text-[var(--coral)]">Verdict</span>
-                    <span className="font-sans text-[11px] text-[var(--slate)] italic">Rejected — evidence weight insufficient to displace primary diagnosis.</span>
+                    <span className="font-sans text-[11px] text-[var(--slate)] italic">Rejected, evidence weight insufficient to displace primary diagnosis.</span>
                   </div>
                 </div>
               ))}
@@ -136,7 +136,7 @@ export default function ChallengeModal({ layer, onClose }: { layer: LayerData; o
               {submitted ? (
                 <div className="card card-accent-teal !p-5 text-center">
                   <div className="eyebrow text-[var(--teal)] mb-2">Challenge logged</div>
-                  <div className="font-serif text-[16px] text-[var(--navy)]">Routed to the diagnosis stack — re-scored within 4 minutes.</div>
+                  <div className="font-serif text-[16px] text-[var(--navy)]">Routed to the diagnosis stack, re-scored within 4 minutes.</div>
                   <div className="font-sans italic text-[11px] text-[var(--slate)] mt-2">
                     The next scoring cycle will surface your hypothesis as a candidate alternative and report back through the Narrator.
                   </div>

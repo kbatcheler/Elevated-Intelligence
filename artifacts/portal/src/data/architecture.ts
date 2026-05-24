@@ -30,7 +30,7 @@ export const ARCH_COMPONENTS: ArchComponent[] = [
     description:
       "Asks 'what else could explain this?' on every diagnostic hypothesis. Searches for confounding variables, alternative causes, and statistical artefacts. Outputs a ranked list of confounding factors that the primary diagnosis must rule out before being accepted.",
     sampleOutput:
-      "Possible confounders ranked by impact: (1) Regional weather — ruled out, +$0.1M contribution only. (2) Seasonal shift in DIY — partial, -$0.3M. (3) Supplier price change — none in period. (4) Macro retail contraction — peer benchmarks flat-to-up. (5) Brand-led demand erosion — sentiment lags demand by 4–6 weeks, ruling out reverse causality. None of the confounders alone explains more than 11% of the variance; combined they account for <18%.",
+      "Possible confounders ranked by impact: (1) Regional weather, ruled out, +$0.1M contribution only. (2) Seasonal shift in DIY, partial, -$0.3M. (3) Supplier price change, none in period. (4) Macro retail contraction, peer benchmarks flat-to-up. (5) Brand-led demand erosion, sentiment lags demand by 4–6 weeks, ruling out reverse causality. None of the confounders alone explains more than 11% of the variance; combined they account for <18%.",
     tokens: 3104,
     ms: 488,
   },
@@ -42,7 +42,7 @@ export const ARCH_COMPONENTS: ArchComponent[] = [
     description:
       "Generates competing hypotheses to the primary diagnosis and stress-tests them. Constructs the strongest counter-argument. Forces the system to defend its conclusions rather than accept the first plausible answer.",
     sampleOutput:
-      "Counter-hypothesis A: macro contraction in trade segment. Tested against trade segment performance — rejected at 91% confidence; trade orders flat YoY across the period. Counter-hypothesis B: brand event driving the demand decline. Tested against sentiment timeline — rejected; sentiment lagged demand by 4–6 weeks. Counter-hypothesis C: single-month August outlier. Rejected — variance persists at 9.3% in September. Primary diagnosis survives all three challenges.",
+      "Counter-hypothesis A: macro contraction in trade segment. Tested against trade segment performance, rejected at 91% confidence; trade orders flat YoY across the period. Counter-hypothesis B: brand event driving the demand decline. Tested against sentiment timeline, rejected; sentiment lagged demand by 4–6 weeks. Counter-hypothesis C: single-month August outlier. Rejected, variance persists at 9.3% in September. Primary diagnosis survives all three challenges.",
     tokens: 2876,
     ms: 521,
   },
