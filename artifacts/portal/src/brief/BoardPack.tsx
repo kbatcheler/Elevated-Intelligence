@@ -27,11 +27,11 @@ export default function BoardPack({ onClose }: { onClose: () => void }) {
       body: "Margin compressed 240bps as the match policy was applied reflexively. Volume held; margin paid for it. This is the most reversible of the three causes, a single policy change closes the gap in two trading weeks." },
   ];
   const genericRootCauses = [
-    { title: "Demand softness in core categories", impact: "—",
+    { title: "Demand softness in core categories", impact: "·",
       body: "Top-of-funnel demand fell behind plan in the categories carrying the most revenue weight. The shortfall is concentrated, not diffuse, a small number of buyer cohorts account for most of the gap." },
-    { title: "Compound operational disruption", impact: "—",
+    { title: "Compound operational disruption", impact: "·",
       body: "Two simultaneous constraints on the operational side amplified the demand softness rather than absorbing it. Throughput and on-time delivery both slipped in the same window." },
-    { title: "Reflexive margin defence", impact: "—",
+    { title: "Reflexive margin defence", impact: "·",
       body: "Pricing was held flat against the competitive set rather than re-anchored to a margin floor. Volume was preserved at the cost of margin, the most reversible of the three causes." },
   ];
   const meridianRecoveryLevers = [

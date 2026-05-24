@@ -84,7 +84,7 @@ export default function CompanyBootSplash() {
               <Stat label="Tokens in/out"   value={
                 meta.inputTokens !== null && meta.outputTokens !== null
                   ? `${formatInt(meta.inputTokens)} → ${formatInt(meta.outputTokens)}`
-                  : "—"
+                  : "·"
               } mono />
               <Stat label="Payload"         value={formatBytes(meta.bytesReturned)} mono />
               <Stat label="Vocab tokens"    value={formatInt(meta.vocabCount)} mono />

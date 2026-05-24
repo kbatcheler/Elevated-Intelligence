@@ -191,9 +191,9 @@ export default function CompanyPicker() {
       updateSeedStep("identify", {
         status: "done",
         stats: [
-          { label: "Round-trip",   value: data._meta ? fmtMs(data._meta.durationMs) : "—" },
+          { label: "Round-trip",   value: data._meta ? fmtMs(data._meta.durationMs) : "·" },
           { label: "Tokens in/out", value: data._meta && data._meta.inputTokens != null && data._meta.outputTokens != null
-                                          ? `${fmtInt(data._meta.inputTokens)} → ${fmtInt(data._meta.outputTokens)}` : "—" },
+                                          ? `${fmtInt(data._meta.inputTokens)} → ${fmtInt(data._meta.outputTokens)}` : "·" },
           { label: "Candidates",   value: cands.length === 1 ? "1 (unambiguous)" : `${cands.length} (verdict: ${data.verdict})` },
           { label: "Top match",    value: `${topName} · ${Math.round(topConf * 100)}%` },
         ],
@@ -288,7 +288,7 @@ export default function CompanyPicker() {
       stats: meta ? [
         { label: "Round-trip",     value: fmtMs(meta.durationMs) },
         { label: "Tokens in/out",  value: meta.inputTokens != null && meta.outputTokens != null
-                                          ? `${fmtInt(meta.inputTokens)} → ${fmtInt(meta.outputTokens)}` : "—" },
+                                          ? `${fmtInt(meta.inputTokens)} → ${fmtInt(meta.outputTokens)}` : "·" },
         { label: "Payload",        value: fmtBytes(meta.bytesReturned) },
         { label: "Layers seeded",  value: `${fmtInt(meta.headlinesCount)} headline metrics across 13 layers` },
       ] : [],
@@ -358,7 +358,7 @@ export default function CompanyPicker() {
           stats: nMeta ? [
             { label: "Round-trip",    value: fmtMs(narrateMs) },
             { label: "Tokens in/out", value: nMeta.inputTokens != null && nMeta.outputTokens != null
-                                              ? `${fmtInt(nMeta.inputTokens)} → ${fmtInt(nMeta.outputTokens)}` : "—" },
+                                              ? `${fmtInt(nMeta.inputTokens)} → ${fmtInt(nMeta.outputTokens)}` : "·" },
             { label: "Payload",       value: fmtBytes(nMeta.bytesReturned) },
             { label: "Layers adapted", value: `${nMeta.layersGenerated} of ${nMeta.layersRequested}` },
           ] : [{ label: "Round-trip", value: fmtMs(narrateMs) }],
@@ -388,7 +388,7 @@ export default function CompanyPicker() {
     updateSeedStep("indexing", {
       status: "done",
       stats: [
-        { label: "Vocab tokens",      value: meta ? fmtInt(meta.vocabCount) : "—" },
+        { label: "Vocab tokens",      value: meta ? fmtInt(meta.vocabCount) : "·" },
         { label: "Indexed in",        value: fmtMs(idxMs) },
         { label: "Narrative modules", value: "16" },
       ],

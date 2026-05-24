@@ -19,6 +19,7 @@ import DemandLink from "./DemandLink";
 import { useApp } from "../context/AppContext";
 import { useNarrative, useSwap, useIsDefaultProfile } from "../context/CompanyContext";
 import { TIMELINES as TIMELINES_RAW, type Timeline } from "../data/timetravel";
+import { scenarioForLayer } from "../data/scenarios";
 
 const toneColor = (t: Tone) =>
   t === "bad"  ? "var(--red)"
@@ -64,7 +65,8 @@ export default function Layer({
   const displayConf = snap?.confidence ?? layer.confidence;
   const displayDiagnosedAt = snap?.diagnosedAt ?? layer.diagnosedAt;
 
-  const showWhatIf = layer.key === "pricing-margin" || layer.key === "demand-intelligence";
+  const scenario = scenarioForLayer(layer.key);
+  const showWhatIf = scenario != null;
 
   // Reusable fragments so the four-act page flow stays scannable below.
   const narrativeCard = (
@@ -257,7 +259,28 @@ export default function Layer({
             <span className="opacity-40">·</span>
             <div className="flex items-center gap-1.5"><span>Confidence</span><ConfidenceBand value={displayConf} /></div>
             <span className="opacity-40">·</span>
-            <span>{layer.sources} sources</span>
+            {(() => {
+              // Confidence-gap dual signal: today's confidence + the headroom
+              // closing the named data gaps would unlock, capped at 95 so we
+              // never imply mechanical certainty. The tooltip lists the gaps.
+              const headroom = layer.gaps.reduce((s, g) => s + g.confidenceLiftPp, 0);
+              const target = Math.min(95, displayConf + headroom);
+              const tip = layer.gaps.map(g => `${g.title} (+${g.confidenceLiftPp}pp)`).join("\n");
+              if (layer.gaps.length === 0 || target <= displayConf) {
+                return <span>{layer.sources} sources</span>;
+              }
+              return (
+                <>
+                  <span title={tip} className="flex items-center gap-1 cursor-help">
+                    <span className="font-sans font-semibold text-[var(--coral)]">Close {layer.gaps.length} {layer.gaps.length === 1 ? "gap" : "gaps"}</span>
+                    <span className="opacity-60">→</span>
+                    <span className="font-sans font-semibold text-[var(--navy)]">{target}% confidence</span>
+                  </span>
+                  <span className="opacity-40">·</span>
+                  <span>{layer.sources} sources</span>
+                </>
+              );
+            })()}
           </div>
           <div className="mt-3">
             <DemandLink layerKey={layer.key} />
@@ -319,13 +342,13 @@ export default function Layer({
          ──────────────────────────────────────────────────────────────── */}
       <SectionHeading
         index="§3"
-        label="Diagnosis"
+        label={showWhatIf ? "Intervention tests" : "Root causes"}
         sub={showWhatIf
-          ? "Why it's happening, root causes and intervention tests"
-          : "Why it's happening, root causes (intervention tests ship on this layer in a later release)"}
+          ? "Why it's happening, with live levers to model the recovery"
+          : "Why it's happening, the diagnosis behind the variance"}
       />
       {causesCard}
-      {showWhatIf && <WhatIfLevers scenario={layer.key === "pricing-margin" ? "pricing" : "demand"} />}
+      {showWhatIf && scenario && <WhatIfLevers scenario={scenario} />}
 
       {/* ────────────────────────────────────────────────────────────────
           §4 DETAIL, drill-down, source proof, and what's missing

@@ -91,7 +91,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [evidence, setEvidence] = useState<EvidenceSpec | null>(null);
   const [why, setWhy] = useState<{ layer: string; metric: string } | null>(null);
   // Seed the committed tray from the Meridian Industrial roster when the demo loads on
-  // the default profile, so the Committed Actions page is populated cold —
+  // the default profile, so the Committed Actions page is populated cold,
   // a leadership team should be able to walk into that view without having
   // to manually commit anything first. Non-default profiles start empty.
   const seedCommitted = useCallback((profileId: string): CommittedAction[] => {

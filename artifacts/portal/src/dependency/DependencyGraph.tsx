@@ -120,13 +120,56 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
 
   const totalGapCount = DATA_GAPS.length;
   const totalUplift = DATA_GAPS.reduce((s, g) => s + g.confidenceUplift, 0);
+  // System-level confidence anchor for the summary card. The 81% figure is
+  // the weighted average across the 14 layer confidences (see data/layers.ts);
+  // the ceiling is the same 95% cap we apply per-layer in Layer.tsx.
+  const systemConfidenceToday = 81;
+  const systemConfidenceCap = 95;
+  const systemTarget = Math.min(systemConfidenceCap, systemConfidenceToday + Math.round(totalUplift / 3));
 
   return (
     <div className="space-y-6 pb-12">
+      <div>
+        <div className="eyebrow text-[var(--coral)] mb-2">Intelligence layer · System</div>
+        <h1 className="font-serif text-[40px] leading-[1.05] text-[var(--navy)] font-semibold">Cross-layer dependency graph</h1>
+      </div>
+
+      {/* System-level confidence dual-signal, the cross-layer analogue of
+          the per-layer "Close N gaps → Y%" pill in Layer.tsx. */}
+      <div className="card card-accent-coral">
+        <div className="grid grid-cols-12 gap-6 items-center">
+          <div className="col-span-3">
+            <div className="eyebrow text-[var(--slate-light)] mb-1">System confidence today</div>
+            <div className="font-serif font-semibold text-[var(--navy)] tabular-nums" style={{ fontSize: 48, lineHeight: 1 }}>
+              {systemConfidenceToday}%
+            </div>
+            <div className="font-sans italic text-[11px] text-[var(--slate-light)] mt-1">weighted across 14 operating layers</div>
+          </div>
+          <div className="col-span-1 text-center font-serif text-[var(--slate-light)] text-[20px]">→</div>
+          <div className="col-span-4">
+            <div className="eyebrow text-[var(--coral)] mb-1">Close {totalGapCount} gaps to reach</div>
+            <div className="font-serif font-semibold text-[var(--coral)] tabular-nums" style={{ fontSize: 48, lineHeight: 1 }}>
+              {systemTarget}%
+            </div>
+            <div className="font-sans italic text-[11px] text-[var(--slate-light)] mt-1">
+              +{Math.max(0, systemTarget - systemConfidenceToday)}pp recoverable headroom, capped at {systemConfidenceCap}% so we never imply mechanical certainty
+            </div>
+          </div>
+          <div className="col-span-4 border-l border-[var(--cream-dark)] pl-5">
+            <div className="font-serif italic text-[14px] text-[var(--ink)] leading-snug">
+              Each gap below is a data feed, model, or workflow the system would route into delivery. The map tells you which layers feed which, the gap pills tell you what unlocks the next pp of confidence.
+            </div>
+            <button onClick={() => onNavigate("engagement-pipeline")}
+                    className="mt-3 font-sans text-[12px] font-semibold text-[var(--coral)] hover:underline flex items-center gap-1">
+              Route gaps to the engagement pipeline →
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="flex items-start justify-between gap-6">
         <div>
-          <div className="eyebrow text-[var(--coral)] mb-2">Intelligence layer · System</div>
-          <h1 className="font-serif text-[40px] leading-[1.05] text-[var(--navy)] font-semibold">Cross-layer dependency graph</h1>
+          <div className="eyebrow text-[var(--coral)] mb-2 sr-only">·</div>
           <p className="font-serif italic text-[20px] text-[var(--slate-light)] mt-1.5">
             How a diagnosis in one layer feeds the next, and where missing data feeds bound its confidence.
           </p>

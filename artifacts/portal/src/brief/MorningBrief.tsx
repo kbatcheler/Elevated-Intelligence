@@ -1,4 +1,5 @@
-import { X, Printer, TrendingUp, TrendingDown, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, Printer, TrendingUp, TrendingDown, AlertCircle, Cpu, ArrowRight } from "lucide-react";
 import { useNarrative, useCompany, useIsDefaultProfile } from "../context/CompanyContext";
 import { useApp } from "../context/AppContext";
 
@@ -87,7 +88,20 @@ const TOP_FINDINGS: BriefItem[] = [
 ];
 
 export default function MorningBrief() {
-  const { closeBrief } = useApp();
+  const { closeBrief, setActiveLayer } = useApp();
+  // First-session promotion of the Intelligence Architecture page. Dismissed
+  // permanently once seen (localStorage), or hidden if the visitor has
+  // already opened the architecture page from elsewhere.
+  const [promoDismissed, setPromoDismissed] = useState<boolean>(() => {
+    try { return localStorage.getItem("ei.archPromoSeen") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    if (promoDismissed) {
+      try { localStorage.setItem("ei.archPromoSeen", "1"); } catch { /* noop */ }
+    }
+  }, [promoDismissed]);
+  const dismissPromo = () => setPromoDismissed(true);
+  const openArchitecture = () => { setPromoDismissed(true); setActiveLayer("intelligence-architecture"); closeBrief(); };
   const { profile, resolve } = useCompany();
   const { LAYERS } = useNarrative();
   const isDefault = useIsDefaultProfile();
@@ -181,6 +195,38 @@ export default function MorningBrief() {
                 })}
               </ul>
             </section>
+
+            {/* First-session promotion: route the new visitor into the
+                Intelligence Architecture page once. Vanishes permanently
+                after the first dismiss. */}
+            {!promoDismissed && (
+              <section className="mb-7">
+                <div className="card card-accent-gold" style={{ background: "var(--gold-faint, #FBF3DC)" }}>
+                  <div className="flex items-start gap-3">
+                    <Cpu size={16} strokeWidth={1.8} className="text-[var(--gold)] shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="eyebrow text-[var(--gold)] mb-1">New here? · one-time prompt</div>
+                      <div className="font-serif font-semibold text-[15px] text-[var(--navy)] leading-snug">
+                        See how this brief was made, the five-stage reasoning chain underneath it.
+                      </div>
+                      <div className="font-serif italic text-[13px] text-[var(--slate)] mt-1 leading-snug">
+                        Perceive, hypothesise, challenge, narrate, score, 13,348 tokens, 2.2 seconds end to end. It's the answer to "is this just GPT?".
+                      </div>
+                      <div className="mt-3 flex items-center gap-3">
+                        <button onClick={openArchitecture}
+                                className="flex items-center gap-1 px-3 py-1.5 rounded-sm bg-[var(--navy)] text-[var(--cream)] hover:bg-[var(--navy-deep)] font-sans text-[12px] font-semibold transition-colors">
+                          Open Intelligence Architecture <ArrowRight size={12} strokeWidth={2} />
+                        </button>
+                        <button onClick={dismissPromo}
+                                className="font-sans text-[11px] text-[var(--slate)] hover:text-[var(--navy)]">
+                          Not now
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
 
             {/* Lede */}
             <section className="mb-7">

@@ -117,7 +117,7 @@ export default function CommittedTray({ onNavigate }: { onNavigate: (key: string
         />
         <KpiCard
           label="Most-loaded layer"
-          value={stats.topLayer ? `${stats.topLayer[1].count}` : "—"}
+          value={stats.topLayer ? `${stats.topLayer[1].count}` : "·"}
           sub={stats.topLayer ? `${stats.topLayer[1].title} · $${stats.topLayer[1].dollars.toFixed(1)}M` : "no commitments yet"}
           tone="teal"
           Icon={Users}

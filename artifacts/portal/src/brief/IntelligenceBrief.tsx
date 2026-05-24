@@ -44,7 +44,7 @@ function deriveDeltas(profileName: string, layers: LayerData[]): Delta[] {
   const normalized = (profileName || "default").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
   const seed = seededHash(normalized);
   // Magnitudes per metric type. The hash picks from these so the units
-  // attached to the move match the units the metric is denominated in —
+  // attached to the move match the units the metric is denominated in,
   // otherwise a currency metric ends up with a bare "+1.2 overnight" which
   // reads as nonsense in a CEO brief.
   const ppMoves    = [0.3, 0.6, 0.9, 1.2, 1.6, 2.1, 2.8, 3.2];     // percentage points
@@ -58,7 +58,7 @@ function deriveDeltas(profileName: string, layers: LayerData[]): Delta[] {
   const deltas: Delta[] = [];
   for (let i = 0; i < layers.length && deltas.length < 3; i++) {
     const layer = layers[(startIdx + i) % layers.length];
-    // Mix the seed with the loop index via xorshift instead of a wide shift —
+    // Mix the seed with the loop index via xorshift instead of a wide shift,
     // shift counts above 31 wrap in JS and reuse the same bits, so each layer
     // would draw from overlapping entropy. xorshift gives independent draws.
     let lhash = (seed ^ (i * 0x9e3779b1)) >>> 0;
@@ -549,11 +549,11 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
                         <tbody>
                           {brief.ownership.fundingRounds.map((r, i) => (
                             <tr key={i} className="border-t border-[var(--cream-dark)]">
-                              <td className="px-3 py-2 tabular-nums text-[var(--slate)]">{r.date || "—"}</td>
-                              <td className="px-3 py-2 font-semibold text-[var(--navy)]">{r.round || "—"}</td>
-                              <td className="px-3 py-2 tabular-nums text-[var(--ink)]">{r.amount || "—"}</td>
-                              <td className="px-3 py-2 text-[var(--ink)]">{r.leadInvestor || "—"}</td>
-                              <td className="px-3 py-2 tabular-nums text-[var(--slate)]">{r.valuation || "—"}</td>
+                              <td className="px-3 py-2 tabular-nums text-[var(--slate)]">{r.date || "·"}</td>
+                              <td className="px-3 py-2 font-semibold text-[var(--navy)]">{r.round || "·"}</td>
+                              <td className="px-3 py-2 tabular-nums text-[var(--ink)]">{r.amount || "·"}</td>
+                              <td className="px-3 py-2 text-[var(--ink)]">{r.leadInvestor || "·"}</td>
+                              <td className="px-3 py-2 tabular-nums text-[var(--slate)]">{r.valuation || "·"}</td>
                             </tr>
                           ))}
                         </tbody>

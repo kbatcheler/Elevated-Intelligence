@@ -122,7 +122,7 @@ export const TRACK_RECORD: TrackRecordEntry[] = [
     predictedValue: 4, deliveredValue: 3,
   },
   {
-    id: "tr-011", closedAt: "—", quarter: "Q3 2026",
+    id: "tr-011", closedAt: "·", quarter: "Q3 2026",
     layer: "pricing-margin",
     title: "Cap promo match at 22% on top cordless SKUs",
     predicted: "+$0.3M Q3 margin in-flight · $1.2M annualised", delivered: "In-flight (week 1 of 3)",
@@ -132,7 +132,7 @@ export const TRACK_RECORD: TrackRecordEntry[] = [
     predictedValue: 1.2, deliveredValue: 0,
   },
   {
-    id: "tr-012", closedAt: "—", quarter: "Q3 2026",
+    id: "tr-012", closedAt: "·", quarter: "Q3 2026",
     layer: "supply-chain",
     title: "Fill 11 unfilled Phoenix DC shifts via Kelly MSA",
     predicted: "Throughput to ≥95% in 5d", delivered: "In-flight (day 2 of 5)",

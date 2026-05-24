@@ -3,6 +3,7 @@ import {
   TrendingDown, TrendingUp, Minus, ArrowUp, ArrowDown,
   Users2, Wrench, Sparkles, Briefcase, ShoppingCart,
   Search, Mail, Smartphone, Tv, Handshake, Megaphone,
+  FileWarning, AlertTriangle, RefreshCcw, ShieldAlert,
 } from "lucide-react";
 import Sparkline, { makeSeries } from "../Sparkline";
 import AnimatedNumber from "../AnimatedNumber";
@@ -655,6 +656,169 @@ export function PeopleOperationsHero({ layer: _layer }: HeroProps) {
 //   2. Register it here keyed by the layer.key it belongs to.
 // Layer.tsx looks up HEROES[layer.key] for every tenant; if the key is
 // missing, the hero section is silently skipped.
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. Contract management, Renewal exposure timeline + concentration risk
+// ─────────────────────────────────────────────────────────────────────────────
+
+const RENEWALS_RAW = [
+  { month: "Oct", supplier: 1.8, customer: 0.6, labour: 0.4, flagged: 1 },
+  { month: "Nov", supplier: 2.1, customer: 0.4, labour: 0.3, flagged: 2 },
+  { month: "Dec", supplier: 1.4, customer: 1.2, labour: 0.5, flagged: 1 },
+  { month: "Jan", supplier: 0.9, customer: 0.7, labour: 0.2, flagged: 0 },
+  { month: "Feb", supplier: 1.6, customer: 0.5, labour: 0.4, flagged: 2 },
+  { month: "Mar", supplier: 2.3, customer: 0.8, labour: 0.6, flagged: 3 },
+  { month: "Apr", supplier: 1.1, customer: 0.6, labour: 0.3, flagged: 0 },
+  { month: "May", supplier: 0.8, customer: 0.4, labour: 0.2, flagged: 0 },
+  { month: "Jun", supplier: 1.7, customer: 0.9, labour: 0.5, flagged: 1 },
+  { month: "Jul", supplier: 1.3, customer: 0.5, labour: 0.3, flagged: 0 },
+  { month: "Aug", supplier: 0.9, customer: 0.3, labour: 0.2, flagged: 0 },
+  { month: "Sep", supplier: 1.5, customer: 0.7, labour: 0.4, flagged: 1 },
+];
+
+const FLAGGED_CONTRACTS_RAW = [
+  { name: "Supplier B · Halverson back-up line",  tier: "Tier-1 supplier", risk: "FM invoked",          impact: "$1.4M",  status: "crit" as const, days: 23 },
+  { name: "Supplier C · Phoenix qualification",   tier: "Tier-1 supplier", risk: "Legal review stuck",  impact: "$0.8M",  status: "crit" as const, days: 23 },
+  { name: "Dallas DC contract labour rate-card",  tier: "Labour",          risk: "Auto-renew at peak",  impact: "$0.9M",  status: "high" as const, days: 18 },
+  { name: "Phoenix DC contract labour rate-card", tier: "Labour",          risk: "Auto-renew at peak",  impact: "$0.5M",  status: "high" as const, days: 14 },
+  { name: "Kessler Construction MSA",             tier: "Customer",        risk: "Evergreen, no review",impact: "$0.4M",  status: "med"  as const, days: 547 },
+  { name: "Heritage Pro Supply MSA",              tier: "Customer",        risk: "Evergreen, no review",impact: "$0.3M",  status: "med"  as const, days: 612 },
+];
+
+const riskColor = (s: "crit" | "high" | "med") =>
+  s === "crit" ? "var(--coral)" : s === "high" ? "var(--amber)" : "var(--slate)";
+const riskBg = (s: "crit" | "high" | "med") =>
+  s === "crit" ? "var(--coral-faint)" : s === "high" ? "var(--amber-faint)" : "var(--cream-dark)";
+
+export function ContractManagementHero({ layer: _layer }: HeroProps) {
+  const RENEWALS = useDataset("RENEWALS", RENEWALS_RAW);
+  const FLAGGED = useDataset("FLAGGED_CONTRACTS", FLAGGED_CONTRACTS_RAW);
+  const maxBar = Math.max(...RENEWALS.map(r => r.supplier + r.customer + r.labour));
+  const next90 = RENEWALS.slice(0, 3).reduce((s, r) => s + r.supplier + r.customer + r.labour, 0);
+
+  return (
+    <div className="grid grid-cols-12 gap-4">
+      {/* Left: concentration risk callout */}
+      <div className="col-span-4 card card-accent-coral !p-0 overflow-hidden flex flex-col">
+        <div className="px-5 py-3 border-b border-[var(--cream-dark)]" style={{ background: "var(--coral-faint)" }}>
+          <div className="flex items-center gap-2">
+            <ShieldAlert size={14} strokeWidth={1.8} className="text-[var(--coral)]" />
+            <span className="eyebrow text-[var(--coral)]">CONCENTRATION RISK · Q3 2026</span>
+          </div>
+        </div>
+        <div className="p-5 flex-1 flex flex-col">
+          <div className="font-serif font-semibold tabular-nums" style={{ fontSize: 64, lineHeight: 0.95, color: "var(--coral)" }}>
+            <AnimatedNumber value="$4.6M" />
+          </div>
+          <div className="font-sans italic text-[12px] text-[var(--slate-light)] mt-1">ETF / penalty exposure</div>
+          <div className="font-serif italic text-[14px] text-[var(--ink)] leading-snug mt-4">
+            Concentrated in 9 supplier contracts. Top three carry 67% of the exposure and renew before Q1 close.
+          </div>
+          <div className="grid grid-cols-2 gap-3 mt-auto pt-4 border-t border-[var(--cream-dark)]">
+            <div>
+              <div className="eyebrow text-[var(--slate-light)]">Active</div>
+              <div className="font-sans font-bold text-[18px] text-[var(--navy)] tabular-nums">412</div>
+              <div className="font-sans text-[10px] text-[var(--slate-light)]">contracts on the book</div>
+            </div>
+            <div>
+              <div className="eyebrow text-[var(--slate-light)]">Evergreen</div>
+              <div className="font-sans font-bold text-[18px] text-[var(--amber)] tabular-nums">62</div>
+              <div className="font-sans text-[10px] text-[var(--slate-light)]">no review &gt;18 months</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right top: 12-month renewal exposure timeline */}
+      <div className="col-span-8 card card-accent-navy">
+        <div className="flex items-center justify-between mb-1">
+          <div>
+            <div className="font-sans font-semibold text-[16px] text-[var(--navy)]">Renewal exposure · next 12 months</div>
+            <div className="font-sans italic text-[12px] text-[var(--slate-light)] mt-0.5">USD millions annualised by counterparty type · flagged contracts marked in coral</div>
+          </div>
+          <span className="pill pill-coral">Next 90 days: ${next90.toFixed(1)}M</span>
+        </div>
+        <div className="flex items-end gap-1.5 h-[150px] mt-5 border-b border-[var(--cream-dark)] pb-1">
+          {RENEWALS.map((r, i) => {
+            const total = r.supplier + r.customer + r.labour;
+            const totalPct = (total / maxBar) * 100;
+            const supPct = (r.supplier / total) * totalPct;
+            const cusPct = (r.customer / total) * totalPct;
+            const labPct = (r.labour / total) * totalPct;
+            return (
+              <div key={i} className="flex-1 flex flex-col items-center justify-end h-full relative group">
+                {r.flagged > 0 && (
+                  <div className="absolute -top-1 flex items-center gap-0.5 font-sans font-bold text-[9px] text-[var(--coral)] tabular-nums">
+                    <AlertTriangle size={9} strokeWidth={2} /> {r.flagged}
+                  </div>
+                )}
+                <div className="font-sans font-bold text-[10px] tabular-nums text-[var(--navy)] mb-1">{total.toFixed(1)}</div>
+                <div className="w-full rounded-sm overflow-hidden flex flex-col-reverse" style={{ height: `${totalPct}%`, minHeight: 6 }}>
+                  <div style={{ height: `${(r.supplier / total) * 100}%`, background: "var(--navy)" }} />
+                  <div style={{ height: `${(r.customer / total) * 100}%`, background: "var(--gold)" }} />
+                  <div style={{ height: `${(r.labour / total) * 100}%`, background: "var(--coral)", opacity: 0.85 }} />
+                  {/* invisible width sums for type-noise quiet */}
+                  <span className="hidden">{supPct}{cusPct}{labPct}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex gap-1.5 mt-1">
+          {RENEWALS.map((r, i) => (
+            <div key={i} className="flex-1 text-center font-sans text-[10px] text-[var(--slate-light)] tabular-nums">{r.month}</div>
+          ))}
+        </div>
+        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-[var(--cream-dark)] font-sans text-[11px] text-[var(--slate)]">
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--navy)" }} /> Supplier</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--gold)" }} /> Customer / MSA</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--coral)", opacity: 0.85 }} /> Contract labour</span>
+          <span className="ml-auto flex items-center gap-1 font-semibold text-[var(--coral)]">
+            <AlertTriangle size={10} strokeWidth={2} /> flagged for review
+          </span>
+        </div>
+      </div>
+
+      {/* Bottom strip: flagged contracts table */}
+      <div className="col-span-12 card card-accent-amber">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <FileWarning size={14} strokeWidth={1.8} className="text-[var(--amber)]" />
+            <div className="font-sans font-semibold text-[15px] text-[var(--navy)]">Flagged contracts · indemnity, SLA, and rate-card watchlist</div>
+          </div>
+          <span className="pill pill-amber">6 contracts · $4.3M Q4 impact</span>
+        </div>
+        <div className="grid grid-cols-12 gap-3 pb-2 border-b border-[var(--cream-dark)] eyebrow text-[var(--slate-light)]">
+          <div className="col-span-5">Contract</div>
+          <div className="col-span-2">Counterparty</div>
+          <div className="col-span-3">Risk</div>
+          <div className="col-span-1 text-right">Days</div>
+          <div className="col-span-1 text-right">Impact</div>
+        </div>
+        {FLAGGED.map((c, i) => (
+          <div key={i} className="grid grid-cols-12 gap-3 py-2.5 border-b border-[var(--cream-dark)] items-center last:border-0">
+            <div className="col-span-5 flex items-center gap-2 min-w-0">
+              <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: riskColor(c.status) }} />
+              <span className="font-sans font-semibold text-[12px] text-[var(--navy)] truncate">{c.name}</span>
+            </div>
+            <div className="col-span-2 font-sans text-[11px] text-[var(--slate)] truncate">{c.tier}</div>
+            <div className="col-span-3">
+              <span className="tag" style={{ background: riskBg(c.status), color: riskColor(c.status) }}>
+                {c.status === "med" ? <RefreshCcw size={9} strokeWidth={2} className="inline mr-1" /> : <AlertTriangle size={9} strokeWidth={2} className="inline mr-1" />}
+                {c.risk}
+              </span>
+            </div>
+            <div className="col-span-1 text-right font-sans text-[11px] text-[var(--slate)] tabular-nums">{c.days}d</div>
+            <div className="col-span-1 text-right font-sans font-bold text-[13px] text-[var(--coral)] tabular-nums">{c.impact}</div>
+          </div>
+        ))}
+        <div className="mt-3 font-serif italic text-[12px] text-[var(--ink)] leading-snug">
+          Close Supplier C this week and reset the two DC labour rate-cards before counter-sign. That alone unlocks $2.2M of the $3.7M Q4 recovery.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const HEROES: Record<string, React.FC<HeroProps>> = {
   "business-performance":     BusinessPerformanceHero,
   "demand-intelligence":      DemandIntelligenceHero,
@@ -663,4 +827,5 @@ export const HEROES: Record<string, React.FC<HeroProps>> = {
   "sales-pipeline":           SalesPipelineHero,
   "marketing-performance":    MarketingPerformanceHero,
   "people-operations":        PeopleOperationsHero,
+  "contract-management":      ContractManagementHero,
 };

@@ -5,6 +5,7 @@ import {
   Truck, Tag, GitBranch, Target, UserCog, Cpu, ChevronDown, Briefcase,
   Banknote, Receipt, UserPlus, Network, Newspaper, CheckSquare, Lock,
   Sliders, Award, FileText, Sparkles, HelpCircle, FileSignature,
+  Presentation, BookOpen,
 } from "lucide-react";
 import { useNarrative } from "./context/CompanyContext";
 import CoachmarkTour from "./components/CoachmarkTour";
@@ -29,6 +30,9 @@ import TrackRecord from "./components/TrackRecord";
 import Tour from "./tour/Tour";
 import CompanyPicker from "./components/CompanyPicker";
 import CompanyBootSplash from "./components/CompanyBootSplash";
+import PresenterStrip from "./components/PresenterStrip";
+import SalesPlaybook from "./components/SalesPlaybook";
+import MobileSplash, { useShouldShowMobileSplash } from "./components/MobileSplash";
 import { useApp } from "./context/AppContext";
 import { useCompany, useIsDefaultProfile } from "./context/CompanyContext";
 import { MERIDIAN } from "./data/companies";
@@ -51,6 +55,7 @@ const NAV: NavItem[] = [
   { key: "contract-management",      label: "Contract management",      group: "Operational",    icon: FileSignature, status: "warn" },
   { key: "receivables",              label: "Receivables and invoicing", group: "Operational",    icon: Receipt,    status: "bad"  },
   { key: "talent-hr",                label: "Talent and HR",            group: "Operational",    icon: UserPlus,   status: "bad"  },
+  { key: "sales-playbook",           label: "Sales playbook",           group: "System",         icon: BookOpen,   status: "good" },
   { key: "intelligence-architecture",label: "Intelligence architecture",group: "System",         icon: Cpu,        status: "good" },
   { key: "engagement-pipeline",      label: "Engagement pipeline",      group: "System",         icon: Briefcase,  status: "warn" },
   { key: "dependency-graph",         label: "Cross-layer map",          group: "System",         icon: Network,    status: "good" },
@@ -65,6 +70,7 @@ const statusColor = (s: NavItem["status"]) =>
   s === "good" ? "var(--teal)" : s === "warn" ? "var(--amber)" : "var(--coral)";
 
 export default function App() {
+  const [showMobile, clearMobile] = useShouldShowMobileSplash();
   const [active, setActive] = useState("business-performance");
   const [highlight, setHighlight] = useState<string | undefined>(undefined);
   const [clientOpen, setClientOpen] = useState(false);
@@ -73,6 +79,24 @@ export default function App() {
   // Coachmark tour: forced-open flag flips when the user clicks the "?".
   // CoachmarkTour itself also auto-opens on first visit via localStorage.
   const [tourForceOpen, setTourForceOpen] = useState(false);
+  // Presenter mode: persisted across sessions so demo operators don't have
+  // to re-enable it on every refresh. Shift+Cmd/Ctrl+P also flips it.
+  const [presenterOn, setPresenterOn] = useState<boolean>(() => {
+    try { return localStorage.getItem("ei.presenterMode") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("ei.presenterMode", presenterOn ? "1" : "0"); } catch { /* noop */ }
+  }, [presenterOn]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.shiftKey && (e.metaKey || e.ctrlKey) && (e.key === "P" || e.key === "p")) {
+        e.preventDefault();
+        setPresenterOn(p => !p);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   // Persona lens: persisted across sessions. null means "All views", no
   // re-ordering of the sidebar.
   const [persona, setPersona] = usePersistedPersona();
@@ -100,6 +124,10 @@ export default function App() {
     setHighlight(field || "header");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  if (showMobile) {
+    return <MobileSplash onOverride={clearMobile} />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--cream)" }}>
@@ -197,6 +225,16 @@ export default function App() {
             <Sparkles size={12} strokeWidth={1.8} className="text-[var(--gold-light)]" />
             Switch
           </button>
+          <button onClick={() => setPresenterOn(p => !p)}
+                  title="Presenter mode (Shift+Cmd/Ctrl+P)"
+                  aria-pressed={presenterOn}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm font-sans text-[11px] uppercase tracking-wider transition-colors"
+                  style={presenterOn
+                    ? { background: "var(--gold)", color: "var(--navy-deep)", border: "1px solid var(--gold)" }
+                    : { color: "var(--cream)", border: "1px solid rgba(212,175,55,0.4)" }}>
+            <Presentation size={12} strokeWidth={1.8} />
+            {presenterOn ? "Presenter on" : "Presenter"}
+          </button>
           <PersonaLensToggle value={persona} onChange={setPersona} />
           <button onClick={() => setTourForceOpen(true)}
                   title="Replay product tour"
@@ -214,6 +252,9 @@ export default function App() {
       <PreviewModeBanner />
       <SystemHeartbeat onNavigate={handleNavigate} />
       <SignalTicker onNavigate={handleNavigate} />
+      {presenterOn && (
+        <PresenterStrip routeKey={active} onNavigate={handleNavigate} onOpenMorningBrief={openBrief} />
+      )}
 
       <div className="flex flex-1 min-h-0">
         {/* Left nav */}
@@ -322,7 +363,8 @@ export default function App() {
         {/* Canvas */}
         <main className="flex-1 overflow-y-auto scroll-area" style={{ background: "var(--cream)" }}>
           <div className="px-8 py-8 max-w-[1200px] mx-auto">
-            {active === "intelligence-architecture" ? <Architecture />
+            {active === "sales-playbook"             ? <SalesPlaybook onNavigate={handleNavigate} />
+              : active === "intelligence-architecture" ? <Architecture />
               : active === "engagement-pipeline"     ? <EngagementPipeline onNavigate={handleNavigate} />
               : active === "dependency-graph"        ? <DependencyGraph onNavigate={handleNavigate} />
               : active === "committed-actions"       ? <CommittedTray onNavigate={handleNavigate} />

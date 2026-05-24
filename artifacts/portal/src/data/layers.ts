@@ -52,7 +52,7 @@ export const LAYERS: LayerData[] = [
     confidence: 87,
     sources: 8,
     diagnosedAt: "Oct 14, 2026 · 02:37 CT",
-    analystTake: "Three layers explain almost the entire $11M gap, and the fastest reversible lever this quarter is pricing \u2014 not demand, not supply.",
+    analystTake: "Three layers explain almost the entire $11M gap, and the fastest reversible lever this quarter is pricing, not demand, not supply.",
     metrics: [
       { label: "Revenue",        value: "$127M",  sub: "vs $138M plan",       tone: "bad"  },
       { label: "Operating margin", value: "11.4%", sub: "vs 15.2% target",     tone: "bad"  },
@@ -113,7 +113,7 @@ export const LAYERS: LayerData[] = [
     confidence: 84,
     sources: 8,
     diagnosedAt: "Oct 14, 2026 · 05:18 CT",
-    analystTake: "Most of the $2.8M demand miss is competitive-promo response and stockout damage, not a soft consumer \u2014 and two of those three causes are fixable inside Q4.",
+    analystTake: "Most of the $2.8M demand miss is competitive-promo response and stockout damage, not a soft consumer, and two of those three causes are fixable inside Q4.",
     metrics: [
       { label: "Variance vs plan",          value: "-$2.8M", sub: "12.4% below",      tone: "bad"  },
       { label: "Period actual",             value: "$19.8M", sub: "vs $22.6M plan",   tone: "neutral" },
@@ -236,7 +236,7 @@ export const LAYERS: LayerData[] = [
     confidence: 82,
     sources: 8,
     diagnosedAt: "Oct 14, 2026 · 03:09 CT",
-    analystTake: "Trade churn is service-driven, not price-driven \u2014 which means customer recovery is gated on supply chain recovery being visible to those accounts within 30 days.",
+    analystTake: "Trade churn is service-driven, not price-driven, which means customer recovery is gated on supply chain recovery being visible to those accounts within 30 days.",
     metrics: [
       { label: "Trade customer churn",   value: "18%",    sub: "vs 11% baseline",   tone: "bad"  },
       { label: "Lifetime value",         value: "$8,400", sub: "down 12%",          tone: "bad"  },
@@ -363,7 +363,7 @@ export const LAYERS: LayerData[] = [
     confidence: 89,
     sources: 8,
     diagnosedAt: "Oct 14, 2026 · 04:22 CT",
-    analystTake: "Two simultaneous constraints, not a single failure \u2014 and the Supplier C activation that the Q4 plan rests on is already in legal review.",
+    analystTake: "Two simultaneous constraints, not a single failure, and the Supplier C activation that the Q4 plan rests on is already in legal review.",
     metrics: [
       { label: "OOS days top 5 SKUs", value: "41",  sub: "target 5",         tone: "bad"  },
       { label: "Supplier OTD",        value: "78%", sub: "was 91%",          tone: "bad"  },
@@ -420,7 +420,7 @@ export const LAYERS: LayerData[] = [
     confidence: 91,
     sources: 8,
     diagnosedAt: "Oct 14, 2026 · 06:11 CT",
-    analystTake: "Promotional matching defended unit volume but compressed margin 240bps with no share recovery \u2014 the discipline reset is overdue, not aggressive.",
+    analystTake: "Promotional matching defended unit volume but compressed margin 240bps with no share recovery, the discipline reset is overdue, not aggressive.",
     metrics: [
       { label: "Gross margin",                value: "38.2%", sub: "down 240bps",        tone: "bad"  },
       { label: "Promo intensity",             value: "32%",   sub: "+14pp of sales",     tone: "warn" },
@@ -477,7 +477,7 @@ export const LAYERS: LayerData[] = [
     confidence: 73,
     sources: 8,
     diagnosedAt: "Oct 13, 2026 · 21:08 CT",
-    analystTake: "Headline coverage looks healthy, but stage-by-stage progression has decayed in the regions doing most of the lifting \u2014 the risk is hidden by the average.",
+    analystTake: "Headline coverage looks healthy, but stage-by-stage progression has decayed in the regions doing most of the lifting, the risk is hidden by the average.",
     metrics: [
       { label: "Pipeline coverage", value: "1.8x",     sub: "need 2.5x",    tone: "bad"  },
       { label: "Win rate",          value: "24%",      sub: "vs 31%",       tone: "bad"  },
@@ -512,12 +512,12 @@ export const LAYERS: LayerData[] = [
       ],
     },
     actions: [
-      { title: "Pipeline acceleration on top 20 stalled deals", detail: "Joint pricing + AE coverage push", impact: "$1.4M Q4" },
-      { title: "Executive sponsorship on 8 large deals",        detail: "CEO + CRO outreach to procurement", impact: "$1.0M" },
-      { title: "Competitive defence in 4 named accounts",       detail: "Loss prevention with custom commercial terms", impact: "$0.7M" },
-      { title: "New-business motion in trade segment",          detail: "Outbound activation in TX + Mountain West", impact: "$0.5M" },
+      { title: "Pipeline acceleration on top 20 stalled deals", detail: "Joint pricing + AE coverage push", impact: "$2.2M Q4" },
+      { title: "Executive sponsorship on 8 large deals",        detail: "CEO + CRO outreach to procurement", impact: "$1.6M" },
+      { title: "Competitive defence in 4 named accounts",       detail: "Loss prevention with custom commercial terms", impact: "$1.1M" },
+      { title: "New-business motion in trade segment",          detail: "Outbound activation in TX + Mountain West", impact: "$0.8M" },
     ],
-    actionsRecoveryUsd: "$3.6M predicted recovery",
+    actionsRecoveryUsd: "$5.7M predicted recovery",
     gaps: [
       { category: "DATA", title: "Stage progression data quality", detail: "Stage transitions logged manually; 22% missing dates", confidenceLiftPp: 2, solution: "Pipeline Health Scorer" },
       { category: "SIGNAL", title: "Buyer signal monitoring", detail: "No external buying-intent feed for trade segment", confidenceLiftPp: 3, solution: "Buyer Intent Feed" },
@@ -539,7 +539,7 @@ export const LAYERS: LayerData[] = [
     confidence: 74,
     sources: 8,
     diagnosedAt: "Oct 13, 2026 · 23:47 CT",
-    analystTake: "Top-of-funnel spend is intact; channel mix and creative fatigue are eating the return \u2014 the issue is allocation, not budget.",
+    analystTake: "Top-of-funnel spend is intact; channel mix and creative fatigue are eating the return, the issue is allocation, not budget.",
     metrics: [
       { label: "CAC",                          value: "$186",   sub: "+31%",            tone: "bad"  },
       { label: "Marketing-influenced revenue", value: "$12.4M", sub: "-8%",             tone: "warn" },
@@ -599,7 +599,7 @@ export const LAYERS: LayerData[] = [
     confidence: 78,
     sources: 8,
     diagnosedAt: "Oct 14, 2026 · 01:55 CT",
-    analystTake: "Six critical unfilled roles map directly onto the three functions driving the Q3 variance \u2014 staffing risk is upstream of operating risk.",
+    analystTake: "Six critical unfilled roles map directly onto the three functions driving the Q3 variance, staffing risk is upstream of operating risk.",
     metrics: [
       { label: "Voluntary attrition",   value: "19%", sub: "target 12%",     tone: "bad"  },
       { label: "Productivity index",    value: "92",  sub: "vs 100 baseline", tone: "warn" },
@@ -661,7 +661,7 @@ export const LAYERS: LayerData[] = [
     confidence: 91,
     sources: 8,
     diagnosedAt: "Oct 14, 2026 · 00:14 CT",
-    analystTake: "Cash is holding only because working capital tightened, not because earnings did \u2014 and the cushion narrows fast if any Q4 recovery lever slips.",
+    analystTake: "Cash is holding only because working capital tightened, not because earnings did, and the cushion narrows fast if any Q4 recovery lever slips.",
     metrics: [
       { label: "Operating cash flow", value: "$24.2M", sub: "vs $19.4M plan",   tone: "good" },
       { label: "EBITDA",              value: "$14.5M", sub: "vs $21.0M plan",   tone: "bad"  },
@@ -723,7 +723,7 @@ export const LAYERS: LayerData[] = [
     confidence: 84,
     sources: 8,
     diagnosedAt: "Oct 13, 2026 · 20:46 CT",
-    analystTake: "Six accounts concentrate most of the past-due exposure, and four are protected by evergreen MSAs \u2014 recovery here is goodwill, not contract.",
+    analystTake: "Six accounts concentrate most of the past-due exposure, and four are protected by evergreen MSAs, recovery here is goodwill, not contract.",
     metrics: [
       { label: "Total outstanding", value: "$40.5M", sub: "724 open invoices",   tone: "neutral" },
       { label: "Past 60 days",      value: "$10.9M", sub: "27% of book",          tone: "bad"     },
@@ -761,12 +761,12 @@ export const LAYERS: LayerData[] = [
       ],
     },
     actions: [
-      { title: "Recovery contact on top 6 debtors",     detail: "Joint account-manager + finance call sequence within 10 days", impact: "$1.4M cash" },
-      { title: "Restore dunning workflow",              detail: "Remove August approval step; reactivate automated 30/60/90 cadence", impact: "$0.6M Q4" },
-      { title: "Service-pegged payment plans",          detail: "Offer 60-day payment plan tied to SLA restoration on at-risk accounts", impact: "$0.5M retained" },
-      { title: "Early-pay discount on Q4 invoices",     detail: "2% net-10 incentive on next-quarter invoicing to reset DSO",   impact: "$0.4M Q4" },
+      { title: "Recovery contact on top 6 debtors",     detail: "Joint account-manager + finance call sequence within 10 days", impact: "$3.6M cash" },
+      { title: "Restore dunning workflow",              detail: "Remove August approval step; reactivate automated 30/60/90 cadence", impact: "$1.5M Q4" },
+      { title: "Service-pegged payment plans",          detail: "Offer 60-day payment plan tied to SLA restoration on at-risk accounts", impact: "$1.2M retained" },
+      { title: "Early-pay discount on Q4 invoices",     detail: "2% net-10 incentive on next-quarter invoicing to reset DSO",   impact: "$0.8M Q4" },
     ],
-    actionsRecoveryUsd: "$2.9M predicted recovery",
+    actionsRecoveryUsd: "$7.1M predicted recovery",
     gaps: [
       { category: "DATA", title: "Promise-to-pay tracking", detail: "Verbal commitments captured in notes, not structured", confidenceLiftPp: 2, solution: "Promise-to-Pay Tracker" },
       { category: "INTEG", title: "Receivables ↔ CRM integration", detail: "AMs see invoice status one click away, not in account view", confidenceLiftPp: 2, solution: "Receivables \u2194 CRM Bridge" },
@@ -788,7 +788,7 @@ export const LAYERS: LayerData[] = [
     confidence: 79,
     sources: 8,
     diagnosedAt: "Oct 14, 2026 · 05:53 CT",
-    analystTake: "Funnel quality, not late-stage drop-off, is the constraint \u2014 and two DC regions plus the lead data-engineer slot close 80% of the Q4 staffing risk.",
+    analystTake: "Funnel quality, not late-stage drop-off, is the constraint, and two DC regions plus the lead data-engineer slot close 80% of the Q4 staffing risk.",
     metrics: [
       { label: "Open critical roles", value: "24",   sub: "vs 8 target",       tone: "bad"  },
       { label: "Time-to-fill",        value: "53d",  sub: "vs 32d target",     tone: "bad"  },
@@ -889,14 +889,14 @@ export const LAYERS: LayerData[] = [
       ],
     },
     actions: [
-      { title: "Close Supplier C legal review this week", detail: "Escalate indemnity and audit clauses to GC; target 5-day close to unlock shipment", impact: "$0.8M Q4" },
-      { title: "Renegotiate DC labour rate cards",        detail: "Phoenix card renews Nov 1, reset to off-peak benchmark before counter-signing",  impact: "$0.6M Q4" },
-      { title: "Pursue Supplier B FM partial recovery",   detail: "Counter-letter on shortfall penalty; settlement target 60% of the $1.4M deferred", impact: "$0.5M cash" },
-      { title: "Convert top-6 debtor MSAs to net-30",     detail: "Bundle into recovery plan with service-restoration milestones tied to payment terms", impact: "$0.4M DSO" },
+      { title: "Close Supplier C legal review this week", detail: "Escalate indemnity and audit clauses to GC; target 5-day close to unlock shipment", impact: "$1.3M Q4" },
+      { title: "Renegotiate DC labour rate cards",        detail: "Phoenix card renews Nov 1, reset to off-peak benchmark before counter-signing",  impact: "$1.0M Q4" },
+      { title: "Pursue Supplier B FM partial recovery",   detail: "Counter-letter on shortfall penalty; settlement target 60% of the $1.4M deferred", impact: "$0.8M cash" },
+      { title: "Convert top-6 debtor MSAs to net-30",     detail: "Bundle into recovery plan with service-restoration milestones tied to payment terms", impact: "$0.6M DSO" },
     ],
-    actionsRecoveryUsd: "$2.3M predicted recovery",
+    actionsRecoveryUsd: "$3.7M predicted recovery",
     gaps: [
-      { category: "DATA", title: "Unified contract repository", detail: "Contracts split across SharePoint, DocuSign and email \u2014 no single source of truth", confidenceLiftPp: 3, solution: "Contract Repository Module" },
+      { category: "DATA", title: "Unified contract repository", detail: "Contracts split across SharePoint, DocuSign and email, no single source of truth", confidenceLiftPp: 3, solution: "Contract Repository Module" },
       { category: "MODEL", title: "ETF and penalty exposure model", detail: "No automatic surfacing of early-termination or shortfall-penalty exposure across the book", confidenceLiftPp: 3, solution: "Contract Exposure Tracker" },
       { category: "WORKFLOW", title: "Renewal review cadence", detail: "62 evergreen contracts auto-renew with no scheduled review touchpoint", confidenceLiftPp: 2, solution: "Renewal Review Workflow" },
       { category: "INTEG", title: "Contract terms → ERP propagation", detail: "Payment terms, SLAs and price escalators are not flowed into the transactional system", confidenceLiftPp: 2, solution: "Contract \u2194 ERP Bridge" },

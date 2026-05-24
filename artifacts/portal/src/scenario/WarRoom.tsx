@@ -341,7 +341,7 @@ function LeverRow({ lever, value, onChange, onNavigate }: { lever: Lever; value:
       <div className="col-span-3 text-right">
         <div className="eyebrow text-[var(--slate-light)] mb-1">Δ vs baseline</div>
         <div className="font-sans font-bold text-[18px] tabular-nums leading-none" style={{ color: impact === 0 ? "var(--slate-light)" : directionColor }}>
-          {impact === 0 ? "—" : fmt(impact)}
+          {impact === 0 ? "·" : fmt(impact)}
         </div>
         <div className="font-sans italic text-[10px] text-[var(--slate-light)] mt-1 uppercase tracking-wider">{lever.direction}</div>
         {prior && (

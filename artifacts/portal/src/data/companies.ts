@@ -1,4 +1,4 @@
-// Company profile system. The portal's narrative is hydrated from a profile —
+// Company profile system. The portal's narrative is hydrated from a profile,
 // branding, headline numbers, named entities (suppliers, competitors, DCs).
 // A render-time `resolve()` swaps tokens through the deep layer narrative so a
 // single set of layer copy can be re-skinned per company without rewriting.

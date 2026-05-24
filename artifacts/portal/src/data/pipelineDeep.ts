@@ -40,7 +40,7 @@ export const PIPELINE_DEEP: Record<string, PipelineDeep> = {
         { cols: ["Trade Hardware",     "14%", "15%", "5pp",  "flat"], tone: "good" },
         { cols: ["Cleaning + Consum.", "12%", "13%", "4pp",  "flat"], tone: "good" },
         { cols: ["Paint + Decorating", "8%",  "11%", "9pp",  "+2pp"], tone: "warn" },
-        { cols: ["Other",              "4%",  "10%", "—",    "—"   ] },
+        { cols: ["Other",              "4%",  "10%", "·",    "·"   ] },
       ],
       footnote: "Source: POS aggregator (47 stores, hourly) + Numerator panel + Blue Yonder model v4.2. Two categories carry the variance.",
     },

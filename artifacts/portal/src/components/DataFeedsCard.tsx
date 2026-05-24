@@ -50,7 +50,7 @@ export default function DataFeedsCard({ layerKey }: { layerKey: string }) {
         <div>
           <div className="font-sans font-semibold text-[16px] text-[var(--navy)]">Data feeds powering this diagnosis</div>
           <div className="font-sans italic text-[12px] text-[var(--slate-light)] mt-0.5">
-            {feeds.length} sources · {live} live · {issues.length} need work · Different Day pipeline {totalPipeline ? `$${totalPipeline.toFixed(1)}M` : "—"}
+            {feeds.length} sources · {live} live · {issues.length} need work · Different Day pipeline {totalPipeline ? `$${totalPipeline.toFixed(1)}M` : "·"}
           </div>
         </div>
         <div className="flex items-center gap-1.5">

@@ -299,7 +299,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     // handle empty record/array gracefully (see explorer notes).
     if (!isDefault) {
       // Preview-mode bundle for non-default tenants. The portal is operating
-      // on a vocabulary swap of the canonical Meridian Industrial corpus —
+      // on a vocabulary swap of the canonical Meridian Industrial corpus,
       // feeds, peers and architecture all rewrite their named entities
       // through the resolver so the page stops referencing the wrong brand.
       // The fully-authored, per-tenant outputs (narrator commentary, pipeline
