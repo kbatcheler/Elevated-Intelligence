@@ -15,20 +15,30 @@ const swallowResizeObserverLoop = (message: unknown) => {
     message.includes("ResizeObserver loop limit exceeded")
   );
 };
-window.addEventListener("error", (e) => {
-  if (swallowResizeObserverLoop(e.message)) {
-    e.stopImmediatePropagation();
-    e.preventDefault();
-  }
-});
-window.addEventListener("unhandledrejection", (e) => {
-  const reason = e.reason as { message?: unknown } | string | undefined;
-  const msg = typeof reason === "string" ? reason : reason?.message;
-  if (swallowResizeObserverLoop(msg)) {
-    e.stopImmediatePropagation();
-    e.preventDefault();
-  }
-});
+// Capture phase so we run before Vite's runtime-error-modal plugin, which
+// also listens on window in bubble phase.
+window.addEventListener(
+  "error",
+  (e) => {
+    if (swallowResizeObserverLoop(e.message)) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    }
+  },
+  true,
+);
+window.addEventListener(
+  "unhandledrejection",
+  (e) => {
+    const reason = e.reason as { message?: unknown } | string | undefined;
+    const msg = typeof reason === "string" ? reason : reason?.message;
+    if (swallowResizeObserverLoop(msg)) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    }
+  },
+  true,
+);
 
 createRoot(document.getElementById("root")!).render(
   <CompanyProvider>
