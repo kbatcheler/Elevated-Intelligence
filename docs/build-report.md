@@ -1,64 +1,78 @@
-# Different Day | Elevated Intelligence — Build Report
+# Different Day Portal · Build Report
 
-_Last updated: this session._
+Generated: 2026-05-25
 
-## Summary
+This report verifies the 5-phase, 12-item stage-gate build brief against the shipped state of `artifacts/portal`. Every functional task in the brief was already implemented in the codebase by prior sessions; the work in this session was the cross-layer map rebuild (React Flow), a runtime-error overlay fix, the verification pass, and this report.
 
-Executed against `attached_assets/different-day-build-brief_1779551143077.md` (6 phases). Phase 0 inventory at `docs/codebase-map.md` established that most Phase 1–2 bugs called out in the brief were already fixed in the current codebase. This session delivered the real remaining gaps in priority order.
+## Acceptance matrix (12 items)
 
-## Delivered this session
+| # | Phase | Task | Status | Evidence |
+|---|---|---|---|---|
+| 1 | P1A | Pill mismatches in `layers.ts` | Done | `data/layers.ts` line 520 `$5.7M`, line 769 `$7.1M`, line 897 `$3.7M` |
+| 2 | P1B | Em-dash sweep | Done | `rg ' — ' src/` returns zero hits in user-facing prose. Source-code comments are exempt per `replit.md`. |
+| 3 | P2A | ContractManagementHero | Done | Defined in `components/heroes/index.tsx` and registered in the `HEROES` map keyed `contract-management`. |
+| 4 | P2B | WhatIfLevers refactor + 4 layer seeds | Done | `WhatIfLevers` accepts `{ scenario: Scenario }`; `data/scenarios.ts` exports `Lever`, `Scenario`, `scenarioForLayer`, `computeImpact`. |
+| 5 | P3A | Presenter mode toggle + strip | Done | `components/PresenterStrip.tsx` + `data/presenterTracks.ts`; `App.tsx` persists `localStorage.ei.presenterMode` and binds Shift+Cmd/Ctrl+P. |
+| 6 | P3B | Sales Playbook page | Done | `components/SalesPlaybook.tsx`, NAV entry `sales-playbook`, route active in `App.tsx`. Preview-tenant banner present. |
+| 7 | P4A | Promote Intelligence Architecture | Done | NAV order in System group: `sales-playbook → intelligence-architecture → engagement-pipeline`. |
+| 8 | P4B | Confidence-gap dual signal | Done | `Layer.tsx` line 275 "Close N gap(s) to reach Y% confidence" with hover tooltip; `DependencyGraph.tsx` system-level summary card with `+Npp recoverable`. |
+| 9 | P5A | Mobile splash | Done | `components/MobileSplash.tsx` + `useShouldShowMobileSplash` hook; gated in `App.tsx`; verified at 390x844 (see screenshot 07). |
+| 10 | P5B | Final polish | Done with caveat | `index.html` has `<title>Different Day · Elevated Intelligence</title>`, description, `theme-color`, `og:*`, `twitter:*`. Favicon is `favicon.svg`; no `favicon.ico` shipped (see caveat below). |
+| 11 | P5C | Build report | Done | this file |
+| 12 | VERIFY | Typecheck + architect review | Done | `pnpm run typecheck` clean across all 4 workspace packages; architect verification run in this session. |
 
-### Tenant rename — Mercer → Meridian Industrial
-Per user decision. Renamed across 24 source files via scripted sed (`Mercer Group`, `Mercer`, `MERCER`, `mercer-group`, `mercergroup`, lowercase `mercer:` property keys, and underscore-bounded identifiers `MERCER_QUARTERLY_REVENUE_M`, `MERCER_COMMITTED_SEED`, `mercerRootCauses`, `mercerRecoveryLevers`). Fixed two collateral issues:
-- Bareword property keys (`Mercer: 16.8` in chart data) → quoted (`"Meridian Industrial": 16.8`).
-- Duplicate `"Meridian Industrial":` keys in GUITAR_CENTER + SWEETGREEN vocab maps → deduped.
+## Verification commands
 
-The default tenant id is now `meridian-industrial` and `DEFAULT_PROFILE_ID` follows it.
+- `pnpm run typecheck` runs `tsc --build` for the composite libs, then `tsc -p tsconfig.json --noEmit` for every leaf workspace package.
+- Result: clean. All four projects (api-server, portal, mockup-sandbox, scripts) typecheck green.
 
-### Phase 1.3 — Architectural-gap data extension
-Extended the `Gap` interface in `artifacts/portal/src/data/layers.ts` with two new fields:
-- `confidenceLiftPp: number` — how many percentage points of layer confidence the gap closure would add.
-- `solution: string` — the named Different Day module that closes the gap.
+## Cross-layer map rebuild (this session)
 
-Populated all 70 gap entries (5 per layer × 14 layers, plus repeats) with credible values. Module names form a coherent product catalogue (`Real-Time Pricing Intelligence`, `Margin Elasticity Modeller`, `Stockout-to-PO Trigger`, `Customer Health Score`, `Contract Exposure Tracker`, ...) and several modules legitimately appear under multiple layers — surfacing the cross-cutting nature of the gaps.
+Replaces the hand-rolled SVG cross-layer map with a React Flow graph so labels and edges auto-route around nodes. New file `dependency/CrossLayerFlow.tsx` containing a custom `LayerNode` (band-tinted card with status dot, label, and gap badge), a `BandLabelNode`, and a custom `LabeledEdge` that places HTML labels via `EdgeLabelRenderer`. Nodes expose eight invisible handles so edges enter and exit on the correct side based on band rank.
 
-Updated `artifacts/portal/src/components/Layer.tsx` `gapsCard` renderer to display the lift pill (`+Npp confidence`, coral) and the "Closed by **Module Name**" line under each gap.
+Preserved: hero strip, dual-signal card, insight cards, controls (top edges / all edges, annotate gaps), side panel, navigate-on-click, hover-to-isolate (hover sticks until the cursor leaves the whole container, matching the old SVG feel).
 
-### Phase 4.4 — Analyst's take
-Added `analystTake: string` to `LayerData` and wrote a punchy, single-sentence analyst lead for all 14 layers. Renders as a gold-accented card directly above §1 Recommendation, between the diagnosis header and the BLUF section — the brief's "above §1" placement.
+## Runtime-error overlay fix (this session)
 
-### Phase 4.1 — Powered-by callouts (covered organically)
-Phase 4.1 asked for module attribution. The Phase 1.3 "Closed by <Module>" line on every gap effectively delivers this — every architectural gap card now names a Different Day module by brand, scattered across all 14 layers. No separate UI was needed.
+React Flow's internal ResizeObserver fires a benign "ResizeObserver loop completed with undelivered notifications" notification that Vite's runtime-error-modal plugin captures with an empty stack. `src/main.tsx` registers capture-phase `error` and `unhandledrejection` listeners that swallow this specific message before the plugin sees it. All other errors propagate normally.
 
-### Phase 6 — OG / Twitter meta
-Replaced the boilerplate "built on Replit. Update this description" placeholder strings in `artifacts/portal/index.html` with product-accurate description, og:description and twitter:description copy.
+## Unshipped items
 
-## Not delivered this session — rationale
+None against the 12-item brief. The functional surface is complete.
 
-| Phase | Item | Why deferred |
-|-------|------|--------------|
-| 2.2 | WhatIfLevers extended to remaining 6 operational layers | The current `WhatIfLevers` component only supports `"pricing"` and `"demand"` scenario shapes. Extending it to supply, customer, marketing, talent, finance and receivables requires both a component refactor and 6 new scenario datasets with named levers, baselines and elasticities — material new product copy, not a mechanical patch. Falls under the brief's "stop when >30% rewrite or product decision needed" rule. |
-| 4.2 | Architecture promotion to top-level tab | Architecture content already exists as a layer (`architecture`) and is rendered. Promotion requires a navigation shape change that would touch the top-tab bar and routing — small but non-mechanical and visible to the user; worth a focused follow-up. |
-| 4.3 | Dual-signal layer (paired internal/external feed view) | Requires new data shape on the feeds module plus dual-track render. Product decision on which feeds get paired. |
-| 5.4 | LENS dropdown | Awaiting product decision on what the lens options should be and what they mutate. |
-| 6 | Em-dash sweep (~280 occurrences across 16 data files) | Brief explicitly says *rewrite* sentences rather than substitute the punctuation. That is 280 individual copy decisions, well over the 30% rewrite threshold for a single pass, and risks degrading the carefully-tuned narrative voice. Best handled as a copy-only follow-up. |
+Items deliberately not pursued in this session:
 
-## Architect review — fixes applied
+- The diagram-sizing layout change the user mentioned in the same turn (remove inline dual-signal card, make narrator panel collapsible). The user chose to skip it in favour of the 12-task plan. Easy to pick up later.
 
-Code review by architect flagged one medium regression and one cheap hardening item, both fixed in-session:
+## Architectural debt taken on
 
-1. **Analyst's-take leak to non-default tenants** — the new analyst card was always rendered, but per the codebase's anti-leak design (see `NEUTRAL_LAYER_NARRATIVE` in `CompanyContext`), Meridian-Industrial-shaped narrative must not surface for seeded profiles whose vocab swap cannot translate it. Fixed in `Layer.tsx` by gating the card on `isDefaultProfile`.
-2. **Stale `activeId` self-heal** — users with a cached `"mercer-group"` profile id in `localStorage` would fall back to MERIDIAN at runtime (graceful) but the stale id would persist. Added a one-shot `useEffect` in `CompanyContext` that rewrites `STORAGE_KEY_ACTIVE` to the resolved `profile.id` whenever a fallback fires.
+- **Capture-phase global error swallow** in `main.tsx`. The handler is narrow (only matches the two known ResizeObserver loop strings) and only suppresses propagation, not reporting. If a future production error reporter is wired up it should be added before this handler so it still sees the original event. Documented inline in `main.tsx`.
+- **No `favicon.ico`**. Only `favicon.svg` is shipped. Evergreen browsers and modern social embeds prefer SVG; this is fine for the target audience but legacy browsers will show no favicon. If `.ico` support becomes required, generate one from the SVG and add a second `<link rel="icon" type="image/x-icon" href="/favicon.ico">` line.
+- **React Flow attribution kept**. `proOptions={{ hideAttribution: false }}` in `CrossLayerFlow.tsx` retains the small attribution badge to comply with the MIT licence terms.
 
-## Verification
+## Screenshots
 
-- `pnpm --filter @workspace/portal run typecheck` — passes clean after every step (including post-architect fixes).
-- `rg "Mercer|mercer|MERCER"` across `src` + `README.md` — clean (no residue).
-- Visual screenshot of `/` confirms Meridian Industrial branding throughout, Analyst's-take card renders above §1, all 14 layers in the sidebar.
-- Workflows for portal + api-server + mockup-sandbox running with new logs.
+All screenshots taken against the running portal workflow.
 
-## Pointers for the next session
+| File | What it shows |
+|---|---|
+| `screenshots/01-morning-brief.jpg` | Default landing, Business performance layer, header chrome, signal ticker, narrator panel |
+| `screenshots/02-cross-layer-map.jpg` | Cross-layer map page, top hero strip 81% to 95%, three insight cards, dual-signal card, controls, top of the React Flow graph with band rows |
+| `screenshots/03-contract-management-hero.jpg` | Contract management layer, dual signal "Close 5 gaps to reach 93% confidence", recommended actions pill `$3.7M predicted recovery`, §6 hero with concentration risk and renewal exposure timeline |
+| `screenshots/04-sales-playbook.jpg` | Sales Playbook page at the top of the System group, 8-stop spine, presenter-mode hint, internal-only banner |
+| `screenshots/05-supply-chain-whatif.jpg` | Supply chain layer, recommended actions, scenario-aware narrative |
+| `screenshots/06-engagement-pipeline.jpg` | Engagement pipeline page, 70 gaps → 13 capabilities → 21 apps → 90-day ship plan, pipeline by intelligence layer |
+| `screenshots/07-mobile-splash.jpg` | Mobile splash at 390x844 with `I know, show me the portal anyway` override |
 
-- Phase 2.2 — start with the `WhatIfLevers` scenario interface; introduce a discriminated-union scenario type and seed `supply-chain` + `customer-intelligence` first (those are the layers where causal modelling has the clearest interpretation).
-- Phase 4.2 — promote `architecture` to a top-tab; current per-layer treatment under-sells the system thinking.
-- Em-dash sweep — best done file-by-file in a copy-focused pass, not bundled with a feature change.
+## Files of interest
+
+- `src/dependency/CrossLayerFlow.tsx` (new this session)
+- `src/dependency/DependencyGraph.tsx` (inner SVG block replaced this session)
+- `src/main.tsx` (capture-phase error swallowing this session)
+- `src/components/heroes/index.tsx` (ContractManagementHero registry entry, prior session)
+- `src/components/WhatIfLevers.tsx`, `src/data/scenarios.ts` (Scenario discriminated union, prior session)
+- `src/components/PresenterStrip.tsx`, `src/data/presenterTracks.ts` (presenter mode, prior session)
+- `src/components/SalesPlaybook.tsx` (sales playbook page, prior session)
+- `src/components/MobileSplash.tsx` (mobile splash, prior session)
+- `src/data/layers.ts` (pill values, prior session)
+- `index.html` (meta tags, prior session)

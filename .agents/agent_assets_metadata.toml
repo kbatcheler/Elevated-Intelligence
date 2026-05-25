@@ -6,3 +6,9 @@ id = "jApiKJwxZ-iAVvVuNyLyH"
 uri = "file://.local/screenshots/apple-leak.jpeg"
 type = "image"
 title = "Apple profile still leaking Mercer copy"
+
+[[outputs]]
+id = "PxloL8DqR6cQ5DLMjXHdG"
+uri = "file://docs/build-report.md"
+type = "text"
+title = "Build Report"
