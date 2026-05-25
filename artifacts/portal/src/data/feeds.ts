@@ -161,7 +161,7 @@ export const FEEDS: Record<string, DataFeed[]> = {
 };
 
 export const ACTIVITY_STREAM: { ts: string; layer: string; text: string; tone: "info" | "warn" | "alert" }[] = [
-  { ts: "06:42", layer: "business-performance",     text: "Diagnosis re-scored, Confidence 87% (no change)", tone: "info" },
+  { ts: "06:42", layer: "business-performance",     text: "Diagnosis re-scored, Business performance confidence 87% (no change)", tone: "info" },
   { ts: "06:38", layer: "supply-chain",             text: "Stockout detected · DFW DC · SKU-44218 · 3rd event this week", tone: "alert" },
   { ts: "06:33", layer: "competitive-intelligence", text: "Lowe's price drop captured · Outdoor Living Q-tier · -8.2%", tone: "warn" },
   { ts: "06:27", layer: "demand-intelligence",      text: "Forecast variance crossed -10% on Home Improvement", tone: "warn" },

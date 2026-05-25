@@ -201,9 +201,9 @@ export const NARRATOR: Record<string, NarratorContent> = {
     summary:
       "The cross-layer map shows how a diagnosis in one layer feeds the next, and which data feeds bound each layer's confidence. 14 nodes, weighted dependencies, with the recoverable headroom (sum of per-gap confidence lifts) visible on isolation. Use this view to find which capability investments unblock the most layers at once.",
     cross: [
-      { icon: "link",  title: "Demand → Business performance carries 60% of the gap",         body: "Highest-weight edge in the system. Fix Demand and the headline number moves.", targetLayer: "demand-intelligence" },
-      { icon: "alert", title: "Talent gates Supply, Pricing and People at the same time",     body: "Three downstream edges from one constrained layer. High-leverage place to act.", targetLayer: "talent-hr" },
-      { icon: "trend", title: "Contracts quietly amplifies three other diagnoses",            body: "Supplier paper compounds Supply damage; evergreen MSAs cap Receivables; rate-cards drove $1.4M Finance opex.", targetLayer: "contract-management" },
+      { icon: "alert", title: "Customer intelligence carries 3 of the 23 gaps, the densest cluster", body: "+24pp recoverable from this layer alone, more than any other. The three feeds run from CRM contact ownership to the tracked-asset master record.", targetLayer: "customer-intelligence" },
+      { icon: "trend", title: "Supply chain still scores 89% despite the OOS damage",                body: "Two architectural gaps remain, real-time multi-DC orchestration the larger. Confidence holds because the diagnosis itself is well-fed.", targetLayer: "supply-chain" },
+      { icon: "link",  title: "True decision-maker identification is the largest single gap, +14pp", body: "It surfaces in Sales pipeline today. Contact and Ownership Intelligence closes it, and the same capability lifts Customer intelligence at the same time.", targetLayer: "sales-pipeline" },
     ],
     next: [
       { title: "Which capability unblocks the most layers?",        targetLayer: "dependency-graph" },

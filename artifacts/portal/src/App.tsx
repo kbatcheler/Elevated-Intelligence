@@ -52,7 +52,7 @@ const NAV: NavItem[] = [
   { key: "sales-pipeline",           label: "Sales pipeline",           group: "Operational",    icon: GitBranch,  status: "bad"  },
   { key: "marketing-performance",    label: "Marketing performance",    group: "Operational",    icon: Target,     status: "warn" },
   { key: "people-operations",        label: "People and operations",    group: "Operational",    icon: UserCog,    status: "bad"  },
-  { key: "contract-management",      label: "Contract management",      group: "Operational",    icon: FileSignature, status: "warn" },
+  { key: "contract-management",      label: "Contract management",      group: "Operational",    icon: FileSignature, status: "good" },
   { key: "receivables",              label: "Receivables and invoicing", group: "Operational",    icon: Receipt,    status: "bad"  },
   { key: "talent-hr",                label: "Talent and HR",            group: "Operational",    icon: UserPlus,   status: "bad"  },
   { key: "sales-playbook",           label: "Sales playbook",           group: "System",         icon: BookOpen,   status: "good" },

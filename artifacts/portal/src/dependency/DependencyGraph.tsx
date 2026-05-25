@@ -210,7 +210,7 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
     <div className="space-y-6 pb-12">
       <div>
         <div className="eyebrow text-[var(--coral)] mb-2">Intelligence layer · System</div>
-        <h1 className="font-serif text-[40px] leading-[1.05] text-[var(--navy)] font-semibold">Cross-layer dependency graph</h1>
+        <h1 className="font-serif text-[40px] leading-[1.05] text-[var(--navy)] font-semibold">Cross-layer map</h1>
       </div>
 
       {/* System-level confidence dual-signal, the cross-layer analogue of
@@ -524,10 +524,10 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
                     +{totalUplift}pp recoverable
                   </div>
                   <div className="font-serif italic text-[14px] text-[var(--slate)] leading-snug mt-1.5">
-                    Across {totalGapCount} data gaps. Closes the headroom between today's average layer confidence and 99%.
+                    Across {totalGapCount} data gaps. Closes the headroom between today's 81% system confidence and the {systemConfidenceCap}% cap.
                   </div>
                   <div className="font-sans text-[12px] text-[var(--slate)] leading-snug mt-2">
-                    Recoverable headroom is the sum of confidence lifts across every architectural gap. It is not a layer-level figure. The Engagement pipeline page sequences the work.
+                    Raw sum across all {totalGapCount} gaps is +{totalUplift}pp. We cap the headline lift at {systemConfidenceCap}% confidence so we never imply mechanical certainty, which leaves +{systemTarget - systemConfidenceToday}pp of actionable headroom from today's {systemConfidenceToday}%. The Engagement pipeline page sequences the work.
                   </div>
                   <button onClick={() => onNavigate("engagement-pipeline")}
                           className="mt-2.5 font-sans text-[11px] font-semibold text-[var(--coral)] hover:underline">
