@@ -243,6 +243,27 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     const swap = <T,>(v: T): T => deepResolveWith(v, resolve);
     // 1. Vocab-swap every dataset (no-op for the default Meridian Industrial profile).
     let layersOut = swap(RAW_LAYERS);
+    // 1b. deepResolveWith swaps string VALUES but NOT object KEYS. Several
+    //     charts in data/layers.ts are authored with branded property keys
+    //     (e.g. `{ "Meridian Industrial": 16.8, "Home Depot": 31.2 }`) that
+    //     Recharts looks up via `series[].key`. After the swap, `series[].key`
+    //     becomes the prospect's brand but the data row keys still say
+    //     "Meridian Industrial", so the series renders blank. Remap chart
+    //     data row keys through the same resolver so the join stays intact.
+    if (!isDefault) {
+      layersOut = layersOut.map(layer => {
+        if (!layer.chart || !Array.isArray(layer.chart.data)) return layer;
+        const remappedData = layer.chart.data.map((row: Record<string, unknown>) => {
+          const next: Record<string, unknown> = {};
+          for (const [k, v] of Object.entries(row)) {
+            const swapped = resolve(k);
+            next[swapped] = v;
+          }
+          return next;
+        });
+        return { ...layer, chart: { ...layer.chart, data: remappedData } };
+      });
+    }
     // 2. For seeded profiles, overlay per-layer LLM-rewritten narrative /
     //    metrics / causes / actions on top of the vocab swap. Missing layers
     //    fall through, for the default profile that's vocab-swapped Meridian Industrial

@@ -506,7 +506,17 @@ export const DEFAULT_PROFILE_ID = MERIDIAN.id;
 // partial-overlap collisions (e.g. "Phoenix DC" must match before "Phoenix").
 // ───────────────────────────────────────────────────────────────────────────
 export function makeResolver(profile: CompanyProfile): (text: string) => string {
-  const entries = Object.entries(profile.vocab).sort((a, b) => b[0].length - a[0].length);
+  // Client-side safety net (mirrors server-side normaliseProfile injection):
+  // for any non-default profile, guarantee that the literal codebase strings
+  // "Meridian Industrial" and "Meridian" swap to the active brand even if
+  // the seeded vocab map didn't include them. This also rescues older
+  // profiles cached in localStorage from a build that pre-dated the fix.
+  const vocab: Record<string, string> = { ...profile.vocab };
+  if (profile.id !== MERIDIAN.id) {
+    if (!vocab["Meridian Industrial"]) vocab["Meridian Industrial"] = profile.name;
+    if (!vocab["Meridian"])            vocab["Meridian"]            = profile.name;
+  }
+  const entries = Object.entries(vocab).sort((a, b) => b[0].length - a[0].length);
   if (entries.length === 0) return (t: string) => t;
   return (text: string) => {
     let out = text;

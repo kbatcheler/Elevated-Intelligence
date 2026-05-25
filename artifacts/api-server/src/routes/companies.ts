@@ -35,9 +35,9 @@ Return STRICT JSON only — no prose, no code fences. Conform exactly to this Ty
   "period": "Q3 2026",
   "channelLabel": string,              // their channel mix in 3-5 words
   "tagline": string,                   // one-line elevator pitch
-  "vocab": {                           // case-aware substring swaps applied across the portal's hardcoded Mercer narrative. Keys are Mercer entities; values are the prospect's equivalents. Be generous — 20+ entries.
-    "Mercer Group": string,
-    "Mercer": string,
+  "vocab": {                           // case-aware substring swaps applied across the portal's hardcoded Meridian Industrial narrative. Keys are Meridian Industrial entities; values are the prospect's equivalents. The keys below MUST match the literal strings in the source corpus — do not rename or paraphrase them. Be generous — 20+ entries.
+    "Meridian Industrial": string,     // CRITICAL — this is the brand string that appears across feeds, chart legends, narrative prose, and source labels. Must be the prospect's brand name.
+    "Meridian": string,                // shorter form used in some labels; usually the prospect's brand short form
     "hardware & garden retail": string,
     "US retail": string,
     "Home Depot": string,              // their primary competitor
@@ -306,6 +306,16 @@ function normaliseProfile(raw: Record<string, unknown>, inputName: string, autho
   if (Object.keys(vocab).length < 4) {
     return { ok: false, reason: "vocab too sparse (need ≥4 entries)" };
   }
+
+  // Server-side safety net: the portal's hardcoded corpus uses the literal
+  // string "Meridian Industrial" (and the short form "Meridian") across feeds,
+  // chart legends, narrative prose, and source labels. If the LLM omitted
+  // those keys (or used a paraphrase), every downstream render leaks the
+  // wrong brand. Force-inject the self-brand swap so render-time vocab can
+  // never miss this critical entry, regardless of what the model produced.
+  const seededName = asString(raw.name, 80, inputName) ?? inputName;
+  if (!vocab["Meridian Industrial"]) vocab["Meridian Industrial"] = seededName;
+  if (!vocab["Meridian"])            vocab["Meridian"]            = seededName;
 
   const hIn = raw.headlines;
   if (!hIn || typeof hIn !== "object" || Array.isArray(hIn)) {
