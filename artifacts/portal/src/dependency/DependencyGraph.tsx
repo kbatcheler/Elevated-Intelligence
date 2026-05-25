@@ -12,6 +12,7 @@ import {
   type ProductCategory,
 } from "../data/deficiencies";
 import { DIFFDAY_APPS, appsForProduct, type DiffDayApp } from "../data/appLibrary";
+import CrossLayerFlow, { type CrossLayerNode, type CrossLayerEdge } from "./CrossLayerFlow";
 
 // Each node is a layer; edges express "X feeds the diagnosis in Y, weighted W"
 // Positions are laid out in a clustered, hand-tuned 4-band arrangement so it
@@ -325,149 +326,27 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
                 </button>
               </div>
             )}
-            <svg viewBox="-80 0 900 660" className="w-full h-auto" onMouseLeave={() => setHover(null)}>
-              <defs>
-                <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                  <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--navy)" opacity="0.6" />
-                </marker>
-                <marker id="arrowLit" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                  <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--coral)" />
-                </marker>
-              </defs>
-
-              {/* Band labels, rendered in negative-x space the viewBox extends into. */}
-              {[
-                { y: 80,  label: "EXECUTIVE" },
-                { y: 240, label: "MARKET-FACING" },
-                { y: 420, label: "OPERATIONAL" },
-                { y: 580, label: "SYSTEM" },
-              ].map(b => (
-                <g key={b.label}>
-                  <line x1="40" y1={b.y} x2="60" y2={b.y} stroke="var(--cream-dark)" strokeWidth="1" />
-                  <text x="32" y={b.y + 4} textAnchor="end"
-                        className="font-sans" style={{ fontSize: 10, letterSpacing: 1.4, fill: "var(--slate-light)" }}>
-                    {b.label}
-                  </text>
-                </g>
-              ))}
-
-              {/* Edges */}
-              {visibleEdges.map((e, i) => {
-                const from = nodeMap[e.from], to = nodeMap[e.to];
-                if (!from || !to) return null;
-                const isHighlighted = highlightKey === edgeKey(e);
-                const hoverLit = !highlightKey && hover !== null && (e.from === hover || e.to === hover);
-                const lit = isHighlighted || hoverLit;
-                const dimmed = (highlightKey && !isHighlighted) || (hover !== null && !highlightKey && !hoverLit);
-                const stroke = lit ? "var(--coral)" : "var(--navy)";
-                const opacity = dimmed ? (highlightKey ? 0.15 : 0.06) : lit ? 0.9 : 0.18;
-                const width = 1 + e.weight * 4;
-                const midX = (from.x + to.x) / 2;
-                const midY = (from.y + to.y) / 2;
-                const curveOffset = (from.y === to.y) ? 0 : (to.x > from.x ? 12 : -12);
-                const ctrlX = midX + curveOffset;
-                return (
-                  <path key={i}
-                        d={`M ${from.x} ${from.y} Q ${ctrlX} ${midY} ${to.x} ${to.y}`}
-                        stroke={stroke} strokeWidth={width} fill="none"
-                        opacity={opacity}
-                        markerEnd={lit ? "url(#arrowLit)" : "url(#arrow)"} />
-                );
-              })}
-
-              {/* Per-gap annotation overlay, controlled by Annotate gaps toggle.
-                  Each gap on a node renders as a short dashed coral spoke fanned above
-                  the node, giving the graph a visible "gap density" texture. */}
-              {annotateGaps && NODES.map(n => {
-                const gaps = gapsForLayer(n.key);
-                if (gaps.length === 0) return null;
-                const count = gaps.length;
-                const span = Math.min(80, 20 + count * 14);
-                const startX = n.x - span / 2;
-                const step = count > 1 ? span / (count - 1) : 0;
-                return (
-                  <g key={`gap-overlay-${n.key}`} style={{ pointerEvents: "none" }}>
-                    {gaps.map((g, gi) => {
-                      const x1 = count > 1 ? startX + gi * step : n.x;
-                      return (
-                        <line key={g.id}
-                              x1={x1} y1={n.y - 22}
-                              x2={x1} y2={n.y - 36}
-                              stroke="var(--coral)" strokeWidth={1.25}
-                              strokeDasharray="2 2" opacity={0.7} />
-                      );
-                    })}
-                  </g>
-                );
-              })}
-
-              {/* Inline labels for edges with weight >= 0.50. We bias the
-                  label position off the straight midpoint so it does not
-                  overlap node boxes:
-                  - same-row edges: lift the label ~24px above the row
-                  - cross-band edges that span 2+ rows: place the label at
-                    t=0.35 from source so it sits between row Ys instead of
-                    landing on a middle row's nodes. */}
-              {visibleEdges.filter(e => e.weight >= 0.50).map((e, i) => {
-                const from = nodeMap[e.from], to = nodeMap[e.to];
-                if (!from || !to) return null;
-                const label = EDGE_LABELS[edgeKey(e)];
-                if (!label) return null;
-                const sameRow = from.y === to.y;
-                const longSpan = Math.abs(to.y - from.y) > 200;
-                const t = longSpan ? 0.35 : 0.5;
-                const midX = from.x + (to.x - from.x) * t;
-                const midY = from.y + (to.y - from.y) * t;
-                const curveOffset = sameRow ? 0 : (to.x > from.x ? 12 : -12);
-                const labelX = midX + curveOffset * 0.5;
-                const labelY = sameRow ? midY - 24 : midY;
-                const w = label.length * 5.4 + 12;
-                const dimmed = highlightKey && highlightKey !== edgeKey(e);
-                return (
-                  <g key={`lbl-${i}`} opacity={dimmed ? 0.3 : 1} style={{ pointerEvents: "none" }}>
-                    <rect x={labelX - w / 2} y={labelY - 8} width={w} height={16} rx={3}
-                          fill="#FFFFFF" stroke="var(--cream-dark)" strokeWidth={0.75} />
-                    <text x={labelX} y={labelY + 3} textAnchor="middle"
-                          className="font-sans" style={{ fontSize: 10, fontWeight: 600, fill: "var(--navy)" }}>
-                      {label}
-                    </text>
-                  </g>
-                );
-              })}
-
-              {/* Nodes */}
-              {NODES.map(n => {
-                const lit = isNodeLit(n.key);
-                const isHover = hover === n.key;
-                const nodeGaps = gapsForLayer(n.key);
-                return (
-                  <g key={n.key}
-                     style={{ cursor: "pointer", opacity: lit ? 1 : 0.25 }}
-                     onMouseEnter={() => setHover(n.key)}
-                     onClick={() => onNavigate(n.key)}>
-                    <rect x={n.x - 64} y={n.y - 20} width={128} height={40} rx={4}
-                          fill={statusFill(n.status)}
-                          stroke={isHover ? statusColor(n.status) : "var(--cream-dark)"}
-                          strokeWidth={isHover ? 2 : 1} />
-                    <circle cx={n.x - 52} cy={n.y} r={4} fill={statusColor(n.status)} />
-                    <text x={n.x - 42} y={n.y + 4}
-                          className="font-sans" style={{ fontSize: 12, fontWeight: 600, fill: "var(--navy)" }}>
-                      {n.label}
-                    </text>
-                    {/* Data-gap badge, visible regardless of edge filter; Contracts genuinely has zero. */}
-                    {nodeGaps.length > 0 && (
-                      <g>
-                        <circle cx={n.x + 56} cy={n.y - 16} r={9} fill="var(--coral)" stroke="white" strokeWidth={1.5} />
-                        <text x={n.x + 56} y={n.y - 13} textAnchor="middle"
-                              className="font-sans" style={{ fontSize: 10, fontWeight: 700, fill: "white" }}>
-                          +{nodeGaps.length}
-                        </text>
-                      </g>
-                    )}
-                  </g>
-                );
-              })}
-            </svg>
+            <CrossLayerFlow
+              nodes={NODES.map<CrossLayerNode>(n => ({
+                key: n.key,
+                label: n.label,
+                band: n.band,
+                status: n.status,
+                gapCount: gapsForLayer(n.key).length,
+              }))}
+              edges={visibleEdges.map<CrossLayerEdge>(e => ({
+                from: e.from,
+                to: e.to,
+                weight: e.weight,
+                label: e.weight >= 0.50 ? EDGE_LABELS[edgeKey(e)] : undefined,
+              }))}
+              hover={hover}
+              setHover={setHover}
+              highlightKey={highlightKey}
+              onNavigate={onNavigate}
+              showGapAnnotations={annotateGaps}
+              height={620}
+            />
           </div>
 
           {/* Side panel */}
