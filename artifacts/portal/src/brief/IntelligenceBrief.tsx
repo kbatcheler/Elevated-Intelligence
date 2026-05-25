@@ -765,12 +765,12 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
                       <div className="mt-4 grid grid-cols-1 gap-3">
                         {bf.useCases.map((uc, j) => (
                           <div key={j} className="card card-accent-coral">
-                            <div className="flex items-baseline justify-between gap-3 mb-2">
-                              <div>
-                                <div className="eyebrow text-[var(--slate-light)] text-[10px]">Use case {j + 1}</div>
-                                <div className="font-serif font-semibold text-[17px] text-[var(--navy)] leading-tight mt-0.5">{uc.function}</div>
+                            <div className="mb-2">
+                              <div className="eyebrow text-[var(--slate-light)] text-[10px]">Use case {j + 1}</div>
+                              <div className="font-serif font-semibold text-[17px] text-[var(--navy)] leading-tight mt-0.5">{uc.function}</div>
+                              <div className="mt-2 inline-block max-w-full rounded-md bg-[var(--teal-faint)] text-[var(--teal)] font-sans text-[11px] font-semibold leading-snug px-2.5 py-1 break-words">
+                                {uc.timeToValue}
                               </div>
-                              <span className="pill pill-teal shrink-0">{uc.timeToValue}</span>
                             </div>
                             <SubHeader compact>Capabilities</SubHeader>
                             <Para small>{uc.capabilities}</Para>
