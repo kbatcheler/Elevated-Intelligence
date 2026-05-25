@@ -401,23 +401,32 @@ export default function DependencyGraph({ onNavigate }: { onNavigate: (key: stri
                 );
               })}
 
-              {/* Inline labels for edges with weight >= 0.50 at the curve midpoint. */}
+              {/* Inline labels for edges with weight >= 0.50. We bias the
+                  label position off the straight midpoint so it does not
+                  overlap node boxes:
+                  - same-row edges: lift the label ~24px above the row
+                  - cross-band edges that span 2+ rows: place the label at
+                    t=0.35 from source so it sits between row Ys instead of
+                    landing on a middle row's nodes. */}
               {visibleEdges.filter(e => e.weight >= 0.50).map((e, i) => {
                 const from = nodeMap[e.from], to = nodeMap[e.to];
                 if (!from || !to) return null;
                 const label = EDGE_LABELS[edgeKey(e)];
                 if (!label) return null;
-                const midX = (from.x + to.x) / 2;
-                const midY = (from.y + to.y) / 2;
-                const curveOffset = (from.y === to.y) ? 0 : (to.x > from.x ? 12 : -12);
+                const sameRow = from.y === to.y;
+                const longSpan = Math.abs(to.y - from.y) > 200;
+                const t = longSpan ? 0.35 : 0.5;
+                const midX = from.x + (to.x - from.x) * t;
+                const midY = from.y + (to.y - from.y) * t;
+                const curveOffset = sameRow ? 0 : (to.x > from.x ? 12 : -12);
                 const labelX = midX + curveOffset * 0.5;
-                const labelY = midY;
-                const w = label.length * 5.4 + 10;
+                const labelY = sameRow ? midY - 24 : midY;
+                const w = label.length * 5.4 + 12;
                 const dimmed = highlightKey && highlightKey !== edgeKey(e);
                 return (
                   <g key={`lbl-${i}`} opacity={dimmed ? 0.3 : 1} style={{ pointerEvents: "none" }}>
-                    <rect x={labelX - w / 2} y={labelY - 7} width={w} height={14} rx={2}
-                          fill="var(--cream-light)" stroke="var(--cream-dark)" strokeWidth={0.75} />
+                    <rect x={labelX - w / 2} y={labelY - 8} width={w} height={16} rx={3}
+                          fill="#FFFFFF" stroke="var(--cream-dark)" strokeWidth={0.75} />
                     <text x={labelX} y={labelY + 3} textAnchor="middle"
                           className="font-sans" style={{ fontSize: 10, fontWeight: 600, fill: "var(--navy)" }}>
                       {label}
