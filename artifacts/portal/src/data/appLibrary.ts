@@ -1,4 +1,4 @@
-// The 21 real DiffDay apps that ship today on demo.diffday.dev. Mirrored
+// The 26 real DiffDay apps that ship today on demo.diffday.dev. Mirrored
 // verbatim from the public App Library so the cross-layer map stops being
 // a fictional catalog and shows what actually exists. Each app is tagged
 // with the capability product(s) from deficiencies.ts that it instantiates,
@@ -176,6 +176,41 @@ export const DIFFDAY_APPS: DiffDayApp[] = [
     description: "Early-warning and intervention platform that turns institutional data into student-success outcomes.",
     domain: "Education",
     capabilities: ["ai-companion", "data-integration"],
+  },
+  {
+    id: "contract-intelligence-hub", initials: "CH", name: "Contract Intelligence Hub",
+    tagline: "Every clause, every renewal, every dollar of exposure",
+    description: "Ingests supplier, customer and labour contracts, extracts terms with AI, surfaces expiration dates and early-termination exposure, and flags high-risk agreements before they bite the P&L.",
+    domain: "Cross-industry",
+    capabilities: ["contract-hub", "ai-companion"],
+  },
+  {
+    id: "website-conversion-companion", initials: "WC", name: "Website Conversion Companion",
+    tagline: "Turn site visitors into qualified buyers",
+    description: "AI-guided on-site survey that interviews visitors about their need, budget and timing, then routes each one to the best-fit product or rep, lifting conversion without adding headcount.",
+    domain: "Customer & growth",
+    capabilities: ["web-conversion", "ai-companion"],
+  },
+  {
+    id: "legislative-tracking-tool", initials: "LT", name: "Legislative Tracking Tool",
+    tagline: "Politico-lite for your business, not for D.C. insiders",
+    description: "Monitors federal, state and local legislation across the US, isolates bills that touch your operations, summarises the dollar and compliance impact, and recommends courses of action to support, shape or block.",
+    domain: "Cross-industry",
+    capabilities: ["legislative", "news-monitor", "ai-companion"],
+  },
+  {
+    id: "operations-intelligence", initials: "OI", name: "Operations Intelligence",
+    tagline: "Plan, replenish and execute in one orchestrated loop",
+    description: "Operations orchestration purpose-built for CPG manufacturers and distributors, syncs demand, production, inventory and DC throughput signals into a single AI-managed plan.",
+    domain: "Operations & supply chain",
+    capabilities: ["ops-intel", "data-integration"],
+  },
+  {
+    id: "invoicing-intelligence", initials: "IV", name: "Invoicing Intelligence",
+    tagline: "Recover every cent off-spec invoices try to keep",
+    description: "For meat and protein buyers, reconciles invoiced product weight against actual scaled weight at receipt, flags the discrepancy, and auto-drafts reimbursement requests so finance recovers the difference at scale.",
+    domain: "Operations & supply chain",
+    capabilities: ["invoicing", "ops-intel"],
   },
 ];
 
