@@ -33,10 +33,10 @@ import CompanyBootSplash from "./components/CompanyBootSplash";
 import PresenterStrip from "./components/PresenterStrip";
 import SalesPlaybook from "./components/SalesPlaybook";
 import MobileSplash, { useShouldShowMobileSplash } from "./components/MobileSplash";
+import { signOut } from "./components/LoginGate";
 import { useApp } from "./context/AppContext";
-import { useCompany, useIsDefaultProfile } from "./context/CompanyContext";
-import { MERIDIAN } from "./data/companies";
-import { DEFAULT_PROFILE_ID } from "./data/companies";
+import { useCompany } from "./context/CompanyContext";
+import EmptyLibrary from "./components/EmptyLibrary";
 
 type NavItem = { key: string; label: string; group: string; icon: LucideIcon; status: "good" | "warn" | "bad" };
 
@@ -111,9 +111,13 @@ export default function App() {
   const {
     setActiveLayer, openInbox, openBrief, briefOpen, committed,
   } = useApp();
-  const { profile, setPickerOpen, resetToDefault } = useCompany();
+  const { profile, setPickerOpen, tenants, tenantsLoading, activeTenant } = useCompany();
   const { LAYERS, ANOMALIES } = useNarrative();
-  const isCustomProfile = profile.id !== DEFAULT_PROFILE_ID;
+  // Phase 1: no built-in default tenant. Any active tenant came from the
+  // server library, this flag is retained for back-compat with downstream
+  // code that branches on "is this a user-supplied profile" but is always
+  // true once a tenant is active.
+  const isCustomProfile = !!activeTenant;
 
   const layer = useMemo(() => LAYERS.find(l => l.key === active), [active, LAYERS]);
 
@@ -135,6 +139,20 @@ export default function App() {
 
   if (showMobile) {
     return <MobileSplash onOverride={clearMobile} />;
+  }
+
+  // Empty-library landing. Brief 1.4: when GET /api/tenants is empty (cold
+  // start, no tenants seeded yet), render the dedicated EmptyLibrary screen
+  // instead of the dashboard shell. Still mount the picker + splash so the
+  // CTA can open the seed-new form.
+  if (!tenantsLoading && tenants.length === 0) {
+    return (
+      <>
+        <EmptyLibrary />
+        <CompanyPicker />
+        <CompanyBootSplash />
+      </>
+    );
   }
 
   return (
@@ -193,12 +211,7 @@ export default function App() {
                   </div>
                   <ChevronDown size={11} className="text-[var(--slate-light)] -rotate-90" />
                 </button>
-                {isCustomProfile && (
-                  <button onClick={() => { setClientOpen(false); resetToDefault(); }}
-                          className="w-full text-left px-4 py-2.5 flex items-center justify-between hover:bg-[var(--cream-light)]">
-                    <div className="font-sans text-[12px] text-[var(--slate)] italic">Reset to {MERIDIAN.name} (default demo)</div>
-                  </button>
-                )}
+                {/* Phase 1: no built-in default tenant to reset to. */}
               </div>
             </>
           )}
@@ -254,6 +267,11 @@ export default function App() {
           <span className="font-sans text-[12px] text-[var(--cream)] opacity-70">{profile.analyst}</span>
           <span className="h-8 w-8 rounded-full flex items-center justify-center font-sans font-semibold text-[12px]"
                 style={{ background: "var(--gold)", color: "var(--navy-deep)" }}>{profile.logoMonogram}</span>
+          <button onClick={() => { void signOut(); }}
+                  title="Sign out of Elevated Intelligence"
+                  className="font-sans text-[11px] uppercase tracking-wider text-[var(--cream)] opacity-70 hover:opacity-100 hover:underline transition-opacity">
+            Sign out
+          </button>
         </div>
       </header>
 
@@ -416,8 +434,9 @@ export default function App() {
 // Meridian Industrial profile renders nothing.
 function PreviewModeBanner() {
   const { profile } = useCompany();
-  const isDefault = useIsDefaultProfile();
-  if (isDefault) return null;
+  // Phase 1: there is no built-in default tenant any more, every active
+  // tenant came from the server library. Banner always renders.
+  if (!profile.id) return null;
   return (
     <div className="px-6 py-2.5 flex items-center gap-3 text-[12px]"
          style={{ background: "var(--gold-faint, #FBF3DC)", borderBottom: "1px solid var(--gold)" }}>

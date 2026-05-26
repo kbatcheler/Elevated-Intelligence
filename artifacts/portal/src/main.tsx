@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { AppProvider } from "./context/AppContext";
 import { CompanyProvider } from "./context/CompanyContext";
+import LoginGate from "./components/LoginGate";
 import "./index.css";
 
 // Swallow the harmless "ResizeObserver loop" notification that React Flow
@@ -41,9 +42,11 @@ window.addEventListener(
 );
 
 createRoot(document.getElementById("root")!).render(
-  <CompanyProvider>
-    <AppProvider>
-      <App />
-    </AppProvider>
-  </CompanyProvider>,
+  <LoginGate>
+    <CompanyProvider>
+      <AppProvider>
+        <App />
+      </AppProvider>
+    </CompanyProvider>
+  </LoginGate>,
 );

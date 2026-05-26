@@ -1,5 +1,27 @@
-import { CheckCircle2, Loader2, Zap, Globe, Circle, AlertTriangle, SkipForward } from "lucide-react";
-import { useCompany, type SeedStep, type SeedStepStatus } from "../context/CompanyContext";
+import { useEffect, useState } from "react";
+import { CheckCircle2, Loader2, Zap, Globe, Circle, AlertTriangle, SkipForward, RotateCcw, X } from "lucide-react";
+import { useCompany, type SeedStep, type SeedStepStatus, type PipelineStage } from "../context/CompanyContext";
+
+const PIPELINE_STAGE_ORDER = ["ground", "profile", "layers", "artifacts", "commit"] as const;
+const PIPELINE_STAGE_LABEL: Record<string, string> = {
+  ground: "Ground · homepage fetch",
+  profile: "Profile · company facts",
+  layers: "Layers · 14 intelligence frames",
+  artifacts: "Artifacts · briefs and maps",
+  commit: "Commit · save to database",
+};
+const APPROX_PIPELINE_MS = 180_000;
+
+function formatElapsed(ms: number): string {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function findStage(stages: PipelineStage[], name: string): PipelineStage | undefined {
+  return stages.find(s => s.name === name);
+}
 
 // Boot splash. Two modes:
 //
@@ -28,8 +50,94 @@ function brandModel(_raw: string): string {
 }
 
 export default function CompanyBootSplash() {
-  const { bootSplash, dismissBootSplash } = useCompany();
+  const { bootSplash, dismissBootSplash, refreshTenant } = useCompany();
+  // Elapsed timer for pipeline mode, recomputed every second.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!bootSplash?.pipeline) return undefined;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [bootSplash?.pipeline?.tenantId]);
+
   if (!bootSplash?.open) return null;
+
+  // ─── Pipeline-progress mode (1.4) ───────────────────────────────────────
+  if (bootSplash.pipeline) {
+    const { tenantId, startedAt, status, error } = bootSplash.pipeline;
+    const elapsedMs = now - startedAt;
+    const stages = status?.run?.stages ?? [];
+    const tenantStatus = status?.tenant.status ?? "seeding";
+    const runStatus = status?.run?.status ?? "pending";
+    const failed = tenantStatus === "failed" || runStatus === "failed";
+    const layersStage = findStage(stages, "layers");
+    const layersTotal = layersStage?.progress?.total ?? 14;
+    const layersCurrent = layersStage?.progress?.current ?? 0;
+    return (
+      <div role="status" aria-live="polite"
+           className="fixed inset-0 z-[70] flex items-center justify-center px-6 py-8 overflow-y-auto"
+           style={{ background: "rgba(15,26,51,0.92)" }}>
+        <div className="w-[640px] max-w-full">
+          <div className="text-center mb-6">
+            <div className="eyebrow text-[var(--gold-light)] mb-2">Different Day · Elevated Intelligence</div>
+            <h1 className="font-serif font-semibold text-[34px] leading-[1.05] text-[var(--cream)] mb-2">
+              Seeding intelligence for
+            </h1>
+            <div className="font-serif font-bold text-[40px] leading-tight" style={{ color: "var(--gold-light)" }}>
+              {bootSplash.profileName}
+            </div>
+          </div>
+
+          <ul className="space-y-2">
+            {PIPELINE_STAGE_ORDER.map(name => {
+              const stage = findStage(stages, name);
+              const status: SeedStepStatus =
+                stage?.status === "complete" ? "done"
+                : stage?.status === "running" ? "running"
+                : stage?.status === "failed"  ? "failed"
+                : "pending";
+              const label = name === "layers"
+                ? `${PIPELINE_STAGE_LABEL[name]} · ${layersCurrent}/${layersTotal}`
+                : PIPELINE_STAGE_LABEL[name] ?? name;
+              return (
+                <StepRow key={name} step={{
+                  kind: "seed", status, label,
+                  detail: stage?.error ?? undefined,
+                  errorReason: stage?.error ?? undefined,
+                }} />
+              );
+            })}
+          </ul>
+
+          <div className="text-center mt-5 font-sans text-[12px] text-[var(--cream)]/70 tabular-nums">
+            Elapsed {formatElapsed(elapsedMs)} of approximately {formatElapsed(APPROX_PIPELINE_MS)}
+          </div>
+
+          {error && (
+            <div className="mt-3 text-center font-sans text-[11px]" style={{ color: "rgb(245,166,123)" }}>
+              Status poll error · {error}
+            </div>
+          )}
+
+          <div className="text-center mt-4 flex items-center justify-center gap-2">
+            {failed && (
+              <button onClick={() => { void refreshTenant(tenantId); }}
+                      className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-sm font-sans text-[11px] uppercase tracking-wider"
+                      style={{ background: "var(--gold-light)", color: "var(--navy)", border: "1px solid var(--gold)" }}>
+                <RotateCcw size={12} strokeWidth={1.8} />
+                Retry
+              </button>
+            )}
+            <button onClick={dismissBootSplash}
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-sm font-sans text-[11px] uppercase tracking-wider text-[var(--cream)] hover:bg-white/10"
+                    style={{ border: "1px solid rgba(212,175,55,0.4)" }}>
+              <X size={12} strokeWidth={1.8} />
+              {failed ? "Dismiss" : "Run in background"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const { profileName, meta, seedFlow } = bootSplash;
   const liveMode = !!seedFlow;

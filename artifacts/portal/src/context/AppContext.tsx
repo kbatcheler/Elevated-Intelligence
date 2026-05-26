@@ -4,8 +4,7 @@ import {
 } from "react";
 import { type IncomingSignal, type EvidenceSpec } from "../data/signals";
 import { useNarrative, useCompany } from "./CompanyContext";
-import { DEFAULT_PROFILE_ID } from "../data/companies";
-import { MERIDIAN_COMMITTED_SEED } from "../data/committedSeed";
+import { COMMITTED_SEED } from "../data/committedSeed";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -84,23 +83,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { profile } = useCompany();
 
   const [tick, setTick] = useState(0);
-  const [signals, setSignals] = useState<IncomingSignal[]>(() => [SIGNAL_POOL[0]]);
+  const [signals, setSignals] = useState<IncomingSignal[]>(() => SIGNAL_POOL[0] ? [SIGNAL_POOL[0]] : []);
   const [pulse, setPulse] = useState<Pulse | null>(null);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [briefOpen, setBriefOpen] = useState(false);
   const [evidence, setEvidence] = useState<EvidenceSpec | null>(null);
   const [why, setWhy] = useState<{ layer: string; metric: string } | null>(null);
-  // Seed the committed tray from the Meridian Industrial roster when the demo loads on
-  // the default profile, so the Committed Actions page is populated cold,
-  // a leadership team should be able to walk into that view without having
-  // to manually commit anything first. Non-default profiles start empty.
-  const seedCommitted = useCallback((profileId: string): CommittedAction[] => {
-    if (profileId !== DEFAULT_PROFILE_ID) return [];
+  // Phase 1: every tenant starts with an empty committed tray. The seed
+  // roster is no longer keyed to a hardcoded default profile.
+  const seedCommitted = useCallback((_profileId: string): CommittedAction[] => {
     const baseTime = Date.now();
-    return MERIDIAN_COMMITTED_SEED.map((s, i) => ({
+    return COMMITTED_SEED.map((s, i) => ({
       ...s,
       id: `C-seed-${i}`,
-      committedAt: baseTime - (MERIDIAN_COMMITTED_SEED.length - i) * 60_000,
+      committedAt: baseTime - (COMMITTED_SEED.length - i) * 60_000,
     }));
   }, []);
   const [committed, setCommitted] = useState<CommittedAction[]>(() => seedCommitted(profile.id));
@@ -120,7 +116,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // continue scrolling the previous tenant's lines.
   useEffect(() => {
     signalIdxRef.current = 0;
-    setSignals([SIGNAL_POOL[0]]);
+    setSignals(SIGNAL_POOL[0] ? [SIGNAL_POOL[0]] : []);
     setPulse(null);
     setInboxOpen(false);
     setBriefOpen(false);
