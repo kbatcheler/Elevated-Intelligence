@@ -4,15 +4,26 @@
 // Phase 2: same call now supports `useWebSearch`, which enables Anthropic's
 // built-in web_search_20250305 tool and surfaces the URLs Claude consulted
 // on the result for downstream provenance and the verified_claims track.
+// Phase 2.1: system prompts may now be passed as an array of blocks with
+// per-block cache_control, and `model` is selectable per call so Score can
+// run on Haiku.
 
 import { z, type ZodType } from "zod/v4";
 import { logger as rootLogger } from "../logger";
 
 const MODEL = "claude-sonnet-4-6";
+export const SCORE_MODEL = "claude-haiku-4-5";
 const WEB_SEARCH_TOOL = { type: "web_search_20250305" as const, name: "web_search" as const };
 
+// A single system block. `cache: true` adds an Anthropic ephemeral
+// cache_control marker so this and everything before it in the prefix is
+// cached for ~5 minutes. Min ~1024 tokens for Sonnet, ~2048 for Haiku — the
+// API silently ignores cache markers on too-small blocks, no crash risk.
+export type SystemBlock = { text: string; cache?: boolean };
+
 export type CallOptions<T> = {
-  system: string;
+  // string for back-compat; array form enables per-block cache control.
+  system: string | SystemBlock[];
   user: string;
   schema: ZodType<T>;
   maxTokens?: number;
@@ -22,6 +33,8 @@ export type CallOptions<T> = {
   // Phase 2: when true, enables Anthropic's web_search tool. The wrapper
   // walks the response blocks and returns the consulted URLs on the result.
   useWebSearch?: boolean;
+  // Phase 2.1: override the model (default claude-sonnet-4-6).
+  model?: string;
 };
 
 export type CallResult<T> =
@@ -32,6 +45,8 @@ export type CallResult<T> =
       model: string;
       inputTokens: number | null;
       outputTokens: number | null;
+      cacheCreationTokens: number | null;
+      cacheReadTokens: number | null;
       // Phase 2: populated only when useWebSearch=true and Claude actually searched.
       consultedUrls: string[];
       searchCallCount: number;
@@ -43,6 +58,17 @@ function getEnv(): { baseUrl: string; apiKey: string } | null {
   const apiKey = process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"];
   if (!baseUrl || !apiKey) return null;
   return { baseUrl, apiKey };
+}
+
+function buildSystemPayload(
+  system: string | SystemBlock[],
+): string | Array<{ type: "text"; text: string; cache_control?: { type: "ephemeral" } }> {
+  if (typeof system === "string") return system;
+  return system.map((b) =>
+    b.cache
+      ? { type: "text" as const, text: b.text, cache_control: { type: "ephemeral" as const } }
+      : { type: "text" as const, text: b.text },
+  );
 }
 
 // Walk Claude's content blocks to extract:
@@ -88,11 +114,12 @@ function walkContent(
 async function callOnce<T>(opts: CallOptions<T>, env: { baseUrl: string; apiKey: string }): Promise<CallResult<T>> {
   const tStart = Date.now();
   const log = opts.log ?? rootLogger;
+  const model = opts.model ?? MODEL;
   try {
     const body: Record<string, unknown> = {
-      model: MODEL,
+      model,
       max_tokens: opts.maxTokens ?? 8192,
-      system: opts.system,
+      system: buildSystemPayload(opts.system),
       messages: [{ role: "user", content: opts.user }],
     };
     if (opts.useWebSearch) {
@@ -129,7 +156,12 @@ async function callOnce<T>(opts: CallOptions<T>, env: { baseUrl: string; apiKey:
     }
     const payload = (await apiRes.json()) as {
       content?: ContentBlock[];
-      usage?: { input_tokens?: number; output_tokens?: number };
+      usage?: {
+        input_tokens?: number;
+        output_tokens?: number;
+        cache_creation_input_tokens?: number;
+        cache_read_input_tokens?: number;
+      };
       model?: string;
     };
     const { text, consultedUrls, searchCallCount } = walkContent(payload.content);
@@ -140,6 +172,14 @@ async function callOnce<T>(opts: CallOptions<T>, env: { baseUrl: string; apiKey:
       log.info(
         { ctx: opts.context, searchCallCount, urlCount: consultedUrls.length, urls: consultedUrls.slice(0, 5) },
         "Anthropic web search consulted URLs",
+      );
+    }
+    const cacheRead = payload.usage?.cache_read_input_tokens ?? 0;
+    const cacheCreate = payload.usage?.cache_creation_input_tokens ?? 0;
+    if (cacheRead > 0 || cacheCreate > 0) {
+      log.info(
+        { ctx: opts.context, cacheRead, cacheCreate, input: payload.usage?.input_tokens ?? null },
+        "Anthropic prompt cache",
       );
     }
     const cleaned = text
@@ -180,9 +220,11 @@ async function callOnce<T>(opts: CallOptions<T>, env: { baseUrl: string; apiKey:
       ok: true,
       value: result.data,
       durationMs: Date.now() - tStart,
-      model: payload.model ?? MODEL,
+      model: payload.model ?? model,
       inputTokens: payload.usage?.input_tokens ?? null,
       outputTokens: payload.usage?.output_tokens ?? null,
+      cacheCreationTokens: cacheCreate,
+      cacheReadTokens: cacheRead,
       consultedUrls,
       searchCallCount,
     };

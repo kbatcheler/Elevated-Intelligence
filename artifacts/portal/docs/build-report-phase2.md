@@ -66,6 +66,20 @@ And a final, third-line-of-defense item:
 
 Typecheck clean after each fix. Reconciler verified live: first boot found and reaped 4 orphaned rows from earlier sessions, second boot logged "no orphaned pipeline runs".
 
+## Speed pass (2026-05-26)
+
+Two cost/latency levers landed together:
+
+- **Anthropic prompt caching** (`anthropic.ts`, `phase2-prompts.ts`, `phase2.ts`): each Claude stage's system prompt is now layer-agnostic — identical across all 14 layers within a tenant run. Layer name and layer focus moved into the user prompt. The system block is sent with `cache_control: { type: "ephemeral" }`, so the first call per stage primes the cache (creation cost) and the remaining 13 hit it (read cost = 10% of input price). Live verification on Stripe re-seed showed ~75K cached input tokens per call, with reads of up to 119K on warm layers.
+- **Score on Haiku 4.5** (`anthropic.ts:SCORE_MODEL`): the Score stage is short, structured, and does not need full Sonnet reasoning. Stage durations dropped from ~90s to **8-13s per layer** (verified in `tenant_pipeline_runs.stages` JSON for the re-seed run), without any drop in output quality.
+
+End-to-end wall time for the Stripe re-seed: **45:16** vs 46-49 minutes baseline. Smaller wall-time gain than the headline cache+Haiku math would predict because Anthropic 429 backoffs are now the binding constraint at concurrency 3 — nearly every hypothesise and narrate call ate 30-45s of `Retry-After` waits during this run. The cache+Haiku changes freed enough TPM headroom that we should now be able to raise concurrency from 3 to 4 or 5 without rate-limit cascades; that is the next obvious lever and would close most of the gap to the original projection. Output quality on the re-seed actually improved: **101 verified + 88 modelled claims** (vs 85+87 prior), **avg confidence 72.9** (vs 70.7 prior).
+
+Architect review of the speed pass surfaced two issues, both fixed:
+
+- **Honest Score caching**: `SCORE_SYSTEM_PROMPT` is ~280 tokens, well below Haiku's 2048-token cache minimum, so the `cache_control` marker was being silently dropped by Anthropic. Removed the marker on the Score call and updated the comment to make the assumption explicit. Score's wall-time win comes entirely from the model swap, not caching.
+- **Score success in layer status**: `runLayerStages` previously computed layer status from `narrateOk && challengeOk` only, so a Haiku model drift or score schema regression could ship layers with locally-synthesized fallback confidence and zero signal at the layer level. Added `scoreOk` to the status check; failed Score now correctly marks the layer `partial`.
+
 ## Rollback
 
 Set `USE_PHASE2_PIPELINE=false` to fall back to the Phase 1 single-pass generator. Both runners share the same on-disk schema, so no migration is needed.

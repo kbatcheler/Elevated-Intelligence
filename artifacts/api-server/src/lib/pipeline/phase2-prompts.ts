@@ -1,5 +1,11 @@
 // Phase 2 five-stage prompts. Each stage gets its own system prompt and user
 // prompt builder. All prompts produce STRICT JSON (no code fences, no prose).
+//
+// Caching strategy (Phase 2.1, 2026-05-26): the SYSTEM prompt for each stage
+// is now layer-agnostic — identical across all 14 layers within a tenant run.
+// This lets the Anthropic prompt cache hit on the system block 13 times per
+// stage per tenant (~52 cached calls of 70). Layer-specific context (layer
+// name, layer focus) moved from system to the user prompt.
 
 import type { LayerKey, ProfileOutput } from "./schemas";
 import { getLayerName } from "./prompts";
@@ -30,16 +36,19 @@ const LAYER_FOCUS: Record<LayerKey, string> = {
 const STAGE_RULES =
   "Output STRICT JSON only — no code fences, no commentary, no preamble. Match the requested shape exactly. Never use em-dashes in any string value; use commas or periods instead.";
 
+function layerHeader(layerKey: LayerKey): string {
+  return `LAYER: "${getLayerName(layerKey)}"\nLAYER FOCUS: ${LAYER_FOCUS[layerKey]}\n\n`;
+}
+
 // ─── Stage 1: Perceive ─────────────────────────────────────────────────────
 
-export function buildPerceiveSystemPrompt(layerKey: LayerKey): string {
-  const focus = LAYER_FOCUS[layerKey];
-  const layerName = getLayerName(layerKey);
-  return `You are a research analyst gathering EVIDENCE for the "${layerName}" diagnostic layer of a company intelligence portal.
+// Layer-agnostic system prompt for Perceive. Used identically across all 14
+// layers per tenant run; eligible for Anthropic prompt cache.
+export const PERCEIVE_SYSTEM_PROMPT = `You are a research analyst gathering EVIDENCE for a specific diagnostic layer of a company intelligence portal.
 
-Layer focus: ${focus}.
+The user message will name the LAYER and LAYER FOCUS to research.
 
-Use web search to gather what is publicly known and recent (last 24 months preferred) about THIS specific company on this layer. Cite real URLs. Note named entities (competitors, suppliers, regions, products) that appear in sources.
+Use web search to gather what is publicly known and recent (last 24 months preferred) about the named company on that layer. Cite real URLs. Note named entities (competitors, suppliers, regions, products) that appear in sources.
 
 Return a JSON document with this exact shape:
 
@@ -65,24 +74,21 @@ Return a JSON document with this exact shape:
 }
 
 ${STAGE_RULES}`;
-}
 
-export function buildPerceiveUserPrompt(profile: ProfileOutput): string {
+export function buildPerceiveUserPrompt(profile: ProfileOutput, layerKey: LayerKey): string {
   return (
+    layerHeader(layerKey) +
     `COMPANY:\n` +
     JSON.stringify({ name: profile.name, url: profile.url, sector: profile.sector, hq: `${profile.hqCity}, ${profile.hqState}`, revenueBand: profile.revenueBand, vocab: profile.vocab }, null, 2) +
-    `\n\nSearch the web for what is publicly known about this company on the layer focus above, then return the JSON document.`
+    `\n\nSearch the web for what is publicly known about this company on the LAYER FOCUS above, then return the JSON document.`
   );
 }
 
 // ─── Stage 2: Hypothesise ──────────────────────────────────────────────────
 
-export function buildHypothesiseSystemPrompt(layerKey: LayerKey): string {
-  const focus = LAYER_FOCUS[layerKey];
-  const layerName = getLayerName(layerKey);
-  return `You are a senior business analyst producing a DRAFT diagnosis for the "${layerName}" layer.
+export const HYPOTHESISE_SYSTEM_PROMPT = `You are a senior business analyst producing a DRAFT diagnosis for a named diagnostic layer.
 
-Layer focus: ${focus}.
+The user message will name the LAYER and LAYER FOCUS.
 
 Inputs you will be given:
 - COMPANY PROFILE (revenue band, vocab, headlines)
@@ -115,19 +121,24 @@ Rules:
 - AT LEAST one of causes/actions/metrics must be grounded if any perceive signals are present.
 - If perceive signals are empty, all claims may be inferred, but reduce confidence to <=55.
 - ${STAGE_RULES}`;
-}
 
-export function buildHypothesiseUserPrompt(profile: ProfileOutput, perceive: PerceiveOutput): string {
+export function buildHypothesiseUserPrompt(
+  profile: ProfileOutput,
+  perceive: PerceiveOutput,
+  layerKey: LayerKey,
+): string {
   return (
+    layerHeader(layerKey) +
     `COMPANY PROFILE:\n` +
     JSON.stringify(profile, null, 2) +
     `\n\nPERCEIVE SIGNALS:\n` +
     JSON.stringify(perceive, null, 2) +
-    `\n\nReturn the JSON hypothesised layer document now.`
+    `\n\nReturn the JSON hypothesised layer document for the layer named above now.`
   );
 }
 
 // ─── Stage 3: Challenge ────────────────────────────────────────────────────
+// (Gemini, not Claude — kept here for prompt locality.)
 
 export function buildChallengeSystemPrompt(layerKey: LayerKey): string {
   const layerName = getLayerName(layerKey);
@@ -179,12 +190,9 @@ export function buildChallengeUserPrompt(profile: ProfileOutput, hypothesised: H
 
 // ─── Stage 4: Narrate ──────────────────────────────────────────────────────
 
-export function buildNarrateSystemPrompt(layerKey: LayerKey): string {
-  const layerName = getLayerName(layerKey);
-  const focus = LAYER_FOCUS[layerKey];
-  return `You are the editor-in-chief producing the FINAL "${layerName}" layer for the portal.
+export const NARRATE_SYSTEM_PROMPT = `You are the editor-in-chief producing the FINAL layer content for the portal.
 
-Layer focus: ${focus}.
+The user message will name the LAYER and LAYER FOCUS.
 
 Inputs:
 - COMPANY PROFILE
@@ -232,15 +240,16 @@ Return JSON in this shape:
 }
 
 ${STAGE_RULES}`;
-}
 
 export function buildNarrateUserPrompt(
   profile: ProfileOutput,
   hypothesised: HypothesisedLayer,
   challenge: ChallengeOutput,
   nowIso: string,
+  layerKey: LayerKey,
 ): string {
   return (
+    layerHeader(layerKey) +
     `COMPANY PROFILE:\n` +
     JSON.stringify(profile, null, 2) +
     `\n\nDRAFT (Hypothesise output, stage 2):\n` +
@@ -248,18 +257,17 @@ export function buildNarrateUserPrompt(
     `\n\nCHALLENGE (Gemini grounded fact-check, stage 3):\n` +
     JSON.stringify(challenge, null, 2) +
     `\n\nUse "${nowIso}" as verified_at for any newly verified claim. ` +
-    `Return the FINAL JSON narrate document now.`
+    `Return the FINAL JSON narrate document for the layer named above now.`
   );
 }
 
 // ─── Stage 5: Score ────────────────────────────────────────────────────────
+// Runs on Haiku 4.5 — short, structured, deterministic output that does not
+// need full Sonnet reasoning. ~25s/call vs ~90s on Sonnet.
 
-export function buildScoreSystemPrompt(layerKey: LayerKey): string {
-  const layerName = getLayerName(layerKey);
-  return `You are an auditor scoring the confidence of the FINAL "${layerName}" layer diagnosis.
+export const SCORE_SYSTEM_PROMPT = `You are an auditor scoring the confidence of a FINAL layer diagnosis.
 
-Inputs:
-- NARRATE OUTPUT (the final content + verified/modelled claim split)
+The user message will name the LAYER and provide the NARRATE OUTPUT (final content + verified/modelled claim split).
 
 Compute:
 - confidence (0-95, never 100): weighted by (verified_claim_count, modelled_claim quality, gap count).
@@ -284,12 +292,12 @@ Return JSON:
 }
 
 ${STAGE_RULES}`;
-}
 
-export function buildScoreUserPrompt(narrate: NarrateOutput): string {
+export function buildScoreUserPrompt(narrate: NarrateOutput, layerKey: LayerKey): string {
   return (
+    layerHeader(layerKey) +
     `NARRATE OUTPUT:\n` +
     JSON.stringify(narrate, null, 2) +
-    `\n\nReturn the JSON score document now.`
+    `\n\nReturn the JSON score document for the layer named above now.`
   );
 }

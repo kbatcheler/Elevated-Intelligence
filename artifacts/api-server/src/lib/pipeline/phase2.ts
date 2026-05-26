@@ -28,7 +28,7 @@ import {
 } from "@workspace/db";
 import { logger as rootLogger } from "../logger";
 import { fetchHomepageContext } from "../homepageContext";
-import { callClaudeJson, PIPELINE_MODEL } from "./anthropic";
+import { callClaudeJson, PIPELINE_MODEL, SCORE_MODEL } from "./anthropic";
 import { callGeminiJson, GEMINI_MODEL } from "./gemini";
 import {
   LAYER_KEYS,
@@ -50,15 +50,15 @@ import {
   buildProfileUserPrompt,
 } from "./prompts";
 import {
+  PERCEIVE_SYSTEM_PROMPT,
+  HYPOTHESISE_SYSTEM_PROMPT,
+  NARRATE_SYSTEM_PROMPT,
+  SCORE_SYSTEM_PROMPT,
   buildChallengeSystemPrompt,
   buildChallengeUserPrompt,
-  buildHypothesiseSystemPrompt,
   buildHypothesiseUserPrompt,
-  buildNarrateSystemPrompt,
   buildNarrateUserPrompt,
-  buildPerceiveSystemPrompt,
   buildPerceiveUserPrompt,
-  buildScoreSystemPrompt,
   buildScoreUserPrompt,
 } from "./phase2-prompts";
 import {
@@ -276,11 +276,11 @@ async function runLayerStages(
   const rt = newLayerRuntime(layerKey);
   const nowIso = new Date().toISOString();
 
-  // Stage 1: Perceive
+  // Stage 1: Perceive — layer-agnostic system prompt (cached across all 14 layers).
   await startSub(runId, rt, "perceive");
   const perceiveCall = await callClaudeJson({
-    system: buildPerceiveSystemPrompt(layerKey),
-    user: buildPerceiveUserPrompt(profile),
+    system: [{ text: PERCEIVE_SYSTEM_PROMPT, cache: true }],
+    user: buildPerceiveUserPrompt(profile, layerKey),
     schema: perceiveOutputSchema,
     useWebSearch: true,
     maxTokens: 8192,
@@ -298,11 +298,11 @@ async function runLayerStages(
     layerLog.warn({ reason: perceiveCall.reason }, "perceive failed, continuing with empty signals");
   }
 
-  // Stage 2: Hypothesise
+  // Stage 2: Hypothesise — system cached across all 14 layers.
   await startSub(runId, rt, "hypothesise");
   const hypothesiseCall = await callClaudeJson({
-    system: buildHypothesiseSystemPrompt(layerKey),
-    user: buildHypothesiseUserPrompt(profile, perceive),
+    system: [{ text: HYPOTHESISE_SYSTEM_PROMPT, cache: true }],
+    user: buildHypothesiseUserPrompt(profile, perceive, layerKey),
     schema: hypothesisedLayerSchema,
     maxTokens: 8192,
     log: layerLog,
@@ -355,11 +355,11 @@ async function runLayerStages(
     layerLog.warn({ reason: challengeCall.reason }, "challenge failed, narrate will get empty challenge");
   }
 
-  // Stage 4: Narrate
+  // Stage 4: Narrate — system cached across all 14 layers.
   await startSub(runId, rt, "narrate");
   const narrateCall = await callClaudeJson({
-    system: buildNarrateSystemPrompt(layerKey),
-    user: buildNarrateUserPrompt(profile, hypothesised, challenge, nowIso),
+    system: [{ text: NARRATE_SYSTEM_PROMPT, cache: true }],
+    user: buildNarrateUserPrompt(profile, hypothesised, challenge, nowIso, layerKey),
     schema: narrateOutputSchema,
     // Narrate emits a full layer content blob plus two claim arrays, which
     // routinely runs to ~25KB and gets truncated at 8192 tokens. Allow up to
@@ -382,17 +382,25 @@ async function runLayerStages(
     narrate = { content, verified_claims: verified, modelled_claims: modelled };
   }
 
-  // Stage 5: Score
+  // Stage 5: Score — runs on Haiku 4.5 (smaller, faster). The system prompt
+  // here is short (~280 tokens), well under Haiku's 2048-token cache minimum,
+  // so we do NOT mark it cacheable — Anthropic would silently ignore the
+  // marker and we'd be claiming a benefit that doesn't exist. Score's wall
+  // time saving comes entirely from the model swap (8-13s vs ~90s on Sonnet),
+  // not from caching.
+  let scoreOk = false;
   await startSub(runId, rt, "score");
   const scoreCall = await callClaudeJson({
-    system: buildScoreSystemPrompt(layerKey),
-    user: buildScoreUserPrompt(narrate),
+    system: SCORE_SYSTEM_PROMPT,
+    user: buildScoreUserPrompt(narrate, layerKey),
     schema: scoreOutputSchema,
     maxTokens: 4096,
+    model: SCORE_MODEL,
     log: layerLog,
     context: `phase2/${layerKey}/score`,
   });
   if (scoreCall.ok) {
+    scoreOk = true;
     const s = scoreCall.value;
     // Patch confidence onto narrate.content.
     narrate.content.confidence = Math.min(95, s.confidence);
@@ -417,8 +425,14 @@ async function runLayerStages(
   const verifiedFinal = narrate.verified_claims.map((c) => verifiedClaimSchema.parse(c));
   const modelledFinal = narrate.modelled_claims.map((c) => modelledClaimSchema.parse(c));
 
+  // Layer is "complete" only when all three quality-bearing stages succeeded.
+  // Score is included because a Haiku/provider drift or schema regression
+  // would otherwise be silent at layer status level (we'd still ship a layer
+  // with locally-synthesized fallback confidence and no signal in the run).
+  // Challenge has a degraded-but-acceptable fallback (empty challenge -> just
+  // hypothesise content), but Score and Narrate are stronger signals.
   const status: PipelineStageStatus =
-    narrateOk && challengeOk ? "complete" : "partial";
+    narrateOk && challengeOk && scoreOk ? "complete" : "partial";
   const finalEntry = buildLayerEntry(rt, status);
   await syncLayerEntry(runId, finalEntry);
 
