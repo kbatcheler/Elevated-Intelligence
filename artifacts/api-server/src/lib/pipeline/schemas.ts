@@ -87,13 +87,13 @@ const gapKindSchema = z.enum(["DATA", "SIGNAL", "INTEG", "MODEL", "FLOW"]);
 export const layerContentSchema = z.object({
   narrative: z.string().min(20).max(6000),
   headline_finding: z.string().min(5).max(600),
-  headline_impact: z.string().min(2).max(300),
+  headline_impact: z.string().min(2).max(500),
   headline_lever: z.string().min(5).max(600),
   causes: z
     .array(
       z.object({
-        title: z.string().min(2).max(240),
-        impact: z.string().max(240),
+        title: z.string().min(2).max(300),
+        impact: z.string().max(500),
         detail: z.string().max(1200),
         confidence: z.number().min(0).max(100).optional(),
       }),
@@ -103,9 +103,9 @@ export const layerContentSchema = z.object({
   actions: z
     .array(
       z.object({
-        title: z.string().min(2).max(240),
+        title: z.string().min(2).max(300),
         detail: z.string().max(1200),
-        impact: z.string().max(240),
+        impact: z.string().max(500),
         timing: z.string().max(160).optional(),
         owner: z.string().max(160).optional(),
       }),
@@ -260,7 +260,7 @@ export const artifactsOutputSchema = z.object({
         key: z.string().max(120),
         label: z.string().max(240),
         description: z.string().max(1200),
-        impact: z.string().max(500).optional(),
+        impact: z.string().max(1200).optional(),
       }),
     )
     .min(1)

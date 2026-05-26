@@ -5,6 +5,7 @@ import companiesRouter from "./companies";
 import companyIdentifyRouter from "./companyIdentify";
 import intelligenceRouter from "./intelligence";
 import tenantsRouter from "./tenants";
+import devRouter from "./dev";
 import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -24,5 +25,10 @@ router.use(tenantsRouter);
 router.use(companiesRouter);
 router.use(companyIdentifyRouter);
 router.use(intelligenceRouter);
+
+// Dev-only diagnostics (Gemini/Claude smoke tests). Never mounted in prod.
+if (process.env.NODE_ENV !== "production") {
+  router.use(devRouter);
+}
 
 export default router;

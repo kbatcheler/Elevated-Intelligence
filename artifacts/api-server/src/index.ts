@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { reconcileStaleRuns } from "./lib/pipeline/reconciler";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +23,8 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  // Third-line defense for runs orphaned by process kill or transient DB
+  // outage during failRun. Fire-and-forget; the reconciler logs its own
+  // errors and never throws.
+  void reconcileStaleRuns();
 });
