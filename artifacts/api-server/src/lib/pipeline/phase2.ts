@@ -10,8 +10,10 @@
 //   - all layers failing -> run fails
 //   - artifacts failure -> run partial
 //
-// Concurrency: LAYER_CONCURRENCY=5 layers in flight at once; stages within a
-// layer run sequentially.
+// Concurrency: LAYER_CONCURRENCY layers in flight at once; stages within a
+// layer run sequentially. Raised from 3 to 4 after the cache+Haiku speed
+// pass freed enough Anthropic TPM headroom that 429 backoffs were the
+// binding constraint at 3.
 
 import { eq } from "drizzle-orm";
 import {
@@ -84,11 +86,13 @@ const STAGE_LAYERS = "layers";
 const STAGE_ARTIFACTS = "artifacts";
 const STAGE_COMMIT = "commit";
 
-// Reduced from 5 to 3 after the first smoke run hit Anthropic 429s with 5
-// layers × 4-5 Claude calls each in flight. With Retry-After backoff in the
-// wrapper, 3 is the sweet spot: stays under the rate limit while still
-// keeping wall-clock under ~15 minutes for 14 layers.
-const LAYER_CONCURRENCY = 3;
+// History: initially 5 -> dropped to 3 after the first smoke run hit
+// Anthropic 429s with 5 layers × 4-5 Claude calls each in flight. After the
+// 2026-05-26 cache+Haiku speed pass cut effective input tokens by ~75% and
+// killed Sonnet usage on Score, TPM headroom opened back up and 429s became
+// the binding wall-time constraint at 3. Bumped to 4 as a conservative first
+// step; raise to 5 if 4 stays clean across multiple tenant re-seeds.
+const LAYER_CONCURRENCY = 4;
 
 export function initialPhase2Stages(): PipelineStage[] {
   return [
