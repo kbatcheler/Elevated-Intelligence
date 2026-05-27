@@ -22,7 +22,7 @@ export const signalSchema = z.object({
   observation: z.string().min(5).max(800),
   source_url: urlString,
   source_title: z.string().max(400).optional().default(""),
-  recency: z.string().max(40).optional().default(""),
+  recency: z.string().max(80).optional().default(""),
 });
 export type Signal = z.infer<typeof signalSchema>;
 

@@ -80,6 +80,21 @@ Architect review of the speed pass surfaced two issues, both fixed:
 - **Honest Score caching**: `SCORE_SYSTEM_PROMPT` is ~280 tokens, well below Haiku's 2048-token cache minimum, so the `cache_control` marker was being silently dropped by Anthropic. Removed the marker on the Score call and updated the comment to make the assumption explicit. Score's wall-time win comes entirely from the model swap, not caching.
 - **Score success in layer status**: `runLayerStages` previously computed layer status from `narrateOk && challengeOk` only, so a Haiku model drift or score schema regression could ship layers with locally-synthesized fallback confidence and zero signal at the layer level. Added `scoreOk` to the status check; failed Score now correctly marks the layer `partial`.
 
+## Speed pass #2 (2026-05-27): concurrency 3 -> 4
+
+Lever #3 from the speed-pass plan. `LAYER_CONCURRENCY` in `phase2.ts` raised from 3 to 4 now that cache+Haiku had freed enough Anthropic TPM headroom that 429 backoffs were the binding wall-time constraint at 3.
+
+Live verification on Stripe re-seed (runId `b0bade61-c1b8-4125-97f5-5ff3b90ca63d`):
+
+- **Wall time: 33:54** vs **45:16** at concurrency 3 = **11:22 faster (25% reduction)**. Lines up with the original speed-pass projection.
+- **Cache reads compound across waves**: 2K cold on the first call, 41-44K by the end of the first wave, 81-94K by the third wave. Caching is doing exactly what it's supposed to do.
+- **Per-layer durations actually improved** vs c=3 (business-performance 375s vs 389s, finance 429s vs 472s) because warmer caches reduce per-call input-processing latency.
+- **429 backoffs went from 4 -> 36 cumulative**. Every wave start fires N hypothesise calls simultaneously, and the first one to lose the rate-limit dice eats one ~50-60s backoff cascade (5+10+15+20s, then a retry-once with another 5s); the others slip through and the wave naturally desyncs after that. The existing retry+backoff logic absorbs the cascades cleanly. Net wall-time impact per wave is roughly one 60s burst, amortised over 4 layers running in parallel.
+- **Quality**: confidence 73.9 (+1.0 vs prior 72.9). Claim totals dipped to 79 verified + 90 modelled = 169 (vs 101 + 88 = 189), but the entire deficit is concentrated in a single layer that went `partial`. See next bullet.
+- **One layer went partial** (supply-chain) via `Anthropic 429 -> retry-once -> schema validation failed (signals[N].recency > 40 chars)`. Pre-existing schema flake: `recency` is descriptive text like "Q4 2024 annual letter" and 40 chars is a tight cap; c=3 dodged it by happening to spend less time in the retry path. Bumped `recency` cap from 40 to 80 in `phase2-schemas.ts` to stop dropping otherwise-good perceive responses on a length nit. Still well under `source_title` (400) and `observation` (800), so does not invite essays. No other code change needed for the partial-layer mechanism itself: the architect-driven `scoreOk` addition from the prior pass and the existing perceive empty-signals fallback both did exactly what they were designed to do here.
+
+If concurrency 4 holds clean across Patagonia and Twilio re-seeds, the next lever (5) is a one-line change. The comment block above `LAYER_CONCURRENCY` documents the history and the bump-to-5 condition.
+
 ## Rollback
 
 Set `USE_PHASE2_PIPELINE=false` to fall back to the Phase 1 single-pass generator. Both runners share the same on-disk schema, so no migration is needed.
