@@ -95,6 +95,29 @@ Live verification on Stripe re-seed (runId `b0bade61-c1b8-4125-97f5-5ff3b90ca63d
 
 If concurrency 4 holds clean across Patagonia and Twilio re-seeds, the next lever (5) is a one-line change. The comment block above `LAYER_CONCURRENCY` documents the history and the bump-to-5 condition.
 
+### c=4 validation across Patagonia + Twilio (2026-05-27)
+
+Sequential re-seeds at the new settings to test whether c=4 was a one-tenant fluke or holds across the fleet. User gate for trying c=5 was "both clean, totals back to ~189 claims, zero partials, zero new schema surprises". Result: **both runs landed `partial`, gate failed, c=5 is off the table.** Settling on c=4 as the final value.
+
+| Tenant     | Wall time | Status   | Verified + modelled | Avg conf | Partial layer            | Failure mode                                                                                          |
+|------------|-----------|----------|---------------------|----------|--------------------------|-------------------------------------------------------------------------------------------------------|
+| Stripe     | 33:54     | partial  | 79 + 90 = 169       | 73.9     | supply-chain             | Anthropic 429 -> retry -> perceive `signals[N].recency > 40` (fixed: cap 40 -> 80)                    |
+| Patagonia  | 32:26     | partial  | 85 + 84 = 169       | 71.9     | contract-management      | Gemini schema: `factual_corrections[0].correct_entity > 200` -> retry -> Gemini 429 RATELIMIT         |
+| Twilio     | 34:25     | partial  | 66 + 90 = 156       | 73.6     | competitive-intelligence | Gemini schema: `claim_verdicts[N].suggested_revision = null` (expected string) -> retry -> Gemini 429 |
+
+Wall-time is now very consistent across tenants at c=4 (32-34 min), down from the 46-49 min c=3 baseline. Cache reads compounded the same way across all three runs.
+
+**Pattern in the three partials.** Different root-cause schema flake each time, all in the Challenge stage, all on the Gemini side, all compounded by a Gemini-side 429 on the single retry making them unrecoverable. The retry+backoff machinery itself is fine; the Anthropic-side 429s during c=4 waves were absorbed cleanly (66 backoffs across two tenants, zero new Anthropic-side partials). The remaining failure surface is Gemini schema strictness combined with Gemini's much tighter rate limits on retry.
+
+Two low-effort schema relaxations would likely close the remaining failure surface without changing semantics, in the same spirit as the c=3 recency 40 -> 80 fix:
+
+- `claim_verdicts[].suggested_revision`: make nullable (Gemini emits `null` when verdict is `verified` and no revision is needed; current schema rejects that as "expected string").
+- `factual_corrections[].correct_entity`: bump cap from 200 to ~400, matching `source_title`. 200 chars is tight for fully-qualified entity names that include parenthetical context.
+
+Not shipping these in this pass — scope was the concurrency validation, and the c=4 settings are now durable enough to ship as-is. Captured here as the next cheap reliability lever if the partial rate continues to bother us in production.
+
+**Decision: keep `LAYER_CONCURRENCY = 4`.** Speed-pass plan is complete. Net wall-time delta from the original ~47 min baseline is **~33 min, a 30% reduction**, with confidence holding steady (~73 vs ~70 baseline) and the partial rate unchanged at 1 layer per tenant.
+
 ## Rollback
 
 Set `USE_PHASE2_PIPELINE=false` to fall back to the Phase 1 single-pass generator. Both runners share the same on-disk schema, so no migration is needed.
