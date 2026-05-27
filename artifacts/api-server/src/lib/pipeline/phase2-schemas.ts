@@ -180,7 +180,7 @@ export const challengeOutputSchema = z.object({
           .max(8)
           .optional()
           .default([]),
-        suggested_revision: z.string().max(1200).optional(),
+        suggested_revision: z.string().max(1200).nullish(),
       }),
     )
     .max(60)
@@ -191,7 +191,7 @@ export const challengeOutputSchema = z.object({
     .array(
       z.object({
         incorrect_entity: z.string().max(200),
-        correct_entity: z.string().max(200),
+        correct_entity: z.string().max(400),
       }),
     )
     .max(10)

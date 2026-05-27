@@ -118,6 +118,58 @@ Not shipping these in this pass — scope was the concurrency validation, and th
 
 **Decision: keep `LAYER_CONCURRENCY = 4`.** Speed-pass plan is complete. Net wall-time delta from the original ~47 min baseline is **~33 min, a 30% reduction**, with confidence holding steady (~73 vs ~70 baseline) and the partial rate unchanged at 1 layer per tenant.
 
+## Phase 2 final verification (2026-05-27)
+
+Two one-line Gemini Challenge schema relaxations shipped in `lib/pipeline/phase2-schemas.ts`, then all three test tenants sequentially re-seeded at the locked c=4 settings to verify clean.
+
+### Schema fixes shipped
+
+- `claim_verdicts[].suggested_revision`: `z.string().max(1200).optional()` -> `z.string().max(1200).nullish()`. Gemini was emitting an explicit `null` on verdicts that didn't need a revision, which `.optional()` rejected (it permits `undefined` only, not `null`). Caused the Twilio `competitive-intelligence` partial in the c=4 validation run.
+- `factual_corrections[].correct_entity`: `z.string().max(200)` -> `z.string().max(400)`. 200 chars was too tight for fully-qualified entity names with parenthetical context. Caused the Patagonia `contract-management` partial in the c=4 validation run. The companion `incorrect_entity` left at 200 per the brief.
+
+Same flavor as the prior `signals[N].recency` 40 -> 80 fix: relax a tight Gemini schema cap that was poisoning the single-retry path under Gemini-side 429s.
+
+### Re-seed results
+
+Sequential re-seeds, each through the live refresh endpoint, after restarting the api-server with the new schema:
+
+| Tenant     | Wall time | Status    | Partials | Verified | Modelled | Total | Avg conf |
+|------------|-----------|-----------|----------|----------|----------|-------|----------|
+| Stripe     | 32:43     | complete  | 0        | 77       | 90       | 167   | 72.0     |
+| Patagonia  | 33:58     | complete  | 0        | 82       | 88       | 170   | 72.7     |
+| Twilio     | 33:29     | complete  | 0        | 73       | 87       | 160   | 73.9     |
+
+All three: status `ready` at the tenant level, all 14 layers `complete` (not one `partial`), wall time stable in the 32-34 min band that c=4 has settled into across now-six total runs.
+
+### Gate scoring against the brief
+
+- **Status `ready`, zero partial layers**: hit on all three. This is the primary clean-data ask for Phase 3 UI work, and the schema fixes did exactly what they were designed to do.
+- **Verified 75-100 per tenant**: Stripe 77 hit, Patagonia 82 hit, Twilio 73 just below (-2). Twilio's `customer-intelligence` and `talent-hr` layers each landed at v=3 instead of the typical v=5-7, on the low end of what Gemini will verify for an enterprise-software tenant.
+- **Modelled 80-100 per tenant**: hit on all three (90, 88, 87).
+- **Combined 180-190 per tenant**: missed on all three (167, 170, 160). The brief's 180-190 range was an aspirational target on top of the prior c=4 baselines (which were 169, 169, 156 - all already below 180-190). The schema fixes recover the partial layer's content (~6-12 claims), but a `partial` layer in the prior run had typically still shipped some hypothesise-derived modelled claims, so the net delta is smaller than "one full layer of claims would add". This is a Phase 2 measurement reality, not a regression.
+- **Avg confidence 70-78 per tenant**: hit on all three (72.0, 72.7, 73.9).
+
+Net: primary clean-data gate hit cleanly. The two volume gates that missed (Twilio verified by 2, combined total by 10-30) reflect the baseline volume the pipeline produces at c=4 with current prompts, not anything the schema fixes could move. Sector-specific tuning to lift Twilio's verified count is explicitly out of scope per the brief.
+
+### Operational notes from the verification run
+
+- Zero new schema flakes surfaced across 42 layers (14 × 3 tenants) of Challenge stage runs. Whack-a-mole counter stayed at zero - no need to spend any of the three allotted cycles.
+- Anthropic 429 backoff behavior unchanged from prior c=4 runs (cascades absorbed cleanly).
+- No Gemini-side 429s reached the unrecoverable path because no Gemini retry was actually triggered - the first response validated clean in every Challenge call across all three tenants.
+- `pnpm run typecheck` clean across all four workspace packages. `pnpm run build` from the repo root fails on `mockup-sandbox` because its `vite.config.ts` reads `PORT` from env (provided by the workflow, not by bash); this is the documented pnpm-workspace gotcha and not a verification failure. The two shipping artifacts (api-server, portal) typecheck and the api-server `dev` script (build + start) succeeded on restart, which is what actually validates the schema change is live.
+
+### Verdict
+
+**Clean-data gate passed. Full brief acceptance not fully met - waiver requested.** Pipeline produces partial-free data across all three test tenants at the locked c=4 + cache + Haiku + relaxed-schema settings (zero partials, status `ready`, wall time durable at ~33 min, confidence 72-74). The two volume gates the brief specified (verified 75-100, combined 180-190) miss on Twilio verified (73, -2) and on combined totals for all three (160-170 vs 180-190). The schema fixes did exactly what they were designed to do; the volume gap is a prompt-density / sector-tuning concern that the brief explicitly put out of scope for this pass. Phase 3 UI work can begin against this data with no partial-layer ambiguity, but the full brief gate is not cleared without Kim's explicit waiver on the volume targets.
+
+### Outstanding for Kim
+
+One judgement call before publish:
+
+- **Combined claim totals (160-170) sit below the brief's 180-190 target across all three test tenants, and Twilio verified is 2 below the 75-100 floor.** Consistent with what we've measured across six total runs at c=4 - this is the baseline volume the current prompts produce, not a regression. Two ways to read it: (a) waive the volume gates, accept this as the real Phase 2 output, and tune prompt-side claim density in a future pass if it bites in the UI; (b) treat 180-190 as a hard pre-publish bar and reopen prompt tuning before Phase 3 starts. I'd recommend (a) - the schema fixes did their job, prompt tuning is a separate larger lever, and the brief explicitly put sector-specific tuning out of scope - but the gate was explicit so the call is yours.
+
+Phase 2 verification complete on the clean-data axis. Volume-gate waiver and publish decision both pending Kim's confirmation.
+
 ## Rollback
 
 Set `USE_PHASE2_PIPELINE=false` to fall back to the Phase 1 single-pass generator. Both runners share the same on-disk schema, so no migration is needed.
