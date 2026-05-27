@@ -160,15 +160,16 @@ Net: primary clean-data gate hit cleanly. The two volume gates that missed (Twil
 
 ### Verdict
 
-**Clean-data gate passed. Full brief acceptance not fully met - waiver requested.** Pipeline produces partial-free data across all three test tenants at the locked c=4 + cache + Haiku + relaxed-schema settings (zero partials, status `ready`, wall time durable at ~33 min, confidence 72-74). The two volume gates the brief specified (verified 75-100, combined 180-190) miss on Twilio verified (73, -2) and on combined totals for all three (160-170 vs 180-190). The schema fixes did exactly what they were designed to do; the volume gap is a prompt-density / sector-tuning concern that the brief explicitly put out of scope for this pass. Phase 3 UI work can begin against this data with no partial-layer ambiguity, but the full brief gate is not cleared without Kim's explicit waiver on the volume targets.
+**Phase 2 locked (waiver granted 2026-05-27).** Pipeline produces partial-free data across all three test tenants at the locked c=4 + cache + Haiku + relaxed-schema settings: zero partials, status `ready`, wall time durable at ~33 min per tenant, confidence 72-74. The volume gates from the brief (verified 75-100, combined 180-190) miss on Twilio verified (73, -2) and on combined totals across all three tenants (160-170 vs 180-190); Kim granted an explicit waiver on these on the basis that **160-170 combined is the empirical claim-volume floor produced by the current prompts at c=4, not a regression** - consistent across all six c=4 runs we have data for. This baseline is Phase 2 final.
 
-### Outstanding for Kim
+### Phase 3 ground rules carried forward from this waiver
 
-One judgement call before publish:
+- **Phase 3 design plans around the 160-170 combined / 73-82 verified / 87-90 modelled per-tenant baseline**, not the brief's aspirational 180-190 target. UI layouts, density assumptions, and any "empty state vs sparse state" copy should assume this volume.
+- **Prompt-density tuning is not chased pre-emptively.** If a Phase 3 UI panel surfaces a concrete signal that more claims would meaningfully improve the user-facing read (e.g. a layer where 3-4 verified claims demonstrably cannot tell the story), that triggers a targeted prompt pass for that specific stage / layer. Until then, current prompts stay as-is and engineering effort goes into Phase 3 itself.
 
-- **Combined claim totals (160-170) sit below the brief's 180-190 target across all three test tenants, and Twilio verified is 2 below the 75-100 floor.** Consistent with what we've measured across six total runs at c=4 - this is the baseline volume the current prompts produce, not a regression. Two ways to read it: (a) waive the volume gates, accept this as the real Phase 2 output, and tune prompt-side claim density in a future pass if it bites in the UI; (b) treat 180-190 as a hard pre-publish bar and reopen prompt tuning before Phase 3 starts. I'd recommend (a) - the schema fixes did their job, prompt tuning is a separate larger lever, and the brief explicitly put sector-specific tuning out of scope - but the gate was explicit so the call is yours.
+### Outstanding
 
-Phase 2 verification complete on the clean-data axis. Volume-gate waiver and publish decision both pending Kim's confirmation.
+None. Waiver recorded above, publish cleared.
 
 ## Rollback
 
