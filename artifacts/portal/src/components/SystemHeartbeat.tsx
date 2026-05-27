@@ -24,6 +24,7 @@ export default function SystemHeartbeat({ onNavigate }: { onNavigate: (key: stri
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
+    if (ACTIVITY_STREAM.length === 0) return;
     const id = setInterval(() => setIdx(i => (i + 1) % ACTIVITY_STREAM.length), 3200);
     return () => clearInterval(id);
   }, [ACTIVITY_STREAM.length]);
@@ -32,10 +33,16 @@ export default function SystemHeartbeat({ onNavigate }: { onNavigate: (key: stri
     return () => clearInterval(id);
   }, []);
 
-  const ev = ACTIVITY_STREAM[idx % ACTIVITY_STREAM.length];
+  // Empty-tenant guard. When no active tenant is selected (cold start, or
+  // every library tenant is still `seeding`/`failed`) the narrative bundle
+  // returns ACTIVITY_STREAM = []. Indexing [idx % 0] yields NaN -> undefined
+  // -> crash on `ev.tone`. Bail to a quiet placeholder row instead.
+  const ev = ACTIVITY_STREAM.length > 0
+    ? ACTIVITY_STREAM[idx % ACTIVITY_STREAM.length]
+    : null;
   const evColor =
-    ev.tone === "alert" ? "var(--coral)" :
-    ev.tone === "warn"  ? "var(--amber)" :
+    ev?.tone === "alert" ? "var(--coral)" :
+    ev?.tone === "warn"  ? "var(--amber)" :
                            "var(--navy)";
 
   return (
@@ -75,16 +82,22 @@ export default function SystemHeartbeat({ onNavigate }: { onNavigate: (key: stri
         </button>
       </div>
       <div className="flex-1 border-l border-[var(--cream-dark)] flex items-center overflow-hidden">
-        <button
-          key={idx}
-          onClick={() => onNavigate(ev.layer)}
-          className="flex items-center gap-3 px-6 w-full text-left hover:bg-[var(--cream-dark)]/40 transition-colors animate-[fadeSlide_0.4s_ease-out]"
-        >
-          <span className="font-sans tabular-nums text-[var(--slate-light)]">{ev.ts}</span>
-          <span className="h-1 w-1 rounded-full shrink-0" style={{ background: evColor }} />
-          <span className="font-sans text-[var(--ink)] truncate" style={{ color: evColor }}>{ev.text}</span>
-          <span className="eyebrow text-[var(--slate-light)] ml-auto shrink-0">{ev.layer.replace(/-/g, " ")}</span>
-        </button>
+        {ev ? (
+          <button
+            key={idx}
+            onClick={() => onNavigate(ev.layer)}
+            className="flex items-center gap-3 px-6 w-full text-left hover:bg-[var(--cream-dark)]/40 transition-colors animate-[fadeSlide_0.4s_ease-out]"
+          >
+            <span className="font-sans tabular-nums text-[var(--slate-light)]">{ev.ts}</span>
+            <span className="h-1 w-1 rounded-full shrink-0" style={{ background: evColor }} />
+            <span className="font-sans text-[var(--ink)] truncate" style={{ color: evColor }}>{ev.text}</span>
+            <span className="eyebrow text-[var(--slate-light)] ml-auto shrink-0">{ev.layer.replace(/-/g, " ")}</span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-3 px-6 w-full">
+            <span className="eyebrow text-[var(--slate-light)]">No active tenant, seed or select one to stream activity.</span>
+          </div>
+        )}
       </div>
       <style>{`
         @keyframes fadeSlide {
