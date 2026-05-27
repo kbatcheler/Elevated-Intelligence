@@ -60,7 +60,41 @@ export default function LoginGate({ children }: { children: ReactNode }) {
     }
   };
 
-  if (state === "loading") return null;
+  // While the auth check is in flight render a navy splash with a small
+  // brand mark instead of `return null`. Previously this rendered nothing
+  // and any hang on /api/auth/status (cold start, transient network, stale
+  // service worker) left the user staring at the body's cream background
+  // with no indication the page was alive. The splash also matches the
+  // login card's navy bg so the transition into the form is seamless.
+  if (state === "loading") {
+    return (
+      <div
+        role="status"
+        aria-label="Loading Different Day"
+        className="min-h-screen flex flex-col items-center justify-center gap-3"
+        style={{ background: "var(--navy-deep, #0F1A33)" }}
+      >
+        <div className="flex items-center gap-2.5">
+          <span
+            className="h-2 w-2 rounded-full"
+            style={{ background: "var(--gold, #D4AF37)" }}
+          />
+          <span
+            className="font-serif text-[22px] font-semibold tracking-tight"
+            style={{ color: "var(--cream, #F4ECD8)" }}
+          >
+            Different Day
+          </span>
+        </div>
+        <span
+          className="font-sans text-[10px] uppercase tracking-[0.18em]"
+          style={{ color: "var(--gold-light, #E5C97A)" }}
+        >
+          Elevated Intelligence
+        </span>
+      </div>
+    );
+  }
   if (state === "authed") return <>{children}</>;
 
   return (
