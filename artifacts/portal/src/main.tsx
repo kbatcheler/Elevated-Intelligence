@@ -3,6 +3,7 @@ import App from "./App";
 import { AppProvider } from "./context/AppContext";
 import { CompanyProvider } from "./context/CompanyContext";
 import LoginGate from "./components/LoginGate";
+import AppErrorBoundary from "./components/AppErrorBoundary";
 import "./index.css";
 
 // Swallow the harmless "ResizeObserver loop" notification that React Flow
@@ -42,11 +43,13 @@ window.addEventListener(
 );
 
 createRoot(document.getElementById("root")!).render(
-  <LoginGate>
-    <CompanyProvider>
-      <AppProvider>
-        <App />
-      </AppProvider>
-    </CompanyProvider>
-  </LoginGate>,
+  <AppErrorBoundary>
+    <LoginGate>
+      <CompanyProvider>
+        <AppProvider>
+          <App />
+        </AppProvider>
+      </CompanyProvider>
+    </LoginGate>
+  </AppErrorBoundary>,
 );
