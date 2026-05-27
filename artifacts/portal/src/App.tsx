@@ -37,6 +37,7 @@ import { signOut } from "./components/LoginGate";
 import { useApp } from "./context/AppContext";
 import { useCompany } from "./context/CompanyContext";
 import EmptyLibrary from "./components/EmptyLibrary";
+import { TooltipProvider } from "./components/ui/tooltip";
 
 type NavItem = { key: string; label: string; group: string; icon: LucideIcon; status: "good" | "warn" | "bad" };
 
@@ -156,6 +157,11 @@ export default function App() {
   }
 
   return (
+    // One TooltipProvider at the app root so every Phase 3 claim
+    // annotation, header count badge, and Morning Brief V·M badge shares a
+    // single Radix provider (no duplicated hover-timer state). 300ms delay
+    // per the Phase 3 brief.
+    <TooltipProvider delayDuration={300}>
     <div className="min-h-screen flex flex-col" style={{ background: "var(--cream)" }}>
       {/* Top bar */}
       <header
@@ -424,6 +430,7 @@ export default function App() {
       <CompanyPicker />
       <CompanyBootSplash />
     </div>
+    </TooltipProvider>
   );
 }
 

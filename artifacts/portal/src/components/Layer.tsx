@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { ArrowRight, FileSearch, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import type { LayerData, Tone } from "../data/layers";
+import ClaimAnnotation, { claimCounts } from "./claims/ClaimAnnotation";
+import { reportBrokenLink } from "../lib/reportBrokenLink";
+import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import Chart from "./Chart";
 import ConfidenceBand from "./ConfidenceBand";
 import ChallengeModal from "./ChallengeModal";
@@ -17,7 +20,7 @@ import PipelineDetail from "./PipelineDetail";
 import PeerBenchmark from "./PeerBenchmark";
 import DemandLink from "./DemandLink";
 import { useApp } from "../context/AppContext";
-import { useNarrative, useSwap, useIsDefaultProfile } from "../context/CompanyContext";
+import { useNarrative, useSwap, useIsDefaultProfile, useCompany } from "../context/CompanyContext";
 import { TIMELINES as TIMELINES_RAW, type Timeline } from "../data/timetravel";
 import { scenarioForLayer } from "../data/scenarios";
 
@@ -46,6 +49,7 @@ export default function Layer({
   const [open, setOpen] = useState(false);
   const { openEvidence, openWhy, pulse, timeOffsetByLayer } = useApp();
   const { PEERS, EVIDENCE } = useNarrative();
+  const { activeTenant } = useCompany();
   const isDefaultProfile = useIsDefaultProfile();
   // TIMELINES contains Meridian Industrial-shaped "Diagnosis timeline" headlines
   // ("8% behind plan, 380bps margin gap …") that the vocab swap cannot
@@ -68,12 +72,30 @@ export default function Layer({
   const scenario = scenarioForLayer(layer.key);
   const showWhatIf = scenario != null;
 
+  // Phase 3 annotation context: pulled out so every ClaimAnnotation below
+  // stays compact. Default (Meridian Industrial) tenants have empty arrays
+  // by design, the gold pills and cream bands only ever fire on
+  // server-seeded tenants. `onReportBroken` fires the dead-link write
+  // surface added in Phase 3.4 (best-effort, network errors swallowed).
+  const vc = layer.verifiedClaims;
+  const mc = layer.modelledClaims;
+  const onReportBroken = ({ sourceUrl, claimPath }: { sourceUrl: string; claimPath: string }) => {
+    void reportBrokenLink({
+      layerKey: layer.key,
+      claimPath,
+      sourceUrl,
+      tenantId: activeTenant?.id,
+    });
+  };
+
   // Reusable fragments so the four-act page flow stays scannable below.
   const narrativeCard = (
     <div className="card card-hero card-accent-coral">
       <div className="eyebrow text-[var(--coral)] mb-3">Executive narrative</div>
       <p className="font-serif text-[19px] leading-[1.55] text-[var(--ink)]">
-        {isRewound && snap ? snap.headline : layer.narrative}
+        <ClaimAnnotation claimPath="narrative" verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
+          {isRewound && snap ? snap.headline : layer.narrative}
+        </ClaimAnnotation>
       </p>
       {isRewound && (
         <div className="mt-3 pt-3 border-t border-[var(--cream-dark)] font-sans italic text-[11px] text-[var(--amber)]">
@@ -87,7 +109,11 @@ export default function Layer({
     <div className="card card-accent-teal">
       <div className="flex items-center justify-between mb-4">
         <div className="font-sans font-semibold text-[16px] text-[var(--navy)]">Recommended actions</div>
-        <span className="pill pill-teal">{layer.actionsRecoveryUsd}</span>
+        <span className="pill pill-teal">
+          <ClaimAnnotation claimPath="headline_impact" verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
+            {layer.actionsRecoveryUsd}
+          </ClaimAnnotation>
+        </span>
       </div>
       <ul className="space-y-4">
         {layer.actions.map((a, i) => (
@@ -95,10 +121,22 @@ export default function Layer({
             <span className="mt-1.5 inline-block h-2 w-2 rounded-full shrink-0" style={{ background: "var(--gold)" }} />
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline justify-between gap-3">
-                <div className="font-sans font-semibold text-[13px] text-[var(--navy)] leading-snug">{a.title}</div>
-                <div className="font-sans text-[14px] font-bold text-[var(--teal)] whitespace-nowrap tabular-nums">{a.impact}</div>
+                <div className="font-sans font-semibold text-[13px] text-[var(--navy)] leading-snug">
+                  <ClaimAnnotation claimPath={`actions[${i}].title`} verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
+                    {a.title}
+                  </ClaimAnnotation>
+                </div>
+                <div className="font-sans text-[14px] font-bold text-[var(--teal)] whitespace-nowrap tabular-nums">
+                  <ClaimAnnotation claimPath={`actions[${i}].impact`} verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
+                    {a.impact}
+                  </ClaimAnnotation>
+                </div>
               </div>
-              <div className="font-sans italic text-[11px] text-[var(--slate-light)] leading-snug mt-0.5">{a.detail}</div>
+              <div className="font-sans italic text-[11px] text-[var(--slate-light)] leading-snug mt-0.5">
+                <ClaimAnnotation claimPath={`actions[${i}].detail`} verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
+                  {a.detail}
+                </ClaimAnnotation>
+              </div>
               <div className="mt-2 flex items-center gap-2">
                 <CommitButton
                   layer={layer.key}
@@ -145,7 +183,9 @@ export default function Layer({
               </span>
             </div>
             <div className="font-sans font-semibold mt-2 tabular-nums" style={{ fontSize: 36, lineHeight: 1.05, color: toneColor(m.tone) }}>
-              <AnimatedNumber value={m.value} />
+              <ClaimAnnotation claimPath={`metrics[${i}]`} verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
+                <AnimatedNumber value={m.value} />
+              </ClaimAnnotation>
             </div>
             <div className="flex items-end justify-between mt-2 gap-3">
               <div className="font-sans italic text-[11px] text-[var(--slate-light)]">{m.sub}</div>
@@ -183,10 +223,22 @@ export default function Layer({
           <li key={i} className={"pl-7 relative " + (isHi(`cause:${i}`) ? "pulse-coral !rounded-sm" : "")}>
             <span className="absolute left-0 top-0 font-serif font-semibold text-[18px] text-[var(--gold)] leading-none">{i + 1}.</span>
             <div className="flex items-baseline justify-between gap-3">
-              <div className="font-sans font-semibold text-[14px] text-[var(--navy)]">{c.title}</div>
-              <div className="font-sans text-[12px] font-bold text-[var(--coral)] whitespace-nowrap tabular-nums">{c.impact}</div>
+              <div className="font-sans font-semibold text-[14px] text-[var(--navy)]">
+                <ClaimAnnotation claimPath={`causes[${i}].title`} verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
+                  {c.title}
+                </ClaimAnnotation>
+              </div>
+              <div className="font-sans text-[12px] font-bold text-[var(--coral)] whitespace-nowrap tabular-nums">
+                <ClaimAnnotation claimPath={`causes[${i}].impact`} verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
+                  {c.impact}
+                </ClaimAnnotation>
+              </div>
             </div>
-            <div className="font-sans italic text-[12px] text-[var(--slate)] leading-snug mt-1">{c.detail}</div>
+            <div className="font-sans italic text-[12px] text-[var(--slate)] leading-snug mt-1">
+              <ClaimAnnotation claimPath={`causes[${i}].detail`} verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
+                {c.detail}
+              </ClaimAnnotation>
+            </div>
           </li>
         ))}
       </ol>
@@ -208,7 +260,11 @@ export default function Layer({
                 <span className="font-sans text-[11px] font-bold text-[var(--coral)] tabular-nums">+{g.confidenceLiftPp}pp confidence</span>
               </div>
               <div className="font-sans font-semibold text-[12px] text-[var(--navy)] mt-1.5">{g.title}</div>
-              <div className="font-sans italic text-[11px] text-[var(--slate-light)] leading-snug mt-0.5">{g.detail}</div>
+              <div className="font-sans italic text-[11px] text-[var(--slate-light)] leading-snug mt-0.5">
+                <ClaimAnnotation claimPath={`gaps[${i}].description`} verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
+                  {g.detail}
+                </ClaimAnnotation>
+              </div>
               <div className="font-sans text-[11px] text-[var(--slate)] mt-1">
                 Closed by <span className="font-semibold text-[var(--navy)]">{g.solution}</span>
               </div>
@@ -291,6 +347,16 @@ export default function Layer({
         </button>
       </div>
 
+      {/* Phase 3.3 provenance count strip. Only renders when Phase 2 produced
+          at least one claim, the default Meridian Industrial tenant has
+          empty arrays so the strip stays hidden and the page above it does
+          not shift. */}
+      <ClaimCountStrip
+        verified={claimCounts(vc, mc).verified}
+        modelled={claimCounts(vc, mc).modelled}
+        sources={claimCounts(vc, mc).sources}
+      />
+
       <TimeTravel layerKey={layer.key} />
 
       {/* ────────────────────────────────────────────────────────────────
@@ -306,7 +372,9 @@ export default function Layer({
           <div className="flex items-baseline gap-3">
             <div className="eyebrow text-[var(--gold)] shrink-0">Analyst's take</div>
             <p className="font-serif italic text-[16px] leading-[1.5] text-[var(--ink)]">
-              {layer.analystTake}
+              <ClaimAnnotation claimPath="headline_finding" verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
+                {layer.analystTake}
+              </ClaimAnnotation>
             </p>
           </div>
         </div>
@@ -359,6 +427,47 @@ export default function Layer({
       {gapsCard}
 
       {open && <ChallengeModal layer={layer} onClose={() => setOpen(false)} />}
+    </div>
+  );
+}
+
+function ClaimCountStrip({ verified, modelled, sources }: { verified: number; modelled: number; sources: number }) {
+  if (verified + modelled === 0) return null;
+  return (
+    <div className="flex items-center gap-2 font-sans text-[10px] font-semibold tracking-wider uppercase tabular-nums">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-sm cursor-help"
+                style={{ background: "var(--gold)", color: "var(--navy-deep)" }}>
+            <span>{verified}</span><span className="opacity-70">verified</span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="bg-[var(--paper)] text-[var(--ink)] border border-[var(--gold)] max-w-[280px] p-2.5 font-sans text-[11px] normal-case tracking-normal font-normal leading-snug">
+          Web-grounded claims with at least one named source. Hover a gold pill on the page to inspect the source list and report a broken link.
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-sm cursor-help"
+                style={{ background: "var(--cream-light)", color: "var(--slate)", border: "1px solid var(--cream-dark)" }}>
+            <span>{modelled}</span><span className="opacity-70">modelled</span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="bg-[var(--paper)] text-[var(--ink)] border border-[var(--cream-dark)] max-w-[280px] p-2.5 font-sans text-[11px] normal-case tracking-normal font-normal leading-snug">
+          Inferred claims. Each one names a basis and a confidence band so the reader can weight them. Hover a cream band on the page for the basis and the inferred-from list.
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-sm cursor-help text-[var(--slate-light)]"
+                style={{ border: "1px solid var(--cream-dark)" }}>
+            <span>{sources}</span><span className="opacity-70">sources</span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="bg-[var(--paper)] text-[var(--ink)] border border-[var(--cream-dark)] max-w-[280px] p-2.5 font-sans text-[11px] normal-case tracking-normal font-normal leading-snug">
+          Unique source URLs cited across all verified claims on this layer.
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 }

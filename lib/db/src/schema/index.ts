@@ -4,3 +4,4 @@ export * from "./tenantProfile";
 export * from "./tenantLayers";
 export * from "./tenantArtifacts";
 export * from "./tenantPipelineRuns";
+export * from "./claimBrokenReports";

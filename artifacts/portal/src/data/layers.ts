@@ -17,6 +17,28 @@ export interface Cause  { title: string; impact: string; detail: string; }
 export interface Action { title: string; detail: string; impact: string; }
 export interface Gap    { category: GapCategory; title: string; detail: string; confidenceLiftPp: number; solution: string; }
 
+// Phase 2 produced two parallel arrays per layer, attached on tenant_layers
+// and surfaced through GET /api/tenants/:id. Phase 3 renders them on the
+// layer page as gold pills (verified, web-grounded) and cream bands
+// (modelled, analyst inference). Each entry's `claim_path` matches a field
+// inside `content` (e.g. "narrative", "causes[0].detail", "metrics[2]") and
+// drives where the annotation lands in Layer.tsx.
+export interface VerifiedClaim {
+  claim_path: string;
+  claim_text: string;
+  source_urls: string[];
+  source_titles?: string[];
+  verified_at?: string;
+  verified_by?: string;
+}
+export interface ModelledClaim {
+  claim_path: string;
+  claim_text: string;
+  basis: string;
+  confidence: number;
+  inferred_from?: string[];
+}
+
 export type ChartDatum = Record<string, unknown>;
 
 export interface ChartSpec {
@@ -46,6 +68,11 @@ export interface LayerData {
   gaps: Gap[];
   gapsPipelineUsd: string;
   counterArgs: { title: string; ci: string; detail: string }[];
+  // Phase 3 annotations, parallel arrays projected straight from
+  // tenant_layers. Empty when the tenant is hardcoded (Meridian Industrial)
+  // or when Phase 2 produced no claims for this layer.
+  verifiedClaims: VerifiedClaim[];
+  modelledClaims: ModelledClaim[];
 }
 
 export interface LayerSchemaEntry {

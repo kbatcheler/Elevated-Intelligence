@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { X, Printer, TrendingUp, TrendingDown, AlertCircle, Cpu, ArrowRight } from "lucide-react";
 import { useNarrative, useCompany, useIsDefaultProfile } from "../context/CompanyContext";
 import { useApp } from "../context/AppContext";
+import { claimCounts } from "../components/claims/ClaimAnnotation";
+import { Tooltip, TooltipTrigger, TooltipContent } from "../components/ui/tooltip";
 
 // ----- "What changed since yesterday" deltas ---------------------------------
 // Deterministic-per-company deltas to put a daily-pulse ribbon at the top of
@@ -86,6 +88,26 @@ const TOP_FINDINGS: BriefItem[] = [
   { layer: "sales-pipeline",           finding: "Win rate halved YoY (14% from 21%); cycle days +13d. Q4 coverage at 2.4× vs 3.1× target.", impact: "Q4 commit at risk · $2.1M slip" },
   { layer: "marketing-performance",    finding: "Email at 8.25× ROAS, Brand and Display under 2.0×. Reallocating $50K Brand→Email lifts Q4 ROAS to a modelled 3.4×.", impact: "Reallocation +$50K · +1.0× ROAS" },
 ];
+
+function MorningBriefClaimBadge({ layer }: { layer: { verifiedClaims: { source_urls: string[] }[]; modelledClaims: unknown[] } }) {
+  const c = claimCounts(layer.verifiedClaims as never, layer.modelledClaims as never);
+  if (c.verified + c.modelled === 0) return null;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex items-baseline gap-0.5 px-1.5 py-0.5 rounded-sm font-sans text-[10px] font-bold tabular-nums cursor-help self-end"
+              style={{ background: "var(--cream-light)", border: "1px solid var(--cream-dark)" }}>
+          <span style={{ color: "var(--gold)" }}>{c.verified}V</span>
+          <span className="text-[var(--slate-light)]">·</span>
+          <span className="text-[var(--slate)]">{c.modelled}M</span>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="left" className="bg-[var(--paper)] text-[var(--ink)] border border-[var(--cream-dark)] max-w-[260px] p-2.5 font-sans text-[11px] leading-snug">
+        <span className="font-semibold">{c.verified}</span> verified and <span className="font-semibold">{c.modelled}</span> modelled claims on this layer; {c.sources} unique sources. Open the layer to inspect each one.
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 export default function MorningBrief() {
   const { closeBrief, setActiveLayer } = useApp();
@@ -273,8 +295,18 @@ export default function MorningBrief() {
                       <div className="col-span-4 pl-3 border-l border-[var(--cream-dark)]">
                         <div className="eyebrow text-[var(--slate-light)] mb-1">Impact</div>
                         <div className="font-sans font-bold text-[13px] text-[var(--coral)] tabular-nums leading-snug">{resolve(f.impact)}</div>
-                        <div className="eyebrow text-[var(--slate-light)] mt-3 mb-1">Confidence</div>
-                        <div className="font-sans font-bold text-[15px] text-[var(--navy)] tabular-nums">{l.confidence}%</div>
+                        <div className="flex items-baseline justify-between mt-3 gap-2">
+                          <div>
+                            <div className="eyebrow text-[var(--slate-light)] mb-1">Confidence</div>
+                            <div className="font-sans font-bold text-[15px] text-[var(--navy)] tabular-nums">{l.confidence}%</div>
+                          </div>
+                          {/* Phase 3.3 compact V·M provenance badge. Mirrors the
+                              header strip on the full layer page but tight enough
+                              to fit the brief's 4-column impact card. Hidden when
+                              both arrays are empty, e.g. the default Meridian
+                              tenant. */}
+                          <MorningBriefClaimBadge layer={l} />
+                        </div>
                       </div>
                     </div>
                   );

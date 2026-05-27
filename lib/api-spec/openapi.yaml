@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: claims
+    description: Phase 3 claim provenance reporting
 paths:
   /healthz:
     get:
@@ -24,6 +26,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /claims/report-broken:
+    post:
+      operationId: reportBrokenClaimLink
+      tags: [claims]
+      summary: Report a broken verified-claim source URL
+      description: |
+        Records a reader signal that a given verified claim's source URL is
+        broken, paywalled, or otherwise unusable. Append-only, no de-dup.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportBrokenClaimLinkInput"
+      responses:
+        "200":
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportBrokenClaimLinkResult"
+        "400":
+          description: Invalid body
 components:
   schemas:
     HealthStatus:
@@ -33,4 +58,38 @@ components:
           type: string
       required:
         - status
+    ReportBrokenClaimLinkInput:
+      type: object
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+          nullable: true
+        layerKey:
+          type: string
+          minLength: 1
+          maxLength: 80
+        claimPath:
+          type: string
+          minLength: 1
+          maxLength: 200
+        sourceUrl:
+          type: string
+          format: uri
+          maxLength: 2000
+      required:
+        - layerKey
+        - claimPath
+        - sourceUrl
+    ReportBrokenClaimLinkResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        id:
+          type: string
+          format: uuid
+      required:
+        - ok
+        - id
 

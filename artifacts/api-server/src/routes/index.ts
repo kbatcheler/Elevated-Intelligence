@@ -5,6 +5,7 @@ import companiesRouter from "./companies";
 import companyIdentifyRouter from "./companyIdentify";
 import intelligenceRouter from "./intelligence";
 import tenantsRouter from "./tenants";
+import claimsRouter from "./claims";
 import devRouter from "./dev";
 import { requireAuth } from "../middlewares/auth";
 
@@ -22,6 +23,7 @@ router.use(authRouter);
 router.use(requireAuth);
 
 router.use(tenantsRouter);
+router.use(claimsRouter);
 router.use(companiesRouter);
 router.use(companyIdentifyRouter);
 router.use(intelligenceRouter);

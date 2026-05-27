@@ -9,6 +9,7 @@ import {
 import {
   LAYER_KEYS, LAYER_SCHEMA,
   type LayerData, type ChartSpec, type Metric, type Cause, type Action, type Gap, type GapCategory,
+  type VerifiedClaim, type ModelledClaim,
 } from "../data/layers";
 import type { NarratorContent } from "../data/narrator";
 import type { PeerBlock } from "../data/peers";
@@ -91,7 +92,17 @@ export interface ServerProfile {
 export interface TenantDetail {
   tenant: TenantSummary;
   profile: ServerProfile;
-  layers: Array<{ layerKey: string; content: ServerLayerContent }>;
+  layers: Array<{
+    layerKey: string;
+    content: ServerLayerContent;
+    // Phase 2 verified/modelled claim arrays. The server stores them as
+    // jsonb on tenant_layers and emits them alongside `content` (the API
+    // route uses camelCase keys, see artifacts/api-server/src/routes/tenants.ts).
+    // Either array may be empty/null for layers whose Phase 2 pass found
+    // nothing groundable or produced no inference-flagged claims.
+    verifiedClaims?: VerifiedClaim[] | null;
+    modelledClaims?: ModelledClaim[] | null;
+  }>;
   artifacts: Array<{ kind: string; content: unknown }>;
 }
 
@@ -281,6 +292,8 @@ function projectLayer(
   layerKey: string,
   content: ServerLayerContent,
   diagnosedAt: string,
+  verifiedClaims: VerifiedClaim[],
+  modelledClaims: ModelledClaim[],
 ): LayerData {
   const schema = LAYER_SCHEMA[layerKey];
   const metrics: Metric[] = (content.metrics ?? []).map(m => ({
@@ -326,6 +339,8 @@ function projectLayer(
     gaps,
     gapsPipelineUsd: "",
     counterArgs,
+    verifiedClaims,
+    modelledClaims,
   };
 }
 
@@ -335,7 +350,13 @@ function projectNarrative(detail: TenantDetail | null): NarrativeBundle {
     ? new Date(detail.tenant.lastSeededAt).toLocaleString()
     : "Just now";
   const layers = detail.layers
-    .map(l => projectLayer(l.layerKey, l.content, diagnosedAt))
+    .map(l => projectLayer(
+      l.layerKey,
+      l.content,
+      diagnosedAt,
+      Array.isArray(l.verifiedClaims) ? l.verifiedClaims : [],
+      Array.isArray(l.modelledClaims) ? l.modelledClaims : [],
+    ))
     .filter(l => LAYER_KEYS.includes(l.key));
   // Order layers by canonical LAYER_KEYS so the sidebar order matches.
   layers.sort((a, b) => LAYER_KEYS.indexOf(a.key) - LAYER_KEYS.indexOf(b.key));
