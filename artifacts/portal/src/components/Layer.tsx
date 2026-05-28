@@ -13,7 +13,6 @@ import DataFeedsCard from "./DataFeedsCard";
 import AnimatedNumber from "./AnimatedNumber";
 import Sparkline, { makeSeries } from "./Sparkline";
 import { EXTRAS } from "./extras";
-import { HEROES } from "./heroes";
 import TimeTravel from "./TimeTravel";
 import CommitButton from "./CommitButton";
 import WhatIfLevers from "./WhatIfLevers";
@@ -157,7 +156,17 @@ export default function Layer({
   );
 
   const metricStrip = (
-    <div className="grid grid-cols-4 gap-4">
+    <div>
+      <div className="flex items-center justify-between mb-3 px-1">
+        <div className="flex items-center gap-3">
+          <span className="h-2 w-2 rounded-full" style={{ background: "var(--coral)" }} />
+          <span className="eyebrow text-[var(--coral)]">Snapshot</span>
+        </div>
+        <span className="font-sans text-[11px] text-[var(--slate-light)]">
+          Q3 2026 · {layer.sources} sources
+        </span>
+      </div>
+      <div className="grid grid-cols-4 gap-4">
       {layer.metrics.map((m, i) => {
         const evKey = `${layer.key}/${m.label}`;
         const hasEvidence = !!EVIDENCE[evKey];
@@ -201,6 +210,7 @@ export default function Layer({
           </div>
         );
       })}
+      </div>
     </div>
   );
 
@@ -275,16 +285,14 @@ export default function Layer({
     </div>
   );
 
-  // Heroes + Extras are populated from hardcoded Meridian Industrial fixtures (named
-  // suppliers, DC cities, competitor brands, SKUs etc). For any non-default
-  // profile we hide them rather than render wrong-brand copy, see
-  // useIsDefaultProfile for the full rationale. BusinessPerformanceHero is
-  // the lone exception: it reads only `layer.metrics`, which is overridden
-  // per seeded company, so it stays universal.
+  // Extras are still populated from hardcoded Meridian Industrial fixtures
+  // (named suppliers, DC cities, competitor brands, SKUs etc). For any
+  // non-default profile we hide them rather than render wrong-brand copy.
+  // The Hero slot is now universal: every tenant gets the data-driven
+  // metric snapshot from layer.metrics. Phase B will replace Extras with
+  // a generic seeded-data renderer; see .local/session_plan.md.
   const isDefault = useIsDefaultProfile();
   const Extra = isDefault ? EXTRAS[layer.key] : undefined;
-  const RawHero = HEROES[layer.key];
-  const Hero = (isDefault || layer.key === "business-performance") ? RawHero : undefined;
 
   return (
     <div className="space-y-6 pb-12">
@@ -395,7 +403,7 @@ export default function Layer({
           §2 SITUATION, descriptive: where we stand right now
          ──────────────────────────────────────────────────────────────── */}
       <SectionHeading index="§2" label="Situation" sub="The numbers, what's happening, against plan and against peers" />
-      {Hero ? <Hero layer={layer} /> : metricStrip}
+      {metricStrip}
       <GapRecoveryDiptych layer={layer} />
       {Extra && <Extra />}
       <CauseWaterfall layer={layer} />
