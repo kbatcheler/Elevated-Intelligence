@@ -52,12 +52,14 @@ import {
   buildProfileUserPrompt,
 } from "./prompts";
 import {
+  HERO_SYSTEM_PROMPT,
   PERCEIVE_SYSTEM_PROMPT,
   HYPOTHESISE_SYSTEM_PROMPT,
   NARRATE_SYSTEM_PROMPT,
   SCORE_SYSTEM_PROMPT,
   buildChallengeSystemPrompt,
   buildChallengeUserPrompt,
+  buildHeroUserPrompt,
   buildHypothesiseUserPrompt,
   buildNarrateUserPrompt,
   buildPerceiveUserPrompt,
@@ -65,6 +67,7 @@ import {
 } from "./phase2-prompts";
 import {
   challengeOutputSchema,
+  heroOutputSchema,
   hypothesisedLayerSchema,
   modelledClaimSchema,
   narrateOutputSchema,
@@ -72,6 +75,7 @@ import {
   scoreOutputSchema,
   verifiedClaimSchema,
   type ChallengeOutput,
+  type HeroPanel,
   type HypothesisedLayer,
   type ModelledClaim,
   type NarrateOutput,
@@ -106,7 +110,7 @@ export function initialPhase2Stages(): PipelineStage[] {
       layerStages: LAYER_KEYS.map<LayerStageEntry>((layerKey) => ({
         layerKey,
         status: "pending",
-        subStages: (["perceive", "hypothesise", "challenge", "narrate", "score"] as const).map(
+        subStages: (["perceive", "hypothesise", "challenge", "narrate", "score", "hero"] as const).map(
           (name): PipelineSubStage => ({ name, status: "pending" }),
         ),
       })),
@@ -136,7 +140,7 @@ function buildLayerEntry(rt: LayerStageRuntime, status: PipelineStageStatus, err
     startedAt: new Date(rt.startedAt).toISOString(),
     completedAt: status === "running" || status === "pending" ? undefined : new Date(now).toISOString(),
     durationMs: status === "running" || status === "pending" ? undefined : now - rt.startedAt,
-    subStages: (["perceive", "hypothesise", "challenge", "narrate", "score"] as const).map((name) => {
+    subStages: (["perceive", "hypothesise", "challenge", "narrate", "score", "hero"] as const).map((name) => {
       const sub = rt.subs.get(name);
       return {
         name,
@@ -194,6 +198,10 @@ type LayerResult = {
   content: LayerContent;
   verifiedClaims: VerifiedClaim[];
   modelledClaims: ModelledClaim[];
+  // heroPanel is OPTIONAL — sub-stage 6 (Hero) is allowed to fail without
+  // degrading the layer. Null means the frontend falls back to the
+  // metric-only snapshot card.
+  heroPanel: HeroPanel | null;
   status: PipelineStageStatus; // "complete" | "partial" | "failed"
   reason?: string;
 };
@@ -328,6 +336,7 @@ async function runLayerStages(
       modelledClaims: [
         { claim_text: layerFallbackStub(layerKey).narrative.slice(0, 800), claim_path: "narrative", confidence: 35, basis: "Pipeline stage 2 failure; fallback stub.", inferred_from: [] },
       ],
+      heroPanel: null,
       status: "failed",
       reason: `hypothesise failed: ${hypothesiseCall.reason}`,
     };
@@ -429,6 +438,17 @@ async function runLayerStages(
   const verifiedFinal = narrate.verified_claims.map((c) => verifiedClaimSchema.parse(c));
   const modelledFinal = narrate.modelled_claims.map((c) => modelledClaimSchema.parse(c));
 
+  // Stage 6: Hero — short Haiku call that produces a tenant-specific hero
+  // panel from the finalised narrate content + profile. Non-degrading:
+  // failure leaves hero_panel NULL and the frontend falls back gracefully.
+  await startSub(runId, rt, "hero");
+  const heroPanel = await generateHeroPanel(profile, narrate.content, layerKey, layerLog);
+  if (heroPanel) {
+    await endSub(runId, rt, "hero", "complete");
+  } else {
+    await endSub(runId, rt, "hero", "failed", "hero stage returned null (see logs)");
+  }
+
   // Layer is "complete" only when all three quality-bearing stages succeeded.
   // Score is included because a Haiku/provider drift or schema regression
   // would otherwise be silent at layer status level (we'd still ship a layer
@@ -445,8 +465,33 @@ async function runLayerStages(
     content: narrate.content,
     verifiedClaims: verifiedFinal,
     modelledClaims: modelledFinal,
+    heroPanel,
     status,
   };
+}
+
+// ─── Hero stage helper (also used by the backfill endpoint) ───────────────
+// Exported so POST /tenants/:id/hero/backfill can fill hero_panel for
+// tenants that were seeded before this stage existed, without re-running
+// the full pipeline (which takes ~30+ min).
+export async function generateHeroPanel(
+  profile: ProfileOutput,
+  content: NarrateOutput["content"],
+  layerKey: LayerKey,
+  log: typeof rootLogger,
+): Promise<HeroPanel | null> {
+  const heroCall = await callClaudeJson({
+    system: HERO_SYSTEM_PROMPT,
+    user: buildHeroUserPrompt(profile, content, layerKey),
+    schema: heroOutputSchema,
+    maxTokens: 2048,
+    model: SCORE_MODEL,
+    log,
+    context: `phase2/${layerKey}/hero`,
+  });
+  if (heroCall.ok) return heroCall.value.hero_panel;
+  log.warn({ reason: heroCall.reason }, "hero stage failed, leaving hero_panel null");
+  return null;
 }
 
 // ─── Top-level Phase 2 orchestrator ────────────────────────────────────────
@@ -587,6 +632,7 @@ async function runPhase2PipelineInner(
           tenantId,
           layerKey: r.layerKey,
           content: r.content as unknown as Record<string, unknown>,
+          heroPanel: r.heroPanel as unknown as Record<string, unknown> | null,
           verifiedClaims: r.verifiedClaims as unknown[],
           modelledClaims: r.modelledClaims as unknown[],
           generatorModel: `${PIPELINE_MODEL}+${GEMINI_MODEL}`,

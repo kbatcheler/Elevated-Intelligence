@@ -10,6 +10,7 @@ import GapRecoveryDiptych from "./visuals/GapRecoveryDiptych";
 import CauseWaterfall from "./visuals/CauseWaterfall";
 import ChallengeModal from "./ChallengeModal";
 import DataFeedsCard from "./DataFeedsCard";
+import GenericHero from "./visuals/GenericHero";
 import AnimatedNumber from "./AnimatedNumber";
 import Sparkline, { makeSeries } from "./Sparkline";
 import { EXTRAS } from "./extras";
@@ -403,6 +404,7 @@ export default function Layer({
           §2 SITUATION, descriptive: where we stand right now
          ──────────────────────────────────────────────────────────────── */}
       <SectionHeading index="§2" label="Situation" sub="The numbers, what's happening, against plan and against peers" />
+      {layer.heroPanel && <GenericHero layer={layer} />}
       {metricStrip}
       <GapRecoveryDiptych layer={layer} />
       {Extra && <Extra />}

@@ -251,3 +251,40 @@ export const scoreOutputSchema = z.object({
     .default([]),
 });
 export type ScoreOutput = z.infer<typeof scoreOutputSchema>;
+
+// ─── Stage 6: Hero ─────────────────────────────────────────────────────────
+// Short Haiku call that, given the finalised narrate content + tenant profile,
+// produces a tenant-specific hero panel for the layer (eyebrow, headline,
+// status pills, named spotlight entities). Stored on tenant_layers.hero_panel.
+// Failure of this stage is non-degrading: the frontend falls back to the
+// metric-only snapshot when the panel is null.
+
+const heroToneSchema = z.enum(["good", "warn", "bad", "neutral"]);
+
+export const heroPanelSchema = z.object({
+  eyebrow: z.string().min(1).max(60),
+  headline: z.string().min(2).max(200),
+  subhead: z.string().max(400).optional().default(""),
+  highlight_pills: z
+    .array(z.object({ label: z.string().min(1).max(60), tone: heroToneSchema }))
+    .max(3)
+    .optional()
+    .default([]),
+  spotlight_entities: z
+    .array(
+      z.object({
+        kind: z.enum(["competitor", "region", "segment", "supplier", "product", "channel", "metric"]),
+        name: z.string().min(1).max(120),
+        value: z.string().max(60).optional(),
+        note: z.string().max(240).optional(),
+        tone: heroToneSchema.optional(),
+      }),
+    )
+    .max(6)
+    .optional()
+    .default([]),
+});
+export type HeroPanel = z.infer<typeof heroPanelSchema>;
+
+export const heroOutputSchema = z.object({ hero_panel: heroPanelSchema });
+export type HeroOutput = z.infer<typeof heroOutputSchema>;

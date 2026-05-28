@@ -3,7 +3,7 @@
 // clients poll GET /:id/status for progress.
 
 import { Router, type IRouter } from "express";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, and } from "drizzle-orm";
 import {
   db,
   tenantsTable,
@@ -13,6 +13,10 @@ import {
   tenantPipelineRunsTable,
 } from "@workspace/db";
 import { startPipeline } from "../lib/pipeline/runner";
+import { generateHeroPanel } from "../lib/pipeline/phase2";
+import type { LayerKey, ProfileOutput } from "../lib/pipeline/schemas";
+import type { NarrateOutput } from "../lib/pipeline/phase2-schemas";
+import { logger as rootLogger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -56,6 +60,7 @@ router.get("/tenants/:id", async (req, res) => {
     layers: layerRows.map((r) => ({
       layerKey: r.layerKey,
       content: r.content,
+      heroPanel: r.heroPanel,
       verifiedClaims: r.verifiedClaims,
       modelledClaims: r.modelledClaims,
       generatedAt: r.generatedAt,
@@ -154,6 +159,72 @@ router.post("/tenants/:id/refresh", async (req, res) => {
   await db.update(tenantsTable).set({ status: "seeding" }).where(eq(tenantsTable.id, id));
   const runId = await startPipeline(id);
   res.json({ id, runId });
+});
+
+// ─── POST /tenants/:id/hero/backfill ─────────────────────────────────────
+// Fill hero_panel for every layer of an existing tenant WITHOUT re-running
+// the full ~30+ min pipeline. Runs the hero stage in parallel across layers
+// using each layer's existing finalised content + the saved profile.
+// Idempotent: overwrites existing hero_panel rows.
+router.post("/tenants/:id/hero/backfill", async (req, res) => {
+  const id = req.params.id;
+  const tenantRows = await db.select().from(tenantsTable).where(eq(tenantsTable.id, id)).limit(1);
+  if (!tenantRows[0]) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  const [profileRows, layerRows] = await Promise.all([
+    db.select().from(tenantProfileTable).where(eq(tenantProfileTable.tenantId, id)).limit(1),
+    db.select().from(tenantLayersTable).where(eq(tenantLayersTable.tenantId, id)),
+  ]);
+  const profileRaw = profileRows[0]?.profile as ProfileOutput | undefined;
+  if (!profileRaw) {
+    res.status(409).json({ error: "no_profile", detail: "Tenant has no profile yet, run /refresh first." });
+    return;
+  }
+  const profile: ProfileOutput = profileRaw;
+  const log = rootLogger.child({ tenantId: id, op: "hero/backfill" });
+  log.info({ layerCount: layerRows.length }, "starting hero backfill");
+
+  // Parallel across layers with a small concurrency cap to respect Anthropic
+  // TPM limits (Haiku, ~8s/call). 4 in flight mirrors the main pipeline.
+  const CONCURRENCY = 4;
+  let cursor = 0;
+  let ok = 0;
+  let failed = 0;
+  async function worker(): Promise<void> {
+    while (true) {
+      const i = cursor++;
+      if (i >= layerRows.length) return;
+      const row = layerRows[i];
+      try {
+        const panel = await generateHeroPanel(
+          profile,
+          row.content as NarrateOutput["content"],
+          row.layerKey as LayerKey,
+          log,
+        );
+        if (panel) {
+          // Only write on success. Otherwise leave whatever was already
+          // there alone, so a flaky retry can't regress a good panel to
+          // null. The next backfill call will retry the failed layers.
+          await db
+            .update(tenantLayersTable)
+            .set({ heroPanel: panel as unknown as Record<string, unknown> })
+            .where(and(eq(tenantLayersTable.tenantId, id), eq(tenantLayersTable.layerKey, row.layerKey)));
+          ok++;
+        } else {
+          failed++;
+        }
+      } catch (e) {
+        failed++;
+        log.warn({ err: String(e), layerKey: row.layerKey }, "hero backfill failed for layer");
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+  log.info({ ok, failed }, "hero backfill complete");
+  res.json({ ok: true, layersFilled: ok, layersFailed: failed });
 });
 
 export default router;

@@ -9,7 +9,7 @@ import {
 import {
   LAYER_KEYS, LAYER_SCHEMA,
   type LayerData, type ChartSpec, type Metric, type Cause, type Action, type Gap, type GapCategory,
-  type VerifiedClaim, type ModelledClaim,
+  type VerifiedClaim, type ModelledClaim, type HeroPanel,
 } from "../data/layers";
 import type { NarratorContent } from "../data/narrator";
 import type { PeerBlock } from "../data/peers";
@@ -102,6 +102,10 @@ export interface TenantDetail {
     // nothing groundable or produced no inference-flagged claims.
     verifiedClaims?: VerifiedClaim[] | null;
     modelledClaims?: ModelledClaim[] | null;
+    // Optional tenant-specific hero panel (Phase 2 sub-stage 6). Null for
+    // tenants seeded before this column existed; backfillable via
+    // POST /api/tenants/:id/hero/backfill.
+    heroPanel?: HeroPanel | null;
   }>;
   artifacts: Array<{ kind: string; content: unknown }>;
 }
@@ -294,6 +298,7 @@ function projectLayer(
   diagnosedAt: string,
   verifiedClaims: VerifiedClaim[],
   modelledClaims: ModelledClaim[],
+  heroPanel: HeroPanel | null,
 ): LayerData {
   const schema = LAYER_SCHEMA[layerKey];
   const metrics: Metric[] = (content.metrics ?? []).map(m => ({
@@ -341,6 +346,7 @@ function projectLayer(
     counterArgs,
     verifiedClaims,
     modelledClaims,
+    heroPanel,
   };
 }
 
@@ -356,6 +362,7 @@ function projectNarrative(detail: TenantDetail | null): NarrativeBundle {
       diagnosedAt,
       Array.isArray(l.verifiedClaims) ? l.verifiedClaims : [],
       Array.isArray(l.modelledClaims) ? l.modelledClaims : [],
+      l.heroPanel ?? null,
     ))
     .filter(l => LAYER_KEYS.includes(l.key));
   // Order layers by canonical LAYER_KEYS so the sidebar order matches.

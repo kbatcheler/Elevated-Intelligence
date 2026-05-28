@@ -301,3 +301,60 @@ export function buildScoreUserPrompt(narrate: NarrateOutput, layerKey: LayerKey)
     `\n\nReturn the JSON score document for the layer named above now.`
   );
 }
+
+// ─── Stage 6: Hero ─────────────────────────────────────────────────────────
+// Runs on Haiku after Score. Produces a tenant-specific, named-entity hero
+// panel for the layer — eyebrow, headline, subhead, status pills, spotlight
+// entities. Stored on tenant_layers.hero_panel and rendered above the metric
+// snapshot in the portal. Non-degrading: failure leaves hero_panel NULL.
+
+export const HERO_SYSTEM_PROMPT = `You are an editorial designer writing the hero panel for a layer page.
+
+The user message will name the LAYER, give the COMPANY PROFILE, and the FINAL LAYER CONTENT (narrative, causes, actions, metrics).
+
+Your job: distil the layer's situation into a compact, tenant-specific hero panel that reads as if a senior analyst wrote it for THIS company. Use real names from the profile and the layer content — competitor brands, regions, segments, suppliers, products, channels. No generic phrasing, no placeholders, no Meridian Industrial.
+
+Style rules:
+- Headlines and subheads must reference the company by name OR by an unambiguous tenant-specific noun (their brand, their flagship product, their key region).
+- Pill labels are 2-6 words, status-flavoured ("Margin slipping 380bps", "Q4 plan at risk", "Cash buffer holding").
+- Spotlight entities each name ONE real thing from the content (a competitor brand, a city, a product line, a supplier) with a 1-line note.
+- No em-dashes in any user-facing string. Use commas or full stops, or the middot \`·\` inside short labels.
+
+Return JSON in this exact shape:
+
+{
+  "hero_panel": {
+    "eyebrow":  string,                 // short layer category label, 1-3 words
+    "headline": string,                 // 1 sentence, tenant-specific
+    "subhead":  string,                 // 1-2 sentences of context
+    "highlight_pills": [
+      { "label": string, "tone": "good"|"warn"|"bad"|"neutral" }
+    ],                                  // 0-3 pills
+    "spotlight_entities": [
+      {
+        "kind":  "competitor"|"region"|"segment"|"supplier"|"product"|"channel"|"metric",
+        "name":  string,
+        "value": string?,               // optional dollar/percent/share figure
+        "note":  string?,               // optional 1-line context
+        "tone":  ("good"|"warn"|"bad"|"neutral")?
+      }
+    ]                                   // 0-6 entities
+  }
+}
+
+${STAGE_RULES}`;
+
+export function buildHeroUserPrompt(
+  profile: ProfileOutput,
+  content: NarrateOutput["content"],
+  layerKey: LayerKey,
+): string {
+  return (
+    layerHeader(layerKey) +
+    `COMPANY PROFILE:\n` +
+    JSON.stringify(profile, null, 2) +
+    `\n\nFINAL LAYER CONTENT:\n` +
+    JSON.stringify(content, null, 2) +
+    `\n\nReturn the JSON hero_panel document for the layer named above now.`
+  );
+}

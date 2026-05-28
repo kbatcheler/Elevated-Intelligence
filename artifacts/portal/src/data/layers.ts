@@ -23,6 +23,23 @@ export interface Gap    { category: GapCategory; title: string; detail: string; 
 // (modelled, analyst inference). Each entry's `claim_path` matches a field
 // inside `content` (e.g. "narrative", "causes[0].detail", "metrics[2]") and
 // drives where the annotation lands in Layer.tsx.
+// Phase 2 sub-stage Hero produces this structured panel per layer. Stored
+// nullable on tenant_layers.hero_panel and projected into LayerData.heroPanel.
+// Renders above the metric snapshot via components/visuals/GenericHero.
+export interface HeroPanel {
+  eyebrow: string;
+  headline: string;
+  subhead: string;
+  highlight_pills: Array<{ label: string; tone: Tone }>;
+  spotlight_entities: Array<{
+    kind: "competitor" | "region" | "segment" | "supplier" | "product" | "channel" | "metric";
+    name: string;
+    value?: string;
+    note?: string;
+    tone?: Tone;
+  }>;
+}
+
 export interface VerifiedClaim {
   claim_path: string;
   claim_text: string;
@@ -73,6 +90,11 @@ export interface LayerData {
   // or when Phase 2 produced no claims for this layer.
   verifiedClaims: VerifiedClaim[];
   modelledClaims: ModelledClaim[];
+  // Optional tenant-specific hero panel from Phase 2 sub-stage 6 (Hero).
+  // Null when the tenant was seeded before this stage existed, or when the
+  // stage failed for this layer. Rendered above metrics in Layer.tsx via
+  // components/visuals/GenericHero.
+  heroPanel?: HeroPanel | null;
 }
 
 export interface LayerSchemaEntry {
