@@ -101,52 +101,66 @@ export default function Layer({
     </div>
   );
 
-  const actionsCard = (
-    <div className="card card-accent-teal">
-      <div className="flex items-center justify-between mb-4">
-        <div className="font-sans font-semibold text-[16px] text-[var(--navy)]">Recommended actions</div>
-        <span className="pill pill-teal">
-          <ClaimAnnotation claimPath="headline_impact" verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
-            {layer.actionsRecoveryUsd}
-          </ClaimAnnotation>
-        </span>
-      </div>
-      <ul className="space-y-4">
-        {layer.actions.map((a, i) => (
-          <li key={i} className={"flex items-start gap-3 " + (isHi(`action:${i}`) ? "pulse-coral !rounded-sm" : "")}>
-            <span className="mt-1.5 inline-block h-2 w-2 rounded-full shrink-0" style={{ background: "var(--gold)" }} />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-baseline justify-between gap-3">
-                <div className="font-sans font-semibold text-[13px] text-[var(--navy)] leading-snug min-w-0 flex-1">
-                  <ClaimAnnotation claimPath={`actions[${i}].title`} verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
-                    {a.title}
-                  </ClaimAnnotation>
-                </div>
-                <div className="font-sans text-[13px] font-bold text-[var(--teal)] tabular-nums leading-snug text-right shrink-0 max-w-[45%] break-words">
-                  <ClaimAnnotation claimPath={`actions[${i}].impact`} verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
-                    {a.impact}
-                  </ClaimAnnotation>
-                </div>
-              </div>
-              <div className="font-sans italic text-[11px] text-[var(--slate-light)] leading-snug mt-0.5">
-                <ClaimAnnotation claimPath={`actions[${i}].detail`} verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
-                  {a.detail}
-                </ClaimAnnotation>
-              </div>
-              <div className="mt-2 flex items-center gap-2">
-                <CommitButton
-                  layer={layer.key}
-                  layerTitle={layer.title}
-                  title={a.title}
-                  detail={a.detail}
-                  impact={a.impact}
-                  idx={i}
-                />
-              </div>
+  // Header strip for the recommended-actions panel. Carries the
+  // section title on the left and the rolled-up recovery pill on the right
+  // so the dollars stay anchored even when the action grid wraps below.
+  const actionsHeader = (
+    <div className="flex items-baseline justify-between gap-4 pt-1">
+      <div className="font-sans font-semibold text-[16px] text-[var(--navy)]">Recommended actions</div>
+      <span className="pill pill-teal whitespace-nowrap">
+        <ClaimAnnotation claimPath="headline_impact" verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
+          {layer.actionsRecoveryUsd}
+        </ClaimAnnotation>
+      </span>
+    </div>
+  );
+
+  // Each action renders as its own card in a horizontal grid. Impact
+  // sits as a small subdued teal label above the title instead of as a
+  // bright body-text block jammed into a narrow right gutter, which
+  // previously caused per-word line breaks and visual collisions when
+  // Haiku produced longer impact strings for seeded tenants.
+  const actionsGrid = (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {layer.actions.map((a, i) => (
+        <div key={i}
+             className={"card card-accent-teal flex flex-col " + (isHi(`action:${i}`) ? "pulse-coral !rounded-sm" : "")}>
+          <div className="flex items-baseline gap-2 mb-2">
+            <span className="font-serif text-[14px] font-semibold text-[var(--gold)] tabular-nums leading-none">
+              {(i + 1).toString().padStart(2, "0")}
+            </span>
+            <span className="eyebrow text-[var(--slate-light)]">Action</span>
+          </div>
+          <div className="font-sans font-semibold text-[14px] text-[var(--navy)] leading-snug">
+            <ClaimAnnotation claimPath={`actions[${i}].title`} verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
+              {a.title}
+            </ClaimAnnotation>
+          </div>
+          <div className="mt-2 pt-2 border-t border-[var(--cream-dark)]">
+            <div className="eyebrow text-[var(--slate-light)] mb-1">Impact</div>
+            <div className="font-sans text-[12px] font-semibold leading-snug" style={{ color: "var(--teal-deep, var(--teal))" }}>
+              <ClaimAnnotation claimPath={`actions[${i}].impact`} verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
+                {a.impact}
+              </ClaimAnnotation>
             </div>
-          </li>
-        ))}
-      </ul>
+          </div>
+          <div className="font-serif italic text-[12px] text-[var(--slate)] leading-snug mt-3 flex-1">
+            <ClaimAnnotation claimPath={`actions[${i}].detail`} verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
+              {a.detail}
+            </ClaimAnnotation>
+          </div>
+          <div className="mt-3 pt-3 border-t border-[var(--cream-dark)]">
+            <CommitButton
+              layer={layer.key}
+              layerTitle={layer.title}
+              title={a.title}
+              detail={a.detail}
+              impact={a.impact}
+              idx={i}
+            />
+          </div>
+        </div>
+      ))}
     </div>
   );
 
@@ -350,18 +364,17 @@ export default function Layer({
           Narrative + actions paired at the top, then committed next steps.
          ──────────────────────────────────────────────────────────────── */}
       <SectionHeading index="§1" label="Recommendation" sub="What to do, the call, with dollars attached" />
-      {/* Narrative + actions sit side-by-side at full width. Earlier we
-          tucked an extra prescriptive block into the narrative column
-          to absorb dead space, but at 2/3 width its three time-horizon cards
-          collapsed to ~150px each and copy wrapped one word per line. Full
-          width gives each horizon ~3× the room and the prose breathes. */}
-      <div className="grid grid-cols-3 gap-6 items-start">
-        <div className="col-span-2 space-y-4">
-          {narrativeCard}
-          <ConfidenceLadder layer={layer} />
-        </div>
-        <div>{actionsCard}</div>
-      </div>
+      {/* Stack vertically so each surface gets full width to breathe.
+          Earlier we paired narrative + actions side-by-side at 2/3 vs 1/3
+          which crammed the per-action impact strings into a narrow gutter,
+          forcing per-word line breaks and visually colliding with adjacent
+          text. Narrative now spans full width with the rolled-up recovery
+          pill anchored above the action grid, and each action becomes its
+          own card in a three-column row below. */}
+      {narrativeCard}
+      {actionsHeader}
+      {actionsGrid}
+      <ConfidenceLadder layer={layer} />
       {/* ────────────────────────────────────────────────────────────────
           §2 SITUATION, descriptive: where we stand right now
          ──────────────────────────────────────────────────────────────── */}
