@@ -4,8 +4,10 @@ import type { LayerData, Tone } from "../data/layers";
 import ClaimAnnotation, { claimCounts } from "./claims/ClaimAnnotation";
 import { reportBrokenLink } from "../lib/reportBrokenLink";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
-import Chart from "./Chart";
 import ConfidenceBand from "./ConfidenceBand";
+import ConfidenceLadder from "./visuals/ConfidenceLadder";
+import GapRecoveryDiptych from "./visuals/GapRecoveryDiptych";
+import CauseWaterfall from "./visuals/CauseWaterfall";
 import ChallengeModal from "./ChallengeModal";
 import DataFeedsCard from "./DataFeedsCard";
 import AnimatedNumber from "./AnimatedNumber";
@@ -202,16 +204,6 @@ export default function Layer({
     </div>
   );
 
-  const chartCard = (
-    <div className="card card-accent-navy">
-      <div className="flex items-center justify-between mb-4">
-        <div className="font-sans font-semibold text-[16px] text-[var(--navy)]">{layer.chartTitle}</div>
-        <div className="eyebrow text-[var(--slate-light)]">Q3 2026</div>
-      </div>
-      <Chart spec={layer.chart} />
-    </div>
-  );
-
   const causesCard = (
     <div className="card card-accent-amber">
       <div className="flex items-center justify-between mb-4">
@@ -391,7 +383,10 @@ export default function Layer({
           collapsed to ~150px each and copy wrapped one word per line. Full
           width gives each horizon ~3× the room and the prose breathes. */}
       <div className="grid grid-cols-3 gap-6 items-start">
-        <div className="col-span-2">{narrativeCard}</div>
+        <div className="col-span-2 space-y-4">
+          {narrativeCard}
+          <ConfidenceLadder layer={layer} />
+        </div>
         <div>{actionsCard}</div>
       </div>
       <NextSteps layerKey={layer.key} layerTitle={layer.title} />
@@ -401,8 +396,9 @@ export default function Layer({
          ──────────────────────────────────────────────────────────────── */}
       <SectionHeading index="§2" label="Situation" sub="The numbers, what's happening, against plan and against peers" />
       {Hero ? <Hero layer={layer} /> : metricStrip}
+      <GapRecoveryDiptych layer={layer} />
       {Extra && <Extra />}
-      {layer.chart.data.length > 0 && layer.chart.series.length > 0 && chartCard}
+      <CauseWaterfall layer={layer} />
       {PEERS[layer.key] && <PeerBenchmark layerKey={layer.key} />}
 
       {/* ────────────────────────────────────────────────────────────────
