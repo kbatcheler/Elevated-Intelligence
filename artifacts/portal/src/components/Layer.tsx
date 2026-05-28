@@ -105,9 +105,12 @@ export default function Layer({
   // section title on the left and the rolled-up recovery pill on the right
   // so the dollars stay anchored even when the action grid wraps below.
   const actionsHeader = (
-    <div className="flex items-baseline justify-between gap-4 pt-1">
-      <div className="font-sans font-semibold text-[16px] text-[var(--navy)]">Recommended actions</div>
-      <span className="pill pill-teal whitespace-nowrap">
+    <div className="flex items-baseline justify-between gap-4 pt-1 flex-wrap">
+      <div className="font-sans font-semibold text-[16px] text-[var(--navy)] shrink-0">Recommended actions</div>
+      <span
+        className="pill pill-teal min-w-0 max-w-full text-right"
+        style={{ whiteSpace: "normal", overflowWrap: "anywhere", lineHeight: 1.35 }}
+      >
         <ClaimAnnotation claimPath="headline_impact" verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
           {layer.actionsRecoveryUsd}
         </ClaimAnnotation>
