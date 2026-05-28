@@ -1,6 +1,5 @@
 import { BookOpen, ArrowRight, MessageSquareQuote, Clock, Sparkles, ShieldAlert, Layers, BarChart3 } from "lucide-react";
 import { PRESENTER_SPINE, PRESENTER_TRACKS, PRESENTER_TIMES } from "../data/presenterTracks";
-import { useIsDefaultProfile, useCompany } from "../context/CompanyContext";
 
 interface Props {
   onNavigate: (key: string) => void;
@@ -58,8 +57,6 @@ const OBJECTIONS: { tag: string; q: string; a: string; icon: typeof ShieldAlert 
 ];
 
 export default function SalesPlaybook({ onNavigate }: Props) {
-  const isDefault = useIsDefaultProfile();
-  const { profile } = useCompany();
   const totalSec = PRESENTER_SPINE.reduce((s, k) => s + (PRESENTER_TIMES[k] ?? 0), 0);
   const mins = Math.round(totalSec / 60);
 
@@ -89,20 +86,6 @@ export default function SalesPlaybook({ onNavigate }: Props) {
           <span className="font-sans italic text-[var(--slate)] ml-auto">Hidden on prospect tenants by default, this page is for the demo team.</span>
         </div>
       </div>
-
-      {!isDefault && (
-        <div className="card card-accent-coral">
-          <div className="flex items-start gap-3">
-            <ShieldAlert size={16} strokeWidth={1.8} className="text-[var(--coral)] mt-0.5" />
-            <div>
-              <div className="font-sans font-semibold text-[14px] text-[var(--coral)]">Preview mode, {profile.name}</div>
-              <div className="font-serif italic text-[13px] text-[var(--ink)] mt-1 leading-snug">
-                You are looking at the demo spine through the {profile.name} preview. Numbers, objections, and frames stay anchored to the canonical Meridian Industrial diagnosis on purpose, the spine is universal.
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* The 8-step spine timeline */}
       <div>

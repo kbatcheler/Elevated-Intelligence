@@ -20,7 +20,9 @@ export type PipelineSubStageName =
   | "challenge"
   | "narrate"
   | "score"
-  | "hero";
+  | "hero"
+  | "peers"
+  | "supplements";
 
 export type PipelineSubStage = {
   name: PipelineSubStageName;

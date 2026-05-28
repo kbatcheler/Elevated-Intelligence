@@ -95,6 +95,67 @@ export interface LayerData {
   // stage failed for this layer. Rendered above metrics in Layer.tsx via
   // components/visuals/GenericHero.
   heroPanel?: HeroPanel | null;
+  // Optional peer benchmark panel from Phase 2 sub-stage 7 (Peers). Null
+  // when seeded before this stage existed or when generation failed.
+  peerBenchmark?: PeerBenchmark | null;
+  // Optional 1-3 supplement blocks from Phase 2 sub-stage 8 (Supplements).
+  // Each block is a discriminated union; rendered by SupplementBlocks.tsx.
+  supplementBlocks?: SupplementBlocks | null;
+}
+
+export type SupplementTone = "good" | "warn" | "bad" | "neutral";
+
+export type SupplementBlock =
+  | {
+      kind: "leaderboard";
+      title: string;
+      eyebrow?: string;
+      rows: { label: string; value: string; sub?: string; tone?: SupplementTone }[];
+    }
+  | {
+      kind: "matrix";
+      title: string;
+      eyebrow?: string;
+      columns: string[];
+      rows: { label: string; cells: string[]; tone?: SupplementTone }[];
+    }
+  | {
+      kind: "timeline";
+      title: string;
+      eyebrow?: string;
+      items: { when: string; headline: string; detail?: string; tone?: SupplementTone }[];
+    }
+  | {
+      kind: "callout";
+      title: string;
+      eyebrow?: string;
+      body: string;
+      tone?: SupplementTone;
+      bullets?: string[];
+    };
+
+export interface SupplementBlocks {
+  blocks: SupplementBlock[];
+}
+
+export type PeerTone = "ahead" | "median" | "behind";
+
+export interface PeerMetricRow {
+  metric: string;
+  tenant_value: string;
+  median: string;
+  best: string;
+  best_label: string;
+  unit: string;
+  position: number;          // 0-100 on a worst→best slider
+  tone: PeerTone;
+  comment: string;
+}
+
+export interface PeerBenchmark {
+  peer_set: string;
+  as_of: string;
+  metrics: PeerMetricRow[];
 }
 
 export interface LayerSchemaEntry {

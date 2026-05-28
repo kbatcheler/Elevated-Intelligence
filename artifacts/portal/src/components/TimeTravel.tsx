@@ -1,15 +1,14 @@
 import { Clock, RotateCcw } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { TIMELINES as TIMELINES_RAW, type Timeline } from "../data/timetravel";
-import { useSwap, useIsDefaultProfile } from "../context/CompanyContext";
+import { useSwap } from "../context/CompanyContext";
 
 export default function TimeTravel({ layerKey }: { layerKey: string }) {
   const { timeOffsetByLayer, setTimeOffset } = useApp();
-  const isDefault = useIsDefaultProfile();
   const TIMELINES = useSwap(TIMELINES_RAW);
-  // Suppress timeline UI entirely for non-default profiles, the rewound
-  // snap headlines are Meridian Industrial-shaped and can't be safely vocab-swapped.
-  const timeline: Timeline | undefined = isDefault ? TIMELINES[layerKey] : undefined;
+  // TIMELINES is currently empty; this component renders nothing until a
+  // server-seeded per-layer history lands. Wired so a future drop-in works.
+  const timeline: Timeline | undefined = TIMELINES[layerKey];
   if (!timeline) return null;
   const offset = timeOffsetByLayer[layerKey] ?? 0;
   // offset: 0 = now (timeline[2]), 1 = -3d (timeline[1]), 2 = -7d (timeline[0])

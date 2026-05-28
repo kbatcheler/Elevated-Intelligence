@@ -358,3 +358,208 @@ export function buildHeroUserPrompt(
     `\n\nReturn the JSON hero_panel document for the layer named above now.`
   );
 }
+
+// ─── Stage 7: Peers ────────────────────────────────────────────────────────
+// Runs on Haiku after Hero. Produces 3-5 sector peers and 2-4 per-metric
+// comparison rows for the layer, all tenant-specific. Non-degrading.
+
+export const PEERS_SYSTEM_PROMPT = `You are a sector analyst building a peer benchmark panel for a layer page.
+
+The user message names the LAYER, gives the COMPANY PROFILE, and the FINAL LAYER CONTENT.
+
+Your job: pick 3-5 plausible PUBLIC OR WELL-KNOWN PRIVATE PEERS in the same sector as the company (the profile.sector is your anchor), then pick 2-4 METRICS that are central to THIS layer (not generic financials). For each metric, give:
+  - tenant_value: a realistic value for the company itself, expressed in the metric's natural unit (e.g. "62%", "47 days", "USD 1.8B")
+  - median: the peer-set median value
+  - best: the best-in-class peer's value
+  - best_label: the NAME of the best peer (e.g. "Lululemon", "Arc'teryx")
+  - position: an integer 0-100 where the company sits on a worst→best slider (50 == on median)
+  - tone: "ahead" | "median" | "behind" relative to the peer median
+  - comment: 1 sentence of context, naming the best peer or a competitor where possible
+
+Picking metrics:
+  - For demand-intelligence: search demand share, DTC mix, repeat-purchase rate, etc.
+  - For supply-chain: on-time delivery, inventory turns, supplier concentration.
+  - For finance: gross margin, free cash conversion, SG&A as % of revenue.
+  - For brand-social: aided awareness, NPS, share of voice, organic search share.
+  - For pricing-margin: list-vs-realised gap, promo depth, contribution margin per unit.
+  - Pick what is most diagnostic for THIS layer for THIS company. Do not force a checklist.
+
+Style rules:
+  - Values are SHORT strings, ≤ 12 characters where possible. Use the unit suffix the layer would normally use.
+  - Peer set string: name the universe (e.g. "Outdoor and technical apparel, US/EU listed peers").
+  - as_of: "Q3 2026".
+  - No em-dashes anywhere in user-facing strings. Use commas, full stops, or the middot \`·\`.
+  - No placeholders ("TBD", "n/a") and no Meridian Industrial references.
+
+Return JSON in this exact shape:
+
+{
+  "peer_benchmark": {
+    "peer_set": string,
+    "as_of":    string,
+    "metrics":  [
+      {
+        "metric":       string,
+        "tenant_value": string,
+        "median":       string,
+        "best":         string,
+        "best_label":   string,
+        "unit":         string,
+        "position":     number,
+        "tone":         "ahead" | "median" | "behind",
+        "comment":      string
+      }
+    ]
+  }
+}
+
+${STAGE_RULES}`;
+
+export function buildPeersUserPrompt(
+  profile: ProfileOutput,
+  content: NarrateOutput["content"],
+  layerKey: LayerKey,
+): string {
+  return (
+    layerHeader(layerKey) +
+    `COMPANY PROFILE:\n` +
+    JSON.stringify(profile, null, 2) +
+    `\n\nFINAL LAYER CONTENT:\n` +
+    JSON.stringify(content, null, 2) +
+    `\n\nReturn the JSON peer_benchmark document for the layer named above now.`
+  );
+}
+
+// ─── Stage 8: Supplements ──────────────────────────────────────────────────
+// Runs on Haiku after Peers. Emits 1-3 supplement blocks of a discriminated
+// union shape tailored to the layer. Non-degrading.
+
+export const SUPPLEMENTS_SYSTEM_PROMPT = `You are an editorial designer choosing the right SUPPLEMENT BLOCKS for a layer page on a board-grade portal.
+
+The user message names the LAYER, gives the COMPANY PROFILE, and the FINAL LAYER CONTENT.
+
+Your job: pick 1-3 BLOCKS that add concrete, tenant-specific texture beyond the narrative and metrics already on the page. Each block must reference real things from the profile or content: real products, regions, channels, suppliers, segments, programmes, peers.
+
+Available block shapes (each row of the output uses ONE):
+
+1. "leaderboard" — short ranked list. Good for: top campaigns by ROAS,
+   distribution centres by on-time rate, debtors by AR balance, open roles
+   by criticality, regions by demand share, customer accounts by churn risk.
+2. "matrix" — small table with named columns. Good for: ageing buckets,
+   funnel stages, supplier scorecards, scenario comparisons,
+   region × metric grids.
+3. "timeline" — date-stamped sequence. Good for: roadmap milestones,
+   the past 4 quarters of a KPI, ramp-up history of an initiative,
+   competitor launches.
+4. "callout" — single highlighted paragraph (with optional bullets). Good
+   for: risk concentration warnings, board talking points, regulatory
+   exposure summaries, single-supplier or single-customer concentration.
+
+Rules:
+  - Choose block shapes that EARN their place. Do not produce a leaderboard
+    with one row, do not produce a matrix when a callout is enough.
+  - Every label, value, and string must be tenant-specific. No "Customer A",
+    no "Region 1", no generic placeholders, no Meridian Industrial.
+  - For "matrix": every row.cells length MUST equal columns length.
+  - Tone is "good" | "warn" | "bad" | "neutral" and should reflect the
+    health of the row (or block as a whole for callout).
+  - No em-dashes in any user-facing string. Use commas, full stops, or
+    the middot \`·\`.
+
+Return JSON in this exact shape:
+
+{
+  "blocks": [
+    { "kind": "leaderboard", "title": string, "eyebrow"?: string,
+      "rows": [ { "label": string, "value": string, "sub"?: string, "tone"?: "good"|"warn"|"bad"|"neutral" } ] },
+    { "kind": "matrix", "title": string, "eyebrow"?: string,
+      "columns": [string, ...],
+      "rows": [ { "label": string, "cells": [string, ...], "tone"?: "good"|"warn"|"bad"|"neutral" } ] },
+    { "kind": "timeline", "title": string, "eyebrow"?: string,
+      "items": [ { "when": string, "headline": string, "detail"?: string, "tone"?: "good"|"warn"|"bad"|"neutral" } ] },
+    { "kind": "callout", "title": string, "eyebrow"?: string,
+      "body": string, "tone"?: "good"|"warn"|"bad"|"neutral",
+      "bullets"?: [string] }
+  ]
+}
+
+(Pick 1-3 of these block shapes — not all four. Order them as you want them stacked on the page.)
+
+${STAGE_RULES}`;
+
+export function buildSupplementsUserPrompt(
+  profile: ProfileOutput,
+  content: NarrateOutput["content"],
+  layerKey: LayerKey,
+): string {
+  return (
+    layerHeader(layerKey) +
+    `COMPANY PROFILE:\n` +
+    JSON.stringify(profile, null, 2) +
+    `\n\nFINAL LAYER CONTENT:\n` +
+    JSON.stringify(content, null, 2) +
+    `\n\nReturn the JSON supplement blocks document for the layer named above now.`
+  );
+}
+
+// ─── Sub-stage 9: Briefs (tenant-scope) ────────────────────────────────────
+
+export const BRIEFS_SYSTEM_PROMPT = `You are the executive editor writing the rich, tenant-specific copy that powers a CEO morning brief and an eight-page board pack for a board-grade portal.
+
+You are given a company PROFILE and the FINAL CONTENT of every diagnostic layer (each with narrative, causes, actions, metrics, headline_impact). Produce ONE JSON document with the tenant-specific copy the briefs render.
+
+Rules:
+  - Every string must be tenant-specific. No generic placeholders, no "Customer A", no Meridian Industrial, no Phoenix DC, no Home Depot unless the profile actually says so.
+  - executiveRead: a 3-5 sentence lede for the morning brief and the board pack's headline scorecard. Name the 2-3 layers driving the gap. Name the single fastest reversible lever. No bullet lists.
+  - pullQuote: one sentence the CEO would read aloud. Punchy, quantified where possible.
+  - combinedRecovery: a single dollar/percent figure with horizon, e.g. "$5.6M Q4" or "180bps in Q4".
+  - recoveryConfidence: one sentence on which parts of the recovery you are most/least confident in.
+  - topFindings: one entry per layer for at least 6 and at most 13 layers; each finding is 1-2 sentences sourced from that layer's narrative/causes; impact is a compact, quantified slug like "−$2.8M Q3 · $1.45M recovery"; lever is optional, one short italic sentence.
+  - rootCauses: EXACTLY 3 entries. title is short and pointed; impact is a compact figure ("−$6.2M") or "·" if no figure; body is 2-3 sentences explaining what actually happened, sourced from layer causes.
+  - recoveryLevers: EXACTLY 3 entries. title is the action; horizon is "This week" / "Two weeks" / "This quarter" etc; recovery is a compact figure; owner is a named role; body is 2-3 sentences on the play and its dependencies.
+  - No em-dashes in any user-facing string. Use commas, full stops, or the middot \`·\`.
+  - Layer keys MUST come from: business-performance, finance, demand-intelligence, competitive-intelligence, customer-intelligence, brand-social, supply-chain, pricing-margin, sales-pipeline, marketing-performance, people-operations, contract-management, receivables, talent-hr.
+
+Return JSON in this exact shape:
+
+{
+  "executiveRead": string,
+  "pullQuote": string,
+  "combinedRecovery": string,
+  "recoveryConfidence": string,
+  "topFindings": [
+    { "layerKey": string, "finding": string, "impact": string, "lever"?: string }
+  ],
+  "rootCauses": [
+    { "title": string, "impact": string, "body": string },
+    { "title": string, "impact": string, "body": string },
+    { "title": string, "impact": string, "body": string }
+  ],
+  "recoveryLevers": [
+    { "title": string, "horizon": string, "recovery": string, "owner": string, "body": string },
+    { "title": string, "horizon": string, "recovery": string, "owner": string, "body": string },
+    { "title": string, "horizon": string, "recovery": string, "owner": string, "body": string }
+  ]
+}
+
+${STAGE_RULES}`;
+
+export function buildBriefsUserPrompt(
+  profile: ProfileOutput,
+  layerContents: Array<{ layerKey: LayerKey; content: NarrateOutput["content"] }>,
+): string {
+  const layerBlocks = layerContents
+    .map(
+      ({ layerKey, content }) =>
+        `--- LAYER: ${layerKey} (${getLayerName(layerKey)}) ---\n` +
+        JSON.stringify(content, null, 2),
+    )
+    .join("\n\n");
+  return (
+    `COMPANY PROFILE:\n` +
+    JSON.stringify(profile, null, 2) +
+    `\n\nFINAL LAYER CONTENT (all layers):\n\n` +
+    layerBlocks +
+    `\n\nReturn the JSON brief overrides document for this tenant now.`
+  );
+}

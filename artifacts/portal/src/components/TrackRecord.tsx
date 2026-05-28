@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Award, TrendingUp, TrendingDown, Clock, MinusCircle, AlertTriangle, type LucideIcon } from "lucide-react";
 import { summary, type TrackRecordEntry, type OutcomeStatus } from "../data/trackRecord";
-import { useNarrative, useIsDefaultProfile, useCompany } from "../context/CompanyContext";
+import { useNarrative } from "../context/CompanyContext";
 
 const STATUS_META: Record<OutcomeStatus, { label: string; color: string; icon: LucideIcon }> = {
   beat:        { label: "Beat predicted",  color: "var(--teal)",  icon: TrendingUp },
@@ -13,19 +13,13 @@ const STATUS_META: Record<OutcomeStatus, { label: string; color: string; icon: L
 
 export default function TrackRecord({ onNavigate }: { onNavigate: (key: string) => void }) {
   const { TRACK_RECORD, LAYERS } = useNarrative();
-  const isDefault = useIsDefaultProfile();
-  const { profile } = useCompany();
   const [filter, setFilter] = useState<"all" | OutcomeStatus>("all");
   const s = useMemo(() => summary(), []);
   const layerLabel = useMemo(() => Object.fromEntries(LAYERS.map(l => [l.key, l.title])), [LAYERS]);
 
-  // CC-3: track-record receipts are shared across every tenant. The entries
-  // are hand-authored Meridian Industrial history, and Preview Mode surfaces
-  // them explicitly as the canonical body of evidence behind the diagnosis
-  // the tenant is previewing, rather than hiding the page behind an empty
-  // state. `profile` / `isDefault` remain wired for a future per-tenant
-  // override path but are intentionally unused here today.
-  void profile; void isDefault;
+  // Track-record receipts are shared across every tenant; the entries are
+  // hand-authored history surfacing the canonical body of evidence behind
+  // the methodology. A future per-tenant override path can replace them.
 
   const visible = TRACK_RECORD.filter(t => filter === "all" || t.status === filter);
 

@@ -13,7 +13,7 @@ import {
   tenantPipelineRunsTable,
 } from "@workspace/db";
 import { startPipeline } from "../lib/pipeline/runner";
-import { generateHeroPanel } from "../lib/pipeline/phase2";
+import { generateBriefOverrides, generateHeroPanel, generatePeerBenchmark, generateSupplementBlocks } from "../lib/pipeline/phase2";
 import type { LayerKey, ProfileOutput } from "../lib/pipeline/schemas";
 import type { NarrateOutput } from "../lib/pipeline/phase2-schemas";
 import { logger as rootLogger } from "../lib/logger";
@@ -57,10 +57,13 @@ router.get("/tenants/:id", async (req, res) => {
   res.json({
     tenant,
     profile: profileRows[0]?.profile ?? null,
+    briefOverrides: profileRows[0]?.briefOverrides ?? null,
     layers: layerRows.map((r) => ({
       layerKey: r.layerKey,
       content: r.content,
       heroPanel: r.heroPanel,
+      peerBenchmark: r.peerBenchmark,
+      supplementBlocks: r.supplementBlocks,
       verifiedClaims: r.verifiedClaims,
       modelledClaims: r.modelledClaims,
       generatedAt: r.generatedAt,
@@ -161,12 +164,14 @@ router.post("/tenants/:id/refresh", async (req, res) => {
   res.json({ id, runId });
 });
 
-// ─── POST /tenants/:id/hero/backfill ─────────────────────────────────────
-// Fill hero_panel for every layer of an existing tenant WITHOUT re-running
-// the full ~30+ min pipeline. Runs the hero stage in parallel across layers
-// using each layer's existing finalised content + the saved profile.
-// Idempotent: overwrites existing hero_panel rows.
-router.post("/tenants/:id/hero/backfill", async (req, res) => {
+// ─── POST /tenants/:id/panels/backfill ───────────────────────────────────
+// Fill all panel sub-stages (hero_panel + peer_benchmark + future
+// supplement_blocks etc.) for every layer of an existing tenant WITHOUT
+// re-running the full ~30+ min pipeline. Each panel stage is a short
+// Haiku call against the layer's already-finalised content + the saved
+// profile. Non-degrading per-layer per-panel: a single failure leaves the
+// previous value (or null) in place and is counted in the response.
+router.post("/tenants/:id/panels/backfill", async (req, res) => {
   const id = req.params.id;
   const tenantRows = await db.select().from(tenantsTable).where(eq(tenantsTable.id, id)).limit(1);
   if (!tenantRows[0]) {
@@ -183,48 +188,85 @@ router.post("/tenants/:id/hero/backfill", async (req, res) => {
     return;
   }
   const profile: ProfileOutput = profileRaw;
-  const log = rootLogger.child({ tenantId: id, op: "hero/backfill" });
-  log.info({ layerCount: layerRows.length }, "starting hero backfill");
+  const log = rootLogger.child({ tenantId: id, op: "panels/backfill" });
+  log.info({ layerCount: layerRows.length }, "starting panels backfill");
 
-  // Parallel across layers with a small concurrency cap to respect Anthropic
-  // TPM limits (Haiku, ~8s/call). 4 in flight mirrors the main pipeline.
+  // Per-layer worker: runs every panel stage in PARALLEL within the layer
+  // (they share inputs and are independent), then writes only the columns
+  // whose generation succeeded. Cross-layer concurrency is capped to 4 to
+  // mirror the main pipeline's LAYER_CONCURRENCY and respect Haiku TPM.
   const CONCURRENCY = 4;
   let cursor = 0;
-  let ok = 0;
-  let failed = 0;
+  const counts = {
+    hero:        { ok: 0, failed: 0 },
+    peers:       { ok: 0, failed: 0 },
+    supplements: { ok: 0, failed: 0 },
+    briefs:      { ok: 0, failed: 0 },
+  };
   async function worker(): Promise<void> {
     while (true) {
       const i = cursor++;
       if (i >= layerRows.length) return;
       const row = layerRows[i];
-      try {
-        const panel = await generateHeroPanel(
-          profile,
-          row.content as NarrateOutput["content"],
-          row.layerKey as LayerKey,
-          log,
-        );
-        if (panel) {
-          // Only write on success. Otherwise leave whatever was already
-          // there alone, so a flaky retry can't regress a good panel to
-          // null. The next backfill call will retry the failed layers.
-          await db
-            .update(tenantLayersTable)
-            .set({ heroPanel: panel as unknown as Record<string, unknown> })
-            .where(and(eq(tenantLayersTable.tenantId, id), eq(tenantLayersTable.layerKey, row.layerKey)));
-          ok++;
-        } else {
-          failed++;
-        }
-      } catch (e) {
-        failed++;
-        log.warn({ err: String(e), layerKey: row.layerKey }, "hero backfill failed for layer");
+      const content = row.content as NarrateOutput["content"];
+      const layerKey = row.layerKey as LayerKey;
+      const [heroPanel, peerBenchmark, supplementBlocks] = await Promise.all([
+        generateHeroPanel(profile, content, layerKey, log).catch((e) => {
+          log.warn({ err: String(e), layerKey }, "hero generation threw");
+          return null;
+        }),
+        generatePeerBenchmark(profile, content, layerKey, log).catch((e) => {
+          log.warn({ err: String(e), layerKey }, "peers generation threw");
+          return null;
+        }),
+        generateSupplementBlocks(profile, content, layerKey, log).catch((e) => {
+          log.warn({ err: String(e), layerKey }, "supplements generation threw");
+          return null;
+        }),
+      ]);
+      // Build a partial set of only the columns we successfully generated.
+      // Skipping nulls means a flaky retry can't regress an existing good
+      // panel to null. The next backfill call retries the failed ones.
+      const update: Record<string, unknown> = {};
+      if (heroPanel)         { update.heroPanel        = heroPanel as unknown;        counts.hero.ok++;        } else counts.hero.failed++;
+      if (peerBenchmark)     { update.peerBenchmark    = peerBenchmark as unknown;    counts.peers.ok++;       } else counts.peers.failed++;
+      if (supplementBlocks)  { update.supplementBlocks = supplementBlocks as unknown; counts.supplements.ok++; } else counts.supplements.failed++;
+      if (Object.keys(update).length > 0) {
+        await db
+          .update(tenantLayersTable)
+          .set(update)
+          .where(and(eq(tenantLayersTable.tenantId, id), eq(tenantLayersTable.layerKey, row.layerKey)));
       }
     }
   }
   await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
-  log.info({ ok, failed }, "hero backfill complete");
-  res.json({ ok: true, layersFilled: ok, layersFailed: failed });
+
+  // Tenant-scope briefs stage: runs once per tenant after every layer panel
+  // call has finished. Takes profile + all finalised layer contents and
+  // emits the rich copy that drives MorningBrief + BoardPack. Skipped if
+  // no layers have content yet.
+  if (layerRows.length > 0) {
+    const layerContents = layerRows.map((r) => ({
+      layerKey: r.layerKey as LayerKey,
+      content: r.content as NarrateOutput["content"],
+    }));
+    const briefOverrides = await generateBriefOverrides(profile, layerContents, log).catch((e) => {
+      log.warn({ err: String(e) }, "briefs generation threw");
+      return null;
+    });
+    if (briefOverrides) {
+      await db
+        .update(tenantProfileTable)
+        .set({ briefOverrides: briefOverrides as unknown as Record<string, unknown> })
+        .where(eq(tenantProfileTable.tenantId, id));
+      counts.briefs.ok++;
+    } else {
+      counts.briefs.failed++;
+    }
+  }
+
+  log.info(counts, "panels backfill complete");
+  res.json({ ok: true, counts });
 });
 
 export default router;

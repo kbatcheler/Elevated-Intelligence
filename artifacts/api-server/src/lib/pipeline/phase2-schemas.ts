@@ -288,3 +288,177 @@ export type HeroPanel = z.infer<typeof heroPanelSchema>;
 
 export const heroOutputSchema = z.object({ hero_panel: heroPanelSchema });
 export type HeroOutput = z.infer<typeof heroOutputSchema>;
+
+// ─── Stage 7: Peers ───────────────────────────────────────────────────────
+// Short Haiku call that, given the finalised narrate content + tenant
+// profile, identifies 3-5 plausible sector peers and emits 2-4 per-metric
+// comparison rows for the layer. Stored on tenant_layers.peer_benchmark.
+// Non-degrading: failure leaves the panel null and the frontend skips it.
+
+const peerToneSchema = z.enum(["ahead", "median", "behind"]);
+
+export const peerBenchmarkSchema = z.object({
+  peer_set: z.string().min(2).max(160),
+  as_of: z.string().min(1).max(40),
+  metrics: z
+    .array(
+      z.object({
+        metric: z.string().min(1).max(120),
+        tenant_value: z.string().min(1).max(40),
+        median: z.string().min(1).max(40),
+        best: z.string().min(1).max(40),
+        best_label: z.string().min(1).max(80),
+        unit: z.string().max(20).optional().default(""),
+        position: z.number().min(0).max(100),
+        tone: peerToneSchema,
+        comment: z.string().min(1).max(400),
+      }),
+    )
+    .min(2)
+    .max(6),
+});
+export type PeerBenchmark = z.infer<typeof peerBenchmarkSchema>;
+
+export const peersOutputSchema = z.object({ peer_benchmark: peerBenchmarkSchema });
+export type PeersOutput = z.infer<typeof peersOutputSchema>;
+
+// ─── Stage 8: Supplements ──────────────────────────────────────────────────
+// Short Haiku call that emits 1-3 supplement blocks of a discriminated union
+// shape (leaderboard | matrix | timeline | callout) for the layer. Stored on
+// tenant_layers.supplement_blocks. Non-degrading.
+
+const supplementToneSchema = z.enum(["good", "warn", "bad", "neutral"]);
+
+const leaderboardBlockSchema = z.object({
+  kind: z.literal("leaderboard"),
+  title: z.string().min(2).max(80),
+  eyebrow: z.string().max(40).optional().default(""),
+  rows: z
+    .array(
+      z.object({
+        label: z.string().min(1).max(80),
+        value: z.string().min(1).max(40),
+        sub: z.string().max(80).optional().default(""),
+        tone: supplementToneSchema.optional(),
+      }),
+    )
+    .min(2)
+    .max(8),
+});
+
+const matrixBlockSchema = z.object({
+  kind: z.literal("matrix"),
+  title: z.string().min(2).max(80),
+  eyebrow: z.string().max(40).optional().default(""),
+  columns: z.array(z.string().min(1).max(40)).min(2).max(5),
+  rows: z
+    .array(
+      z.object({
+        label: z.string().min(1).max(80),
+        cells: z.array(z.string().max(40)).min(2).max(5),
+        tone: supplementToneSchema.optional(),
+      }),
+    )
+    .min(2)
+    .max(8),
+});
+
+const timelineBlockSchema = z.object({
+  kind: z.literal("timeline"),
+  title: z.string().min(2).max(80),
+  eyebrow: z.string().max(40).optional().default(""),
+  items: z
+    .array(
+      z.object({
+        when: z.string().min(1).max(40),
+        headline: z.string().min(2).max(160),
+        detail: z.string().max(280).optional().default(""),
+        tone: supplementToneSchema.optional(),
+      }),
+    )
+    .min(2)
+    .max(6),
+});
+
+const calloutBlockSchema = z.object({
+  kind: z.literal("callout"),
+  title: z.string().min(2).max(80),
+  eyebrow: z.string().max(40).optional().default(""),
+  body: z.string().min(4).max(600),
+  tone: supplementToneSchema.optional(),
+  bullets: z.array(z.string().min(1).max(160)).max(5).optional().default([]),
+});
+
+export const supplementBlockSchema = z.discriminatedUnion("kind", [
+  leaderboardBlockSchema,
+  matrixBlockSchema,
+  timelineBlockSchema,
+  calloutBlockSchema,
+]);
+export type SupplementBlock = z.infer<typeof supplementBlockSchema>;
+
+export const supplementBlocksSchema = z.object({
+  blocks: z.array(supplementBlockSchema).min(1).max(3),
+});
+export type SupplementBlocks = z.infer<typeof supplementBlocksSchema>;
+
+// ─── Sub-stage 9: Briefs (tenant-scope) ────────────────────────────────────
+// Rich copy that drives MorningBrief.tsx + BoardPack.tsx for any seeded
+// tenant. Generated once per tenant after every layer has finalised, taking
+// the profile + the bundle of per-layer narrative content as input.
+
+const layerKeyEnum = z.enum([
+  "business-performance",
+  "finance",
+  "demand-intelligence",
+  "competitive-intelligence",
+  "customer-intelligence",
+  "brand-social",
+  "supply-chain",
+  "pricing-margin",
+  "sales-pipeline",
+  "marketing-performance",
+  "people-operations",
+  "contract-management",
+  "receivables",
+  "talent-hr",
+]);
+
+export const briefOverridesSchema = z.object({
+  executiveRead: z.string().min(40).max(2000),
+  pullQuote: z.string().min(20).max(600),
+  combinedRecovery: z.string().min(2).max(80),
+  recoveryConfidence: z.string().min(20).max(400),
+  topFindings: z
+    .array(
+      z.object({
+        layerKey: layerKeyEnum,
+        finding: z.string().min(20).max(800),
+        impact: z.string().min(2).max(160),
+        lever: z.string().max(400).optional(),
+      }),
+    )
+    .min(6)
+    .max(13),
+  rootCauses: z
+    .array(
+      z.object({
+        title: z.string().min(2).max(160),
+        impact: z.string().min(1).max(40),
+        body: z.string().min(40).max(900),
+      }),
+    )
+    .length(3),
+  recoveryLevers: z
+    .array(
+      z.object({
+        title: z.string().min(2).max(200),
+        horizon: z.string().min(2).max(60),
+        recovery: z.string().min(1).max(60),
+        owner: z.string().min(2).max(80),
+        body: z.string().min(40).max(900),
+      }),
+    )
+    .length(3),
+});
+export type BriefOverrides = z.infer<typeof briefOverridesSchema>;

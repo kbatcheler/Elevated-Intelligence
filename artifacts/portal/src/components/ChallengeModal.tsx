@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, RotateCw, ShieldCheck, AlertTriangle, Send, ChevronRight } from "lucide-react";
 import type { LayerData } from "../data/layers";
-import { useCompany, useSwap, useIsDefaultProfile } from "../context/CompanyContext";
+import { useSwap } from "../context/CompanyContext";
 
 type Tab = "counter" | "criteria" | "submit";
 
@@ -37,15 +37,10 @@ export default function ChallengeModal({ layer, onClose }: { layer: LayerData; o
   };
 
   const CHANGE_CRITERIA = useSwap(CHANGE_CRITERIA_RAW);
-  const { resolve } = useCompany();
-  const isDefault = useIsDefaultProfile();
-  // The default falsification criteria are Meridian Industrial-shaped (Tractor Supply, HD,
-  // OOS days top 5 SKUs). For non-default profiles, show an empty list so the
-  // wrong-brand criteria can't render.
-  const criteria = isDefault ? (CHANGE_CRITERIA[layer.key] ?? CHANGE_CRITERIA.default) : [];
-  const challengePlaceholder = isDefault
-    ? resolve("e.g. The DIY variance is macro-driven, not Meridian Industrial-specific. Tractor Supply's Q3 print will show similar softness.")
-    : "e.g. The variance is macro-driven, not company-specific. Peer prints this quarter will show similar softness.";
+  // Falsification criteria are a future per-tenant override; until those
+  // ship, render an empty criteria list so brand-shaped fixtures can't leak.
+  const criteria = CHANGE_CRITERIA[layer.key] ?? [];
+  const challengePlaceholder = "e.g. The variance is macro-driven, not company-specific. Peer prints this quarter will show similar softness.";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center"

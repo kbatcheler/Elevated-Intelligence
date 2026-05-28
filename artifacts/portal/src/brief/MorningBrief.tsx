@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Printer, TrendingUp, TrendingDown, AlertCircle, Cpu, ArrowRight } from "lucide-react";
-import { useNarrative, useCompany, useIsDefaultProfile } from "../context/CompanyContext";
+import { useNarrative, useCompany } from "../context/CompanyContext";
 import { useApp } from "../context/AppContext";
 import { claimCounts } from "../components/claims/ClaimAnnotation";
 import { Tooltip, TooltipTrigger, TooltipContent } from "../components/ui/tooltip";
@@ -63,8 +63,10 @@ function deriveDeltas(companyName: string): Delta[] {
   return ix.slice(0, 3).map(i => DELTA_TEMPLATES[i](rng));
 }
 
-// Composed top-finding-per-layer brief. Hard-coded copy because this is a
-// curated editorial product, not an auto-summary of the layer data.
+// Composed top-finding-per-layer brief. After Phase D, the per-layer entries
+// are sourced from `profile.topFindings` (populated by the Phase 2 briefs
+// sub-stage). Layer ordering follows the LAYERS array so the brief reads in
+// the canonical executive → operational → system sweep.
 
 interface BriefItem {
   layer: string;
@@ -72,22 +74,6 @@ interface BriefItem {
   impact: string;
   lever?: string;
 }
-
-const TOP_FINDINGS: BriefItem[] = [
-  { layer: "business-performance",     finding: "Q3 closed 8% behind revenue plan and 380bps behind margin target. Cash held only because working capital tightened.", impact: "−$11M revenue · −380bps margin", lever: "Pricing is the fastest reversible lever." },
-  { layer: "demand-intelligence",      finding: "$2.8M variance concentrated in DIY and Home Improvement. Three causes: competitor promo, Dallas/Phoenix stockouts, forecast drift.", impact: "−$2.8M Q3 · $1.45M predicted recovery" },
-  { layer: "competitive-intelligence", finding: "Home Depot ran promo at 1.8× baseline depth in five SE markets. Market share fell 2.1pp YoY; win rate fell from 41% to 32%.", impact: "−2.1pp share · −9pp win rate" },
-  { layer: "pricing-margin",           finding: "Margin compressed 240bps as match-not-beat policy on 24 top SKUs deepened. Volume preserved at the cost of margin.", impact: "−240bps · $1.2M recoverable in Q4" },
-  { layer: "supply-chain",             finding: "Dallas + Phoenix 41 OOS days on top 5 SKUs in weeks 30–34. Labour shortfall projected next week, 11 unfilled DC shifts.", impact: "−$0.9M variance · throughput risk" },
-  { layer: "customer-intelligence",    finding: "NPS down to 38 (from 41); detractor cluster localised to Phoenix metro. Order-ETA service calls +42% DoD.", impact: "−3 NPS · 12 named accounts at risk" },
-  { layer: "finance",                  finding: "EBITDA closed $6.5M below plan. Bridge: $4.2M margin, $1.6M opex, $0.7M working capital.", impact: "−$6.5M EBITDA" },
-  { layer: "receivables",              finding: "DSO at 47d (vs 32d target). $1.8M >60d. Greater Plains Co. 47d overdue ($420K), credit hold recommended.", impact: "$1.8M >60d · 3 holds recommended" },
-  { layer: "people-operations",        finding: "DC Operations attrition annualised at 24% (vs 12% target), second consecutive week. 34 critical roles open.", impact: "+12pp attrition · 34 critical open" },
-  { layer: "talent-hr",                finding: "Senior buyer role 84d open, blocking pricing reset. Offer-to-accept stage is the funnel bottleneck (comp gap 12%).", impact: "5 critical roles >80d open" },
-  { layer: "brand-social",             finding: "Sentiment fell 6pts on emerging 'price gouging' narrative, 14 negative mentions/6h, regional cluster.", impact: "−6pts sentiment · cluster forming" },
-  { layer: "sales-pipeline",           finding: "Win rate halved YoY (14% from 21%); cycle days +13d. Q4 coverage at 2.4× vs 3.1× target.", impact: "Q4 commit at risk · $2.1M slip" },
-  { layer: "marketing-performance",    finding: "Email at 8.25× ROAS, Brand and Display under 2.0×. Reallocating $50K Brand→Email lifts Q4 ROAS to a modelled 3.4×.", impact: "Reallocation +$50K · +1.0× ROAS" },
-];
 
 function MorningBriefClaimBadge({ layer }: { layer: { verifiedClaims: { source_urls: string[] }[]; modelledClaims: unknown[] } }) {
   const c = claimCounts(layer.verifiedClaims as never, layer.modelledClaims as never);
@@ -126,31 +112,18 @@ export default function MorningBrief() {
   const openArchitecture = () => { setPromoDismissed(true); setActiveLayer("intelligence-architecture"); closeBrief(); };
   const { profile, resolve } = useCompany();
   const { LAYERS } = useNarrative();
-  const isDefault = useIsDefaultProfile();
   const today = "Tuesday, 14 October 2026 · 06:42 CT";
   const layerByKey = Object.fromEntries(LAYERS.map(l => [l.key, l]));
-  // Merge profile overrides with the Meridian Industrial baseline copy. For the Meridian Industrial
-  // baseline OR non-Meridian Industrial profiles with explicit per-layer overrides, we
-  // include the finding. For seeded profiles that don't override a given
-  // layer, we DROP the finding instead of leaking Meridian Industrial specifics (Home
-  // Depot promo depth, Dallas/Phoenix OOS, Greater Plains Co. credit hold).
-  // For non-default profiles we require the override to carry at least its
-  // own `finding` AND `impact` strings, otherwise we'd silently fall back to
-  // Meridian Industrial copy via the spread. Default profile keeps the original merge.
-  const mergedFindings = TOP_FINDINGS.flatMap(f => {
-    const ov = profile.topFindings?.[f.layer];
-    if (isDefault) return [{ ...f, ...(ov ?? {}) }];
-    if (ov && typeof ov.finding === "string" && typeof ov.impact === "string") {
-      // Build the entry from override-only fields so the Meridian Industrial baseline
-      // `lever` (and any future optional baseline field) cannot survive the
-      // spread for a non-default profile. `layer` is taken from the baseline
-      // row because it's just the key; `lever` is included only if the
-      // override declares one.
-      const entry: BriefItem = { layer: f.layer, finding: ov.finding, impact: ov.impact };
-      if (typeof ov.lever === "string") entry.lever = ov.lever;
-      return [entry];
-    }
-    return [];
+  // Source per-layer findings from `profile.topFindings` (populated by the
+  // Phase 2 briefs sub-stage). Iterate LAYERS so ordering stays canonical;
+  // skip any layer the briefs run did not produce a finding for, rather than
+  // leaking a fixture in its place.
+  const mergedFindings: BriefItem[] = LAYERS.flatMap(l => {
+    const ov = profile.topFindings?.[l.key];
+    if (!ov || typeof ov.finding !== "string" || typeof ov.impact !== "string") return [];
+    const entry: BriefItem = { layer: l.key, finding: ov.finding, impact: ov.impact };
+    if (typeof ov.lever === "string") entry.lever = ov.lever;
+    return [entry];
   });
   // Deterministic per-company deltas for the "Since yesterday" ribbon.
   const deltas = deriveDeltas(profile.name);
@@ -254,9 +227,7 @@ export default function MorningBrief() {
             <section className="mb-7">
               <p className="font-serif text-[20px] leading-[1.55] text-[var(--ink)] first-letter:font-serif first-letter:text-[64px] first-letter:font-semibold first-letter:float-left first-letter:leading-[0.85] first-letter:mr-2 first-letter:mt-1 first-letter:text-[var(--coral)]">
                 {profile.executiveRead
-                  ?? (isDefault
-                    ? resolve("Q3 closed eight percent behind plan and three hundred and eighty basis points behind margin target. The variance is not diffuse: three layers, Demand, Pricing, and Supply, account for almost the entire gap. Cash held only because working capital tightened. Of the three, Pricing is the fastest reversible lever this quarter.")
-                    : `${profile.name} closed the quarter behind plan, with the variance concentrated in a small number of layers. The full diagnostic, by layer, by cause, by lever, follows below.`)}
+                  ?? `${profile.name} closed the quarter behind plan, with the variance concentrated in a small number of layers. The full diagnostic, by layer, by cause, by lever, follows below.`}
               </p>
             </section>
 
@@ -264,15 +235,20 @@ export default function MorningBrief() {
             <section className="my-7 py-5 border-y border-[var(--cream-dark)]">
               <blockquote className="font-serif italic text-[24px] leading-[1.35] text-[var(--navy)] text-center">
                 "{profile.pullQuote
-                  ?? (isDefault
-                    ? "Sixty percent of the revenue gap traces to Demand, sixty-five percent of the EBITDA gap traces to Pricing, and the system is ninety-seven percent confident those are the right two levers."
-                    : "The variance is concentrated, the levers are named, and each one has an owner standing by.")}"
+                  ?? "The variance is concentrated, the levers are named, and each one has an owner standing by."}"
               </blockquote>
             </section>
 
             {/* Layered findings */}
             <section>
               <div className="eyebrow text-[var(--coral)] mb-3">Layer-by-layer findings</div>
+              {mergedFindings.length === 0 && (
+                <div className="p-5 rounded-sm mb-4" style={{ background: "var(--cream-light)", border: "1px solid var(--cream-dark)" }}>
+                  <p className="font-serif italic text-[14px] text-[var(--slate)] leading-snug">
+                    Layer-by-layer findings will populate here once the briefs run has completed for {profile.name}. Until then, each layer's page carries its own narrative and recommended actions.
+                  </p>
+                </div>
+              )}
               <div className="space-y-5">
                 {mergedFindings.map((f, i) => {
                   const l = layerByKey[f.layer];

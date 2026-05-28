@@ -281,7 +281,6 @@ export default function App() {
         </div>
       </header>
 
-      <PreviewModeBanner />
       <SystemHeartbeat onNavigate={handleNavigate} />
       <SignalTicker onNavigate={handleNavigate} />
       {presenterOn && (
@@ -434,24 +433,3 @@ export default function App() {
   );
 }
 
-// PreviewModeBanner, visible on every non-default tenant. Resolves DK-2
-// honestly: rather than silently shrinking large parts of the surface area
-// (analyst's take, hero cards, time-travel, NextSteps, etc.), we name the
-// state so the absence reads as framing, not as a broken demo. The default
-// Meridian Industrial profile renders nothing.
-function PreviewModeBanner() {
-  const { profile } = useCompany();
-  // Phase 1: there is no built-in default tenant any more, every active
-  // tenant came from the server library. Banner always renders.
-  if (!profile.id) return null;
-  return (
-    <div className="px-6 py-2.5 flex items-center gap-3 text-[12px]"
-         style={{ background: "var(--gold-faint, #FBF3DC)", borderBottom: "1px solid var(--gold)" }}>
-      <span className="font-sans font-bold uppercase tracking-wider text-[10px] px-2 py-0.5 rounded-sm"
-            style={{ background: "var(--gold)", color: "var(--navy-deep)" }}>Preview mode</span>
-      <span className="font-sans text-[var(--ink)]">
-        You are looking at <span className="font-semibold">{profile.name}</span> rendered through the canonical Meridian Industrial diagnosis as a structural preview. Numbers, anomalies, hero cards, and the analyst's take stay anchored to Meridian; feeds, layer titles, and narrator copy are re-vocabularied into the {profile.name} world. The receipts page below is shared across tenants on purpose, it is the evidence behind the methodology you are previewing.
-      </span>
-    </div>
-  );
-}

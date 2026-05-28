@@ -13,16 +13,14 @@ import DataFeedsCard from "./DataFeedsCard";
 import GenericHero from "./visuals/GenericHero";
 import AnimatedNumber from "./AnimatedNumber";
 import Sparkline, { makeSeries } from "./Sparkline";
-import { EXTRAS } from "./extras";
+import SupplementBlocks from "./visuals/SupplementBlocks";
 import TimeTravel from "./TimeTravel";
 import CommitButton from "./CommitButton";
 import WhatIfLevers from "./WhatIfLevers";
-import NextSteps from "./NextSteps";
-import PipelineDetail from "./PipelineDetail";
 import PeerBenchmark from "./PeerBenchmark";
 import DemandLink from "./DemandLink";
 import { useApp } from "../context/AppContext";
-import { useNarrative, useSwap, useIsDefaultProfile, useCompany } from "../context/CompanyContext";
+import { useNarrative, useSwap, useCompany } from "../context/CompanyContext";
 import { TIMELINES as TIMELINES_RAW, type Timeline } from "../data/timetravel";
 import { scenarioForLayer } from "../data/scenarios";
 
@@ -50,16 +48,12 @@ export default function Layer({
 }) {
   const [open, setOpen] = useState(false);
   const { openEvidence, openWhy, pulse, timeOffsetByLayer } = useApp();
-  const { PEERS, EVIDENCE } = useNarrative();
+  const { EVIDENCE } = useNarrative();
   const { activeTenant } = useCompany();
-  const isDefaultProfile = useIsDefaultProfile();
-  // TIMELINES contains Meridian Industrial-shaped "Diagnosis timeline" headlines
-  // ("8% behind plan, 380bps margin gap …") that the vocab swap cannot
-  // translate. For non-default profiles we suppress the timeline entirely
-  //, TimeTravel below renders null when its layer key is absent, and
-  // `snap` below stays null so layer.narrative is used as-is.
-  const TIMELINES_SWAPPED = useSwap(TIMELINES_RAW);
-  const TIMELINES: Record<string, Timeline> = isDefaultProfile ? TIMELINES_SWAPPED : {};
+  // TIMELINES is currently empty in `data/timetravel.ts`; the swap is a
+  // no-op for now. Kept wired so a future server-seeded timeline can drop
+  // straight in without re-plumbing the component.
+  const TIMELINES: Record<string, Timeline> = useSwap(TIMELINES_RAW);
   const isHi = (field: string) => highlight === field;
   const seedBase = layer.key.charCodeAt(0) + layer.key.charCodeAt(layer.key.length - 1);
 
@@ -286,15 +280,6 @@ export default function Layer({
     </div>
   );
 
-  // Extras are still populated from hardcoded Meridian Industrial fixtures
-  // (named suppliers, DC cities, competitor brands, SKUs etc). For any
-  // non-default profile we hide them rather than render wrong-brand copy.
-  // The Hero slot is now universal: every tenant gets the data-driven
-  // metric snapshot from layer.metrics. Phase B will replace Extras with
-  // a generic seeded-data renderer; see .local/session_plan.md.
-  const isDefault = useIsDefaultProfile();
-  const Extra = isDefault ? EXTRAS[layer.key] : undefined;
-
   return (
     <div className="space-y-6 pb-12">
       {/* ────────────────────────────────────────────────────────────────
@@ -361,33 +346,12 @@ export default function Layer({
       <TimeTravel layerKey={layer.key} />
 
       {/* ────────────────────────────────────────────────────────────────
-          Analyst's take, the one-sentence lead, above §1.
-          Hidden for non-default tenants: the analyst leads are written
-          in Meridian Industrial-shaped language (named channels, named
-          competitors, "$11M gap"…) that the vocab swap cannot translate.
-          Same anti-leak principle as NEUTRAL_LAYER_NARRATIVE in
-          CompanyContext.
-         ──────────────────────────────────────────────────────────────── */}
-      {isDefaultProfile && (
-        <div className="card card-accent-gold">
-          <div className="flex items-baseline gap-3">
-            <div className="eyebrow text-[var(--gold)] shrink-0">Analyst's take</div>
-            <p className="font-serif italic text-[16px] leading-[1.5] text-[var(--ink)]">
-              <ClaimAnnotation claimPath="headline_finding" verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
-                {layer.analystTake}
-              </ClaimAnnotation>
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ────────────────────────────────────────────────────────────────
           §1 RECOMMENDATION, what to do (BLUF)
           Narrative + actions paired at the top, then committed next steps.
          ──────────────────────────────────────────────────────────────── */}
       <SectionHeading index="§1" label="Recommendation" sub="What to do, the call, with dollars attached" />
-      {/* Narrative + actions sit side-by-side; NextSteps lives BELOW the grid
-          at full width. Earlier we tucked NextSteps into the narrative column
+      {/* Narrative + actions sit side-by-side at full width. Earlier we
+          tucked an extra prescriptive block into the narrative column
           to absorb dead space, but at 2/3 width its three time-horizon cards
           collapsed to ~150px each and copy wrapped one word per line. Full
           width gives each horizon ~3× the room and the prose breathes. */}
@@ -398,8 +362,6 @@ export default function Layer({
         </div>
         <div>{actionsCard}</div>
       </div>
-      <NextSteps layerKey={layer.key} layerTitle={layer.title} />
-
       {/* ────────────────────────────────────────────────────────────────
           §2 SITUATION, descriptive: where we stand right now
          ──────────────────────────────────────────────────────────────── */}
@@ -407,9 +369,9 @@ export default function Layer({
       {layer.heroPanel && <GenericHero layer={layer} />}
       {metricStrip}
       <GapRecoveryDiptych layer={layer} />
-      {Extra && <Extra />}
+      <SupplementBlocks layer={layer} />
       <CauseWaterfall layer={layer} />
-      {PEERS[layer.key] && <PeerBenchmark layerKey={layer.key} />}
+      <PeerBenchmark layer={layer} />
 
       {/* ────────────────────────────────────────────────────────────────
           §3 DIAGNOSIS, why: root causes and intervention modelling
@@ -428,7 +390,6 @@ export default function Layer({
           §4 DETAIL, drill-down, source proof, and what's missing
          ──────────────────────────────────────────────────────────────── */}
       <SectionHeading index="§4" label="Detail" sub="The proof, source data, drill-downs, and architectural gaps" />
-      <PipelineDetail layerKey={layer.key} />
       <DataFeedsCard layerKey={layer.key} />
       {gapsCard}
 

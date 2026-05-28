@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Sliders, RotateCcw, CheckSquare, AlertTriangle, Shield, Banknote, TrendingUp, Zap } from "lucide-react";
 import { computeImpact, type Lever } from "../data/warroom";
 import { useApp } from "../context/AppContext";
-import { useNarrative, useIsDefaultProfile } from "../context/CompanyContext";
+import { useNarrative } from "../context/CompanyContext";
 import { TRACK_RECORD } from "../data/trackRecord";
 
 // Scenario presets, each snaps multiple levers at once so the operator can
@@ -95,12 +95,10 @@ export default function WarRoom({ onNavigate }: { onNavigate: (key: string) => v
   const activePresetId = PRESETS.find(p =>
     LEVERS.every(l => values[l.id] === (p.values[l.id] ?? l.defaultValue)),
   )?.id;
-  // Presets are hand-authored against the Meridian Industrial lever IDs, they don't
-  // apply to alternate narratives whose levers may have different keys or
-  // counts. Only render the preset row when the narrative's lever set
-  // matches what the presets target.
-  const isDefault = useIsDefaultProfile();
-  const presetsApply = isDefault && PRESETS[0]
+  // Presets are hand-authored against the original lever IDs and don't
+  // apply once the narrative's lever set changes. Only render the preset
+  // row when every preset key still maps to a known lever.
+  const presetsApply = PRESETS[0]
     && Object.keys(PRESETS[0].values).every(k => LEVERS.some(l => l.id === k));
 
   const commitAll = () => {

@@ -53,17 +53,23 @@ import {
 } from "./prompts";
 import {
   HERO_SYSTEM_PROMPT,
+  PEERS_SYSTEM_PROMPT,
   PERCEIVE_SYSTEM_PROMPT,
   HYPOTHESISE_SYSTEM_PROMPT,
   NARRATE_SYSTEM_PROMPT,
   SCORE_SYSTEM_PROMPT,
+  SUPPLEMENTS_SYSTEM_PROMPT,
+  BRIEFS_SYSTEM_PROMPT,
+  buildBriefsUserPrompt,
   buildChallengeSystemPrompt,
   buildChallengeUserPrompt,
   buildHeroUserPrompt,
   buildHypothesiseUserPrompt,
   buildNarrateUserPrompt,
+  buildPeersUserPrompt,
   buildPerceiveUserPrompt,
   buildScoreUserPrompt,
+  buildSupplementsUserPrompt,
 } from "./phase2-prompts";
 import {
   challengeOutputSchema,
@@ -71,15 +77,21 @@ import {
   hypothesisedLayerSchema,
   modelledClaimSchema,
   narrateOutputSchema,
+  peersOutputSchema,
   perceiveOutputSchema,
   scoreOutputSchema,
+  supplementBlocksSchema,
+  briefOverridesSchema,
   verifiedClaimSchema,
+  type BriefOverrides,
   type ChallengeOutput,
   type HeroPanel,
   type HypothesisedLayer,
   type ModelledClaim,
   type NarrateOutput,
+  type PeerBenchmark,
   type PerceiveOutput,
+  type SupplementBlocks,
   type VerifiedClaim,
 } from "./phase2-schemas";
 import { failRun, markComplete, markFailed, markRunning, serializeRunWrite, updateStage } from "./runner-helpers";
@@ -110,7 +122,7 @@ export function initialPhase2Stages(): PipelineStage[] {
       layerStages: LAYER_KEYS.map<LayerStageEntry>((layerKey) => ({
         layerKey,
         status: "pending",
-        subStages: (["perceive", "hypothesise", "challenge", "narrate", "score", "hero"] as const).map(
+        subStages: (["perceive", "hypothesise", "challenge", "narrate", "score", "hero", "peers", "supplements"] as const).map(
           (name): PipelineSubStage => ({ name, status: "pending" }),
         ),
       })),
@@ -140,7 +152,7 @@ function buildLayerEntry(rt: LayerStageRuntime, status: PipelineStageStatus, err
     startedAt: new Date(rt.startedAt).toISOString(),
     completedAt: status === "running" || status === "pending" ? undefined : new Date(now).toISOString(),
     durationMs: status === "running" || status === "pending" ? undefined : now - rt.startedAt,
-    subStages: (["perceive", "hypothesise", "challenge", "narrate", "score", "hero"] as const).map((name) => {
+    subStages: (["perceive", "hypothesise", "challenge", "narrate", "score", "hero", "peers", "supplements"] as const).map((name) => {
       const sub = rt.subs.get(name);
       return {
         name,
@@ -202,6 +214,12 @@ type LayerResult = {
   // degrading the layer. Null means the frontend falls back to the
   // metric-only snapshot card.
   heroPanel: HeroPanel | null;
+  // peerBenchmark is OPTIONAL — sub-stage 7 (Peers) is allowed to fail.
+  // Null means the frontend simply skips the peer comparison card.
+  peerBenchmark: PeerBenchmark | null;
+  // supplementBlocks is OPTIONAL — sub-stage 8 (Supplements). Null means
+  // the frontend silently omits the supplements slot.
+  supplementBlocks: SupplementBlocks | null;
   status: PipelineStageStatus; // "complete" | "partial" | "failed"
   reason?: string;
 };
@@ -337,6 +355,8 @@ async function runLayerStages(
         { claim_text: layerFallbackStub(layerKey).narrative.slice(0, 800), claim_path: "narrative", confidence: 35, basis: "Pipeline stage 2 failure; fallback stub.", inferred_from: [] },
       ],
       heroPanel: null,
+      peerBenchmark: null,
+      supplementBlocks: null,
       status: "failed",
       reason: `hypothesise failed: ${hypothesiseCall.reason}`,
     };
@@ -449,6 +469,25 @@ async function runLayerStages(
     await endSub(runId, rt, "hero", "failed", "hero stage returned null (see logs)");
   }
 
+  // Stage 7: Peers — second short Haiku call. Independent of Hero, also
+  // non-degrading. Same shape as Hero (helper + sub-stage telemetry).
+  await startSub(runId, rt, "peers");
+  const peerBenchmark = await generatePeerBenchmark(profile, narrate.content, layerKey, layerLog);
+  if (peerBenchmark) {
+    await endSub(runId, rt, "peers", "complete");
+  } else {
+    await endSub(runId, rt, "peers", "failed", "peers stage returned null (see logs)");
+  }
+
+  // Stage 8: Supplements — third short Haiku call. Independent, non-degrading.
+  await startSub(runId, rt, "supplements");
+  const supplementBlocks = await generateSupplementBlocks(profile, narrate.content, layerKey, layerLog);
+  if (supplementBlocks) {
+    await endSub(runId, rt, "supplements", "complete");
+  } else {
+    await endSub(runId, rt, "supplements", "failed", "supplements stage returned null (see logs)");
+  }
+
   // Layer is "complete" only when all three quality-bearing stages succeeded.
   // Score is included because a Haiku/provider drift or schema regression
   // would otherwise be silent at layer status level (we'd still ship a layer
@@ -466,6 +505,8 @@ async function runLayerStages(
     verifiedClaims: verifiedFinal,
     modelledClaims: modelledFinal,
     heroPanel,
+    peerBenchmark,
+    supplementBlocks,
     status,
   };
 }
@@ -491,6 +532,73 @@ export async function generateHeroPanel(
   });
   if (heroCall.ok) return heroCall.value.hero_panel;
   log.warn({ reason: heroCall.reason }, "hero stage failed, leaving hero_panel null");
+  return null;
+}
+
+// ─── Peers stage helper (also used by the backfill endpoint) ─────────────
+// Exported so the panels backfill endpoint can fill peer_benchmark for
+// tenants that were seeded before this stage existed.
+export async function generatePeerBenchmark(
+  profile: ProfileOutput,
+  content: NarrateOutput["content"],
+  layerKey: LayerKey,
+  log: typeof rootLogger,
+): Promise<PeerBenchmark | null> {
+  const peersCall = await callClaudeJson({
+    system: PEERS_SYSTEM_PROMPT,
+    user: buildPeersUserPrompt(profile, content, layerKey),
+    schema: peersOutputSchema,
+    maxTokens: 2048,
+    model: SCORE_MODEL,
+    log,
+    context: `phase2/${layerKey}/peers`,
+  });
+  if (peersCall.ok) return peersCall.value.peer_benchmark;
+  log.warn({ reason: peersCall.reason }, "peers stage failed, leaving peer_benchmark null");
+  return null;
+}
+
+// ─── Supplements stage helper (also used by the backfill endpoint) ───────
+export async function generateSupplementBlocks(
+  profile: ProfileOutput,
+  content: NarrateOutput["content"],
+  layerKey: LayerKey,
+  log: typeof rootLogger,
+): Promise<SupplementBlocks | null> {
+  const call = await callClaudeJson({
+    system: SUPPLEMENTS_SYSTEM_PROMPT,
+    user: buildSupplementsUserPrompt(profile, content, layerKey),
+    schema: supplementBlocksSchema,
+    maxTokens: 3072,
+    model: SCORE_MODEL,
+    log,
+    context: `phase2/${layerKey}/supplements`,
+  });
+  if (call.ok) return call.value;
+  log.warn({ reason: call.reason }, "supplements stage failed, leaving supplement_blocks null");
+  return null;
+}
+
+// ─── Briefs stage helper (tenant-scope, used by the backfill endpoint) ───
+// Takes the profile + ALL final layer contents and emits the rich brief
+// overrides that drive MorningBrief + BoardPack. One Haiku call per tenant
+// (not per layer), so cheap to backfill on demand.
+export async function generateBriefOverrides(
+  profile: ProfileOutput,
+  layerContents: Array<{ layerKey: LayerKey; content: NarrateOutput["content"] }>,
+  log: typeof rootLogger,
+): Promise<BriefOverrides | null> {
+  const call = await callClaudeJson({
+    system: BRIEFS_SYSTEM_PROMPT,
+    user: buildBriefsUserPrompt(profile, layerContents),
+    schema: briefOverridesSchema,
+    maxTokens: 4096,
+    model: SCORE_MODEL,
+    log,
+    context: `phase2/briefs`,
+  });
+  if (call.ok) return call.value;
+  log.warn({ reason: call.reason }, "briefs stage failed, leaving brief_overrides null");
   return null;
 }
 
@@ -633,6 +741,8 @@ async function runPhase2PipelineInner(
           layerKey: r.layerKey,
           content: r.content as unknown as Record<string, unknown>,
           heroPanel: r.heroPanel as unknown as Record<string, unknown> | null,
+          peerBenchmark: r.peerBenchmark as unknown as Record<string, unknown> | null,
+          supplementBlocks: r.supplementBlocks as unknown as Record<string, unknown> | null,
           verifiedClaims: r.verifiedClaims as unknown[],
           modelledClaims: r.modelledClaims as unknown[],
           generatorModel: `${PIPELINE_MODEL}+${GEMINI_MODEL}`,
