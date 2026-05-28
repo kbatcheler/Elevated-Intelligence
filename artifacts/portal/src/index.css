@@ -277,8 +277,8 @@ body {
 /* — War Room variant ————————————————————————————————————————————— */
 .layer-header-warroom {
   position: relative;
-  padding: 0;
-  background: linear-gradient(180deg, var(--navy-deep) 0%, var(--navy) 88px, transparent 88px);
+  padding: 0 0 18px;
+  background: var(--navy);
   border-radius: 2px;
   overflow: hidden;
 }
