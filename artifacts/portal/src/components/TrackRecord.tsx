@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Award, TrendingUp, TrendingDown, Clock, MinusCircle, AlertTriangle, type LucideIcon } from "lucide-react";
 import { summary, type TrackRecordEntry, type OutcomeStatus } from "../data/trackRecord";
-import { useNarrative } from "../context/CompanyContext";
+import { useNarrative, useCompany } from "../context/CompanyContext";
 
 const STATUS_META: Record<OutcomeStatus, { label: string; color: string; icon: LucideIcon }> = {
   beat:        { label: "Beat predicted",  color: "var(--teal)",  icon: TrendingUp },
@@ -13,47 +13,76 @@ const STATUS_META: Record<OutcomeStatus, { label: string; color: string; icon: L
 
 export default function TrackRecord({ onNavigate }: { onNavigate: (key: string) => void }) {
   const { TRACK_RECORD, LAYERS } = useNarrative();
+  const { profile } = useCompany();
   const [filter, setFilter] = useState<"all" | OutcomeStatus>("all");
-  const s = useMemo(() => summary(), []);
+  // Summary is derived from the narrative's TRACK_RECORD so the headline
+  // cards reflect the active tenant. When the narrative ships no entries,
+  // we short-circuit to a clean empty state below rather than rendering
+  // a wall of zeros and divide-by-zero NaN%.
+  const s = useMemo(() => summary(TRACK_RECORD), [TRACK_RECORD]);
   const layerLabel = useMemo(() => Object.fromEntries(LAYERS.map(l => [l.key, l.title])), [LAYERS]);
-
-  // Track-record receipts are shared across every tenant; the entries are
-  // hand-authored history surfacing the canonical body of evidence behind
-  // the methodology. A future per-tenant override path can replace them.
 
   const visible = TRACK_RECORD.filter(t => filter === "all" || t.status === filter);
 
   // Quarterly roll-up, predicted vs delivered $ by quarter, plus a hit-rate.
-  // Skips non-dollar entries (NPS-only, ROAS-only) so the bars stay comparable.
+  // Derived from the narrative's TRACK_RECORD; we sum every dollar value
+  // (every committed action carries one) and let entries without quarter
+  // metadata fall out of the bucket map naturally.
   const quarterly = useMemo(() => {
-    const dollarOnly = TRACK_RECORD.filter(t =>
-      t.id !== "tr-003" && t.id !== "tr-005" && t.id !== "tr-007" &&
-      t.id !== "tr-008" && t.id !== "tr-010" && t.id !== "tr-012",
-    );
-    const quarters: Array<"Q1 2026" | "Q2 2026" | "Q3 2026"> = ["Q1 2026", "Q2 2026", "Q3 2026"];
-    return quarters.map(q => {
-      const all = TRACK_RECORD.filter(t => t.quarter === q);
+    const byQuarter = new Map<string, TrackRecordEntry[]>();
+    for (const t of TRACK_RECORD) {
+      const q = t.quarter || "Unscheduled";
+      if (!byQuarter.has(q)) byQuarter.set(q, []);
+      byQuarter.get(q)!.push(t);
+    }
+    return Array.from(byQuarter.entries()).map(([q, all]) => {
       const closed = all.filter(t => t.status !== "in-flight");
       const hits = closed.filter(t => t.status === "beat" || t.status === "met").length;
-      const dollars = dollarOnly.filter(t => t.quarter === q);
       return {
         quarter: q,
-        predicted: +dollars.reduce((s, t) => s + t.predictedValue, 0).toFixed(2),
-        delivered: +dollars.reduce((s, t) => s + t.deliveredValue, 0).toFixed(2),
+        predicted: +all.reduce((s, t) => s + (t.predictedValue || 0), 0).toFixed(2),
+        delivered: +all.reduce((s, t) => s + (t.deliveredValue || 0), 0).toFixed(2),
         count: all.length,
         hitRate: closed.length ? Math.round((hits / closed.length) * 100) : 0,
       };
     });
-  }, []);
+  }, [TRACK_RECORD]);
 
   // Lessons drawn from misses and partials, automatic so the page stays in
   // sync with the underlying data; no separate hand-authored lessons file.
   const lessons = useMemo(
     () => TRACK_RECORD.filter(t => t.status === "missed" || t.status === "partial"),
-    [],
+    [TRACK_RECORD],
   );
 
   const maxQuarterDollar = Math.max(...quarterly.map(q => Math.max(q.predicted, q.delivered)), 1);
+
+  // Empty-state short-circuit: render a single explanatory card instead of
+  // the zero-padded headline grid + NaN% delta when no entries exist yet.
+  if (TRACK_RECORD.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <div className="eyebrow text-[var(--coral)] mb-2">Track record · System accountability</div>
+          <h1 className="font-serif text-[40px] leading-[1.05] text-[var(--navy)] font-semibold">Outcome track record</h1>
+          <p className="font-serif italic text-[20px] text-[var(--slate-light)] mt-1.5">Every recommendation we make is graded against what it delivered.</p>
+        </div>
+        <div className="card card-accent-gold">
+          <div className="flex items-start gap-4">
+            <Award size={28} strokeWidth={1.6} className="text-[var(--gold)] mt-1 shrink-0" />
+            <div>
+              <div className="font-serif font-semibold text-[20px] text-[var(--navy)] leading-tight">
+                No closed plays yet for {profile.name}.
+              </div>
+              <p className="font-serif italic text-[14px] text-[var(--slate)] mt-2 leading-snug max-w-[640px]">
+                The track record only fills in once recommendations from this engagement have closed and been graded against their predicted outcomes. Until then, every layer page still carries its own narrative, recommended actions, and confidence band, and the war-room scenario still bridges combined Q4 impact.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -3,7 +3,6 @@ import { Sliders, RotateCcw, CheckSquare, AlertTriangle, Shield, Banknote, Trend
 import { computeImpact, type Lever } from "../data/warroom";
 import { useApp } from "../context/AppContext";
 import { useNarrative } from "../context/CompanyContext";
-import { TRACK_RECORD } from "../data/trackRecord";
 
 // Scenario presets, each snaps multiple levers at once so the operator can
 // step through framed Q4 stories instead of moving sliders one at a time.
@@ -59,18 +58,6 @@ const PRESETS: Preset[] = [
     },
   },
 ];
-
-// Pulls the most recent closed outcome from the track record for a given
-// lever, matched by layer. TRACK_RECORD is authored in chronological order
-// (oldest first), so we scan from the end to surface the latest comparable
-//, that's what gives the "last time we moved this layer" claim its bite.
-const historicalForLayer = (layer: string) => {
-  for (let i = TRACK_RECORD.length - 1; i >= 0; i--) {
-    const t = TRACK_RECORD[i];
-    if (t.layer === layer && t.status !== "in-flight") return t;
-  }
-  return undefined;
-};
 
 const fmt = (n: number, prefix = "$") => {
   const sign = n >= 0 ? "+" : "−";
@@ -293,10 +280,6 @@ function LeverRow({ lever, value, onChange, onNavigate }: { lever: Lever; value:
     lever.direction === "margin" ? "var(--coral)" :
     lever.direction === "cash"   ? "var(--teal)"  :
                                    "var(--navy)";
-  // Most recent comparable from the track record on the same layer, used as
-  // a credibility anchor underneath the lever ("last time we moved this
-  // layer it delivered X vs Y predicted").
-  const prior = historicalForLayer(lever.layer);
   return (
     <div className="px-5 py-4 grid grid-cols-12 gap-4 items-center">
       {/* Lever ID + title */}
@@ -342,14 +325,6 @@ function LeverRow({ lever, value, onChange, onNavigate }: { lever: Lever; value:
           {impact === 0 ? "·" : fmt(impact)}
         </div>
         <div className="font-sans italic text-[10px] text-[var(--slate-light)] mt-1 uppercase tracking-wider">{lever.direction}</div>
-        {prior && (
-          <div className="mt-2 pt-2 border-t border-[var(--cream-dark)] text-[10px] leading-snug">
-            <div className="font-sans uppercase tracking-wider text-[var(--slate-light)] mb-0.5">Last comparable · {prior.quarter}</div>
-            <div className="font-sans text-[var(--slate)] italic">
-              Predicted {prior.predicted}, delivered <span className="font-semibold not-italic" style={{ color: prior.status === "beat" || prior.status === "met" ? "var(--teal)" : prior.status === "missed" ? "var(--coral)" : "var(--amber)" }}>{prior.delivered}</span>.
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
