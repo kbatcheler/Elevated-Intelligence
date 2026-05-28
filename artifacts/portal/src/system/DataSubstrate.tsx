@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Database, Workflow, Boxes, GitBranch, Sparkles, ShieldCheck,
   Radio, Activity, Layers as LayersIcon, Cpu,
-  CheckCircle2, MinusCircle, Clock,
+  CheckCircle2, MinusCircle, Clock, FileSearch,
 } from "lucide-react";
 import {
   CONNECTORS, CONNECTOR_CATEGORIES, CORTEX_LANES, PARITY,
   type ConnectorCategory,
 } from "../data/connectors";
+import { useApp } from "../context/AppContext";
 
 interface Props {
   onNavigate: (key: string) => void;
@@ -38,6 +39,7 @@ interface ActivityRow {
 // driven by the curated CORTEX_LANES catalogue instead of live traffic.
 // ────────────────────────────────────────────────────────────────────
 function CortexControlPanel() {
+  const { openReceipt } = useApp();
   const [tick, setTick] = useState(0);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
 
@@ -151,6 +153,23 @@ function CortexControlPanel() {
                       </div>
                       <div className="font-mono text-[11px] text-[var(--cream-light)] tabular-nums font-semibold">{lane.confidence}%</div>
                     </div>
+                    <button
+                      onClick={() => openReceipt({
+                        eyebrow: `Cortex lane · L-${(laneIdx + 1).toString().padStart(2, "0")}`,
+                        title: lane.feed,
+                        claim: lane.conclusion,
+                        confidencePct: lane.confidence,
+                        feedSource: lane.feed,
+                        ingestMs: lane.ingestMs,
+                        publishedAt: "just now",
+                        evidence: lane.evidence,
+                        reasoning: `Cortex Lens extracted the signal "${lane.signal}". Confounder + Challenger cross-checked against ${lane.evidence.length} evidence sources before Synthesist published the conclusion at ${lane.confidence}% confidence.`,
+                      })}
+                      className="mt-2 w-full flex items-center justify-center gap-1 py-1 rounded-sm font-mono text-[10px] tracking-wide text-[var(--gold-light)] hover:bg-[var(--cream-light)]/10 transition-colors"
+                      style={{ border: "1px solid rgba(244,241,234,0.15)" }}
+                    >
+                      <FileSearch size={10} strokeWidth={1.8} /> RECEIPTS
+                    </button>
                   </>
                 )}
               </div>
@@ -485,7 +504,7 @@ export default function DataSubstrate({ onNavigate }: Props) {
       <div className="card card-accent-navy">
         <div className="font-sans font-semibold text-[14px] text-[var(--navy)] mb-1">Where to take the buyer next</div>
         <p className="font-serif text-[14px] text-[var(--ink)] leading-snug">
-          If they want to see one reasoning chain in slow motion, send them to <button onClick={() => onNavigate("intelligence-architecture")} className="underline text-[var(--coral)]">Intelligence architecture</button>. If they want to see what we have already shipped, send them to <button onClick={() => onNavigate("track-record")} className="underline text-[var(--coral)]">Outcome track record</button>. If they are ready to scope, send them to <button onClick={() => onNavigate("engagement-pipeline")} className="underline text-[var(--coral)]">Engagement pipeline</button>.
+          If they want to see one reasoning chain in slow motion, send them to <button onClick={() => onNavigate("intelligence-architecture")} className="underline text-[var(--coral)]">Intelligence architecture</button>. If they want to verify our confidence numbers, send them to <button onClick={() => onNavigate("calibration")} className="underline text-[var(--coral)]">Calibration</button>. If they want the ops console, send them to <button onClick={() => onNavigate("system-health")} className="underline text-[var(--coral)]">System health</button>. If they bring up a competitor, send them to <button onClick={() => onNavigate("battle-cards")} className="underline text-[var(--coral)]">Battle cards</button>.
         </p>
       </div>
     </div>

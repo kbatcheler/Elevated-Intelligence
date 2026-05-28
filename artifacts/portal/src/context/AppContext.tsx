@@ -29,6 +29,24 @@ export interface Pulse {
   at: number;
 }
 
+// Receipts drawer payload. One shape covers cortex lanes, calibration
+// misses, and battle-card "verify this comparison" links so every
+// surface that opens the drawer ships the same kinds of evidence.
+export interface ReceiptPayload {
+  eyebrow: string;          // e.g. "Cortex lane · L-04"
+  title: string;            // short claim title
+  claim: string;            // the published sentence being defended
+  confidencePct: number;    // 0-100
+  feedSource: string;       // e.g. "Shopify · orders.json"
+  ingestMs: number;
+  publishedAt: string;      // display string, not a date
+  evidence: string[];       // bullet list of evidence rows
+  reasoning: string;        // 1-3 sentence narrative explaining the chain
+  takeaway?: string;        // optional, used by calibration misses
+  routeKey?: string;        // optional NAV key to "open the page that owns this"
+  routeLabel?: string;      // CTA label paired with routeKey
+}
+
 interface AppContextValue {
   // global tick (1s), drives ambient motion
   tick: number;
@@ -49,6 +67,11 @@ interface AppContextValue {
   why: { layer: string; metric: string } | null;
   openWhy: (layer: string, metric: string) => void;
   closeWhy: () => void;
+  // Receipts drawer, opens with a fully-shaped payload (no resolution
+  // inside the context) so it can be triggered from any surface.
+  receipt: ReceiptPayload | null;
+  openReceipt: (p: ReceiptPayload) => void;
+  closeReceipt: () => void;
   // committed actions
   committed: CommittedAction[];
   commitAction: (a: Omit<CommittedAction, "id" | "status" | "committedAt">) => void;
@@ -89,6 +112,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [briefOpen, setBriefOpen] = useState(false);
   const [evidence, setEvidence] = useState<EvidenceSpec | null>(null);
   const [why, setWhy] = useState<{ layer: string; metric: string } | null>(null);
+  const [receipt, setReceipt] = useState<ReceiptPayload | null>(null);
   // Phase 1: every tenant starts with an empty committed tray. The seed
   // roster is no longer keyed to a hardcoded default profile.
   const seedCommitted = useCallback((_profileId: string): CommittedAction[] => {
@@ -122,6 +146,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setBriefOpen(false);
     setEvidence(null);
     setWhy(null);
+    setReceipt(null);
     setCommitted(seedCommitted(profile.id));
     setTimeOffsetByLayer({});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -171,6 +196,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const openWhy  = useCallback((layer: string, metric: string) => setWhy({ layer, metric }), []);
   const closeWhy = useCallback(() => setWhy(null), []);
 
+  const openReceipt  = useCallback((p: ReceiptPayload) => setReceipt(p), []);
+  const closeReceipt = useCallback(() => setReceipt(null), []);
+
   const commitAction = useCallback((a: Omit<CommittedAction, "id" | "status" | "committedAt">) => {
     setCommitted(prev => {
       // de-dupe by layer+title
@@ -201,6 +229,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     inboxOpen, openInbox, closeInbox,
     evidence, openEvidence, closeEvidence,
     why, openWhy, closeWhy,
+    receipt, openReceipt, closeReceipt,
     committed, commitAction, advanceAction, removeCommitted,
     timeOffsetByLayer, setTimeOffset,
     briefOpen, openBrief, closeBrief,
@@ -210,6 +239,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     inboxOpen, openInbox, closeInbox,
     evidence, openEvidence, closeEvidence,
     why, openWhy, closeWhy,
+    receipt, openReceipt, closeReceipt,
     committed, commitAction, advanceAction, removeCommitted,
     timeOffsetByLayer, setTimeOffset,
     briefOpen, openBrief, closeBrief,

@@ -5,7 +5,7 @@ import {
   Truck, Tag, GitBranch, Target, UserCog, Cpu, ChevronDown, Briefcase,
   Banknote, Receipt, UserPlus, Network, Newspaper, CheckSquare, Lock,
   Sliders, Award, FileText, Sparkles, HelpCircle, FileSignature,
-  Presentation, BookOpen, Database,
+  Presentation, BookOpen, Database, Gauge, Activity, Swords,
 } from "lucide-react";
 import { useNarrative } from "./context/CompanyContext";
 import CoachmarkTour from "./components/CoachmarkTour";
@@ -33,6 +33,11 @@ import CompanyBootSplash from "./components/CompanyBootSplash";
 import PresenterStrip from "./components/PresenterStrip";
 import SalesPlaybook from "./components/SalesPlaybook";
 import DataSubstrate from "./system/DataSubstrate";
+import Calibration from "./system/Calibration";
+import SystemHealth from "./system/SystemHealth";
+import BattleCards from "./system/BattleCards";
+import ReceiptsDrawer from "./components/ReceiptsDrawer";
+import CommandPalette, { type PaletteAction } from "./components/CommandPalette";
 import MobileSplash, { useShouldShowMobileSplash } from "./components/MobileSplash";
 import { signOut } from "./components/LoginGate";
 import { useApp } from "./context/AppContext";
@@ -60,6 +65,9 @@ const NAV: NavItem[] = [
   { key: "sales-playbook",           label: "Sales playbook",           group: "System",         icon: BookOpen,   status: "good" },
   { key: "intelligence-architecture",label: "Intelligence architecture",group: "System",         icon: Cpu,        status: "good" },
   { key: "data-substrate",           label: "Data substrate",           group: "System",         icon: Database,   status: "good" },
+  { key: "calibration",              label: "Calibration",              group: "System",         icon: Gauge,      status: "good" },
+  { key: "system-health",            label: "System health",            group: "System",         icon: Activity,   status: "good" },
+  { key: "battle-cards",             label: "Battle cards",             group: "System",         icon: Swords,     status: "good" },
   { key: "engagement-pipeline",      label: "Engagement pipeline",      group: "System",         icon: Briefcase,  status: "warn" },
   { key: "dependency-graph",         label: "Cross-layer map",          group: "System",         icon: Network,    status: "good" },
   { key: "scenario-warroom",         label: "Scenario war-room",        group: "System",         icon: Sliders,    status: "good" },
@@ -123,6 +131,19 @@ export default function App() {
   const isCustomProfile = !!activeTenant;
 
   const layer = useMemo(() => LAYERS.find(l => l.key === active), [active, LAYERS]);
+
+  // Command-palette actions. Indexed off the same functions the header
+  // buttons already wire up, so the palette can never desync with the
+  // visible UI. Keep this list ordered the way you'd read a menu.
+  const paletteActions: PaletteAction[] = useMemo(() => [
+    { id: "brief",     label: "Open morning brief",      group: "Actions", icon: Newspaper,    run: openBrief },
+    { id: "board",     label: "Open board pack",         group: "Actions", icon: FileText,     run: () => setBoardPackOpen(true) },
+    { id: "intel",     label: "Open intelligence brief", group: "Actions", icon: Sparkles,     run: () => setIntelOpen(true) },
+    { id: "inbox",     label: "Open anomaly inbox",      group: "Actions", icon: HelpCircle,   run: openInbox },
+    { id: "switch",    label: "Switch company / seed prospect", group: "Actions", icon: Sparkles, run: () => setPickerOpen(true) },
+    { id: "presenter", label: presenterOn ? "Turn presenter mode off" : "Turn presenter mode on", group: "Actions", icon: Presentation, run: () => setPresenterOn(p => !p) },
+    { id: "tour",      label: "Replay product tour",     group: "Actions", icon: HelpCircle,   run: () => setTourForceOpen(true) },
+  ], [openBrief, openInbox, setPickerOpen, presenterOn]);
 
   useEffect(() => {
     setActiveLayer(active);
@@ -399,6 +420,9 @@ export default function App() {
             {active === "sales-playbook"             ? <SalesPlaybook onNavigate={handleNavigate} />
               : active === "intelligence-architecture" ? <Architecture />
               : active === "data-substrate"          ? <DataSubstrate onNavigate={handleNavigate} />
+              : active === "calibration"             ? <Calibration onNavigate={handleNavigate} />
+              : active === "system-health"           ? <SystemHealth onNavigate={handleNavigate} />
+              : active === "battle-cards"            ? <BattleCards onNavigate={handleNavigate} />
               : active === "engagement-pipeline"     ? <EngagementPipeline onNavigate={handleNavigate} />
               : active === "dependency-graph"        ? <DependencyGraph onNavigate={handleNavigate} />
               : active === "committed-actions"       ? <CommittedTray onNavigate={handleNavigate} />
@@ -419,6 +443,12 @@ export default function App() {
       <AnomalyInbox onNavigate={handleNavigate} />
       <EvidencePanel />
       <WhyInspector onNavigate={handleNavigate} />
+      <ReceiptsDrawer onNavigate={handleNavigate} />
+      <CommandPalette
+        nav={NAV}
+        actions={paletteActions}
+        onNavigate={handleNavigate}
+      />
       {briefOpen && <MorningBrief />}
       {boardPackOpen && <BoardPack onClose={() => setBoardPackOpen(false)} />}
       {intelOpen && <IntelligenceBrief onClose={() => setIntelOpen(false)} />}
