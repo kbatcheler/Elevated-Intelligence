@@ -121,12 +121,12 @@ export default function Layer({
             <span className="mt-1.5 inline-block h-2 w-2 rounded-full shrink-0" style={{ background: "var(--gold)" }} />
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline justify-between gap-3">
-                <div className="font-sans font-semibold text-[13px] text-[var(--navy)] leading-snug">
+                <div className="font-sans font-semibold text-[13px] text-[var(--navy)] leading-snug min-w-0 flex-1">
                   <ClaimAnnotation claimPath={`actions[${i}].title`} verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
                     {a.title}
                   </ClaimAnnotation>
                 </div>
-                <div className="font-sans text-[14px] font-bold text-[var(--teal)] whitespace-nowrap tabular-nums">
+                <div className="font-sans text-[13px] font-bold text-[var(--teal)] tabular-nums leading-snug text-right shrink-0 max-w-[45%] break-words">
                   <ClaimAnnotation claimPath={`actions[${i}].impact`} verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
                     {a.impact}
                   </ClaimAnnotation>
@@ -223,12 +223,12 @@ export default function Layer({
           <li key={i} className={"pl-7 relative " + (isHi(`cause:${i}`) ? "pulse-coral !rounded-sm" : "")}>
             <span className="absolute left-0 top-0 font-serif font-semibold text-[18px] text-[var(--gold)] leading-none">{i + 1}.</span>
             <div className="flex items-baseline justify-between gap-3">
-              <div className="font-sans font-semibold text-[14px] text-[var(--navy)]">
+              <div className="font-sans font-semibold text-[14px] text-[var(--navy)] min-w-0 flex-1">
                 <ClaimAnnotation claimPath={`causes[${i}].title`} verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
                   {c.title}
                 </ClaimAnnotation>
               </div>
-              <div className="font-sans text-[12px] font-bold text-[var(--coral)] whitespace-nowrap tabular-nums">
+              <div className="font-sans text-[12px] font-bold text-[var(--coral)] tabular-nums leading-snug text-right shrink-0 max-w-[45%] break-words">
                 <ClaimAnnotation claimPath={`causes[${i}].impact`} verifiedClaims={vc} modelledClaims={mc} onReportBroken={onReportBroken}>
                   {c.impact}
                 </ClaimAnnotation>

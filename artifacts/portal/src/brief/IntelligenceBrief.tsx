@@ -290,6 +290,7 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
       const url = `${import.meta.env.BASE_URL}api/intelligence/brief${force ? "?refresh=1" : ""}`;
       const resp = await fetch(url, {
         method: "POST",
+        credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           name:        profile.name,
@@ -341,6 +342,7 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
     try {
       const resp = await fetch(`${import.meta.env.BASE_URL}api/intelligence/brief/verify`, {
         method: "POST",
+        credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           name:        profile.name,
