@@ -13,6 +13,7 @@ import {
 } from "../data/layers";
 import type { NarratorContent } from "../data/narrator";
 import type { DataFeed, ActivityEvent } from "../data/feeds";
+import { FEEDS as RAW_FEEDS, ACTIVITY_STREAM as RAW_ACTIVITY_STREAM } from "../data/feeds";
 import type { NextStepsBlock } from "../data/nextSteps";
 import type { PipelineDeep } from "../data/pipelineDeep";
 import type { IncomingSignal, Anomaly, EvidenceSpec } from "../data/signals";
@@ -255,8 +256,8 @@ function emptyNarrative(): NarrativeBundle {
   return {
     LAYERS: [],
     NARRATOR: {},
-    FEEDS: {},
-    ACTIVITY_STREAM: [],
+    FEEDS: RAW_FEEDS,
+    ACTIVITY_STREAM: RAW_ACTIVITY_STREAM,
     NEXT_STEPS: {},
     PIPELINE_DEEP: {},
     SIGNAL_POOL: RAW_SIGNAL_POOL,
@@ -423,8 +424,8 @@ function projectNarrative(detail: TenantDetail | null): NarrativeBundle {
   return {
     LAYERS: layers,
     NARRATOR: {},
-    FEEDS: {},
-    ACTIVITY_STREAM: [],
+    FEEDS: RAW_FEEDS,
+    ACTIVITY_STREAM: RAW_ACTIVITY_STREAM,
     NEXT_STEPS: {},
     PIPELINE_DEEP: {},
     SIGNAL_POOL: RAW_SIGNAL_POOL,
