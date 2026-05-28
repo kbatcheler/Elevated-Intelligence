@@ -402,7 +402,7 @@ export default function Layer({
       <SectionHeading index="§2" label="Situation" sub="The numbers, what's happening, against plan and against peers" />
       {Hero ? <Hero layer={layer} /> : metricStrip}
       {Extra && <Extra />}
-      {chartCard}
+      {layer.chart.data.length > 0 && layer.chart.series.length > 0 && chartCard}
       {PEERS[layer.key] && <PeerBenchmark layerKey={layer.key} />}
 
       {/* ────────────────────────────────────────────────────────────────
