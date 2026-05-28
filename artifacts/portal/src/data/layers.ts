@@ -101,6 +101,15 @@ export interface LayerData {
   // Optional 1-3 supplement blocks from Phase 2 sub-stage 8 (Supplements).
   // Each block is a discriminated union; rendered by SupplementBlocks.tsx.
   supplementBlocks?: SupplementBlocks | null;
+  // Visual chrome variant for the layer page. We alternate across the 14
+  // canonical layers between two systems we explored on the design canvas:
+  //   "dossier" — Palantir Foundry-style: monospace eyebrows, 12-col grid,
+  //               dense data feel, dark header strip.
+  //   "warroom" — Bloomberg command-center: confidence dial, command-bar
+  //               header, instrument-cluster KPIs, tactical urgency.
+  // Same content, materially different shell. Assigned from LAYER_SCHEMA
+  // index in CompanyContext.projectLayer.
+  visualVariant: "dossier" | "warroom";
 }
 
 export type SupplementTone = "good" | "warn" | "bad" | "neutral";
@@ -171,6 +180,11 @@ export interface LayerSchemaEntry {
     diagnosis: string;
     detail: string;
   };
+  // Visual chrome variant — alternated across SCHEMA_ENTRIES at build time
+  // (see SCHEMA_WITH_VARIANT below). Optional on the raw entries so the
+  // hand-authored list stays terse; required on the materialised
+  // LAYER_SCHEMA via the alternation pass.
+  visualVariant?: "dossier" | "warroom";
 }
 
 const DEFAULT_SECTION_HEADERS = {
@@ -311,8 +325,17 @@ const SCHEMA_ENTRIES: LayerSchemaEntry[] = [
 
 export const LAYER_KEYS: string[] = SCHEMA_ENTRIES.map(e => e.key);
 
+// Compute the visual variant for each entry as we materialise the schema.
+// Alternation rule lives in ONE place: even-indexed layers use the dossier
+// shell, odd-indexed layers use the war-room shell. Bumping the rule (e.g.
+// to group-based assignment) means changing only this map.
+const SCHEMA_WITH_VARIANT: LayerSchemaEntry[] = SCHEMA_ENTRIES.map((e, i) => ({
+  ...e,
+  visualVariant: i % 2 === 0 ? "dossier" : "warroom",
+}));
+
 export const LAYER_SCHEMA: Record<string, LayerSchemaEntry> =
-  Object.fromEntries(SCHEMA_ENTRIES.map(e => [e.key, e]));
+  Object.fromEntries(SCHEMA_WITH_VARIANT.map(e => [e.key, e]));
 
 // Phase 1: LAYERS is exported as an empty array for backward compatibility
 // with imports that haven't been rewritten. Per-tenant LayerData is built

@@ -294,58 +294,105 @@ export default function Layer({
     </div>
   );
 
-  return (
-    <div className="space-y-6 pb-12">
-      {/* ────────────────────────────────────────────────────────────────
-          Header, orientation only
-         ──────────────────────────────────────────────────────────────── */}
-      <div className={"flex items-start justify-between gap-6 " + (highlight === "header" ? "gold-underline" : "")}>
-        <div>
-          <div className="eyebrow text-[var(--coral)] mb-2">Intelligence layer · {layer.group}</div>
-          <h1 className="font-serif text-[40px] leading-[1.05] text-[var(--navy)] font-semibold max-w-[760px] break-words">{layer.title}</h1>
-          <p className="font-serif italic text-[20px] text-[var(--slate-light)] mt-1.5">{layer.question}</p>
-          <div className="mt-4 flex items-center gap-4 text-[12px] text-[var(--slate-light)]">
-            <span className="flex items-center gap-1.5">
-              <span className="relative inline-flex">
-                <span className="h-1.5 w-1.5 rounded-full" style={{ background: isRewound ? "var(--amber)" : "var(--teal)" }} />
-                <span className="absolute inset-0 h-1.5 w-1.5 rounded-full animate-ping" style={{ background: isRewound ? "var(--amber)" : "var(--teal)", opacity: 0.4 }} />
-              </span>
-              {isRewound ? "Rewound to " : "Diagnosed "}{displayDiagnosedAt}
-            </span>
+  // Variant-aware header. We alternate two visual systems across the 14
+  // layers (set in data/layers.ts) so consecutive pages don't read as the
+  // same template. Both headers carry the same data — title, question,
+  // diagnosed-at timestamp, confidence + gap headroom, sources count, and
+  // the Challenge entry — but the typography, accent, and spotlight
+  // affordance differ. Wider styling (eyebrows, numerics, accent rails)
+  // is scoped to `.layer-variant-*` in index.css.
+  const headroom = layer.gaps.reduce((s, g) => s + g.confidenceLiftPp, 0);
+  const gapTarget = Math.min(95, displayConf + headroom);
+  const gapTip = layer.gaps.map(g => `${g.title} (+${g.confidenceLiftPp}pp)`).join("\n");
+  const hasGapHeadroom = layer.gaps.length > 0 && gapTarget > displayConf;
+
+  const headerDossier = (
+    <div className={"layer-header-dossier " + (highlight === "header" ? "gold-underline" : "")}>
+      <div className="dossier-statusbar">
+        <span className="dossier-statusbar-dot" style={{ background: isRewound ? "var(--amber)" : "var(--teal)" }} />
+        <span>SYSTEM_HEALTH: {isRewound ? "REWOUND" : "NOMINAL"}</span>
+        <span className="opacity-40">·</span>
+        <span>LAYER: {layer.key}</span>
+        <span className="opacity-40">·</span>
+        <span>GROUP: {layer.group.toUpperCase()}</span>
+        <span className="dossier-statusbar-spacer" />
+        <span>SOURCES: {layer.sources}</span>
+      </div>
+      <div className="flex items-start justify-between gap-6 mt-4">
+        <div className="flex-1 min-w-0">
+          <div className="dossier-eyebrow mb-2">Intelligence layer · {layer.group}</div>
+          <h1 className="dossier-h1 max-w-[760px] break-words">{layer.title}</h1>
+          <p className="dossier-question mt-1.5">"{layer.question}"</p>
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px] text-[var(--slate-light)] dossier-meta">
+            <span>{isRewound ? "REWOUND TO " : "DIAGNOSED "}{displayDiagnosedAt}</span>
             <span className="opacity-40">·</span>
-            <div className="flex items-center gap-1.5"><span>Confidence</span><ConfidenceBand value={displayConf} /></div>
-            <span className="opacity-40">·</span>
-            {(() => {
-              // Confidence-gap dual signal: today's confidence + the headroom
-              // closing the named data gaps would unlock, capped at 95 so we
-              // never imply mechanical certainty. The tooltip lists the gaps.
-              const headroom = layer.gaps.reduce((s, g) => s + g.confidenceLiftPp, 0);
-              const target = Math.min(95, displayConf + headroom);
-              const tip = layer.gaps.map(g => `${g.title} (+${g.confidenceLiftPp}pp)`).join("\n");
-              if (layer.gaps.length === 0 || target <= displayConf) {
-                return <span>{layer.sources} sources</span>;
-              }
-              return (
-                <>
-                  <span title={tip} className="flex items-center gap-1 cursor-help">
-                    <span className="font-sans font-semibold text-[var(--coral)]">Close {layer.gaps.length} {layer.gaps.length === 1 ? "gap" : "gaps"}</span>
-                    <span className="opacity-60">→</span>
-                    <span className="font-sans font-semibold text-[var(--navy)]">{target}% confidence</span>
-                  </span>
-                  <span className="opacity-40">·</span>
-                  <span>{layer.sources} sources</span>
-                </>
-              );
-            })()}
+            <span className="flex items-center gap-1.5"><span>CONFIDENCE</span><ConfidenceBand value={displayConf} /></span>
+            {hasGapHeadroom && (
+              <>
+                <span className="opacity-40">·</span>
+                <span title={gapTip} className="flex items-center gap-1 cursor-help">
+                  <span className="font-semibold text-[var(--coral)]">Close {layer.gaps.length} {layer.gaps.length === 1 ? "gap" : "gaps"}</span>
+                  <span className="opacity-60">→</span>
+                  <span className="font-semibold text-[var(--navy)]">{gapTarget}% confidence</span>
+                </span>
+              </>
+            )}
           </div>
-          <div className="mt-3">
-            <DemandLink layerKey={layer.key} />
-          </div>
+          <div className="mt-3"><DemandLink layerKey={layer.key} /></div>
         </div>
-        <button onClick={() => setOpen(true)} className="btn-ghost mt-2">
+        <button onClick={() => setOpen(true)} className="btn-ghost mt-2 shrink-0">
           <FileSearch size={14} strokeWidth={1.5} /> Challenge this
         </button>
       </div>
+    </div>
+  );
+
+  const headerWarRoom = (
+    <div className={"layer-header-warroom " + (highlight === "header" ? "gold-underline" : "")}>
+      <div className="warroom-commandbar">
+        <div className="warroom-commandbar-left">
+          <span className="warroom-pulse" style={{ background: isRewound ? "var(--amber)" : "var(--teal)" }} />
+          <span className="warroom-tenant">LAYER · {layer.group.toUpperCase()}</span>
+        </div>
+        <div className="warroom-commandbar-meta">
+          <span className="warroom-meta-item"><span className="warroom-meta-label">Diagnosed</span>{displayDiagnosedAt}</span>
+          <span className="warroom-meta-item"><span className="warroom-meta-label">Sources</span>{layer.sources}</span>
+          {hasGapHeadroom && (
+            <span className="warroom-meta-item warroom-meta-alert" title={gapTip}>
+              <span className="warroom-meta-label">Close {layer.gaps.length}</span>→ {gapTarget}%
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="flex items-start justify-between gap-6 mt-4">
+        <div className="flex-1 min-w-0">
+          <div className="warroom-eyebrow mb-2">{isRewound ? "Rewound brief" : "Live brief"}</div>
+          <h1 className="warroom-h1 max-w-[760px] break-words">{layer.title}</h1>
+          <p className="warroom-question mt-1.5">"{layer.question}"</p>
+          <div className="mt-4"><DemandLink layerKey={layer.key} /></div>
+        </div>
+        <div className="warroom-instrument shrink-0">
+          <div className="warroom-confidence-block">
+            <div className="warroom-confidence-num">{displayConf}<span className="warroom-confidence-pct">%</span></div>
+            <div className="warroom-confidence-label">Confidence</div>
+            <div className="warroom-confidence-band"><ConfidenceBand value={displayConf} /></div>
+          </div>
+          <button onClick={() => setOpen(true)} className="btn-ghost mt-2 w-full justify-center">
+            <FileSearch size={14} strokeWidth={1.5} /> Challenge this
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const variantClass = layer.visualVariant === "warroom" ? "layer-variant-warroom" : "layer-variant-dossier";
+
+  return (
+    <div className={"space-y-6 pb-12 " + variantClass}>
+      {/* ────────────────────────────────────────────────────────────────
+          Header, orientation only — chrome alternates per layer.visualVariant
+         ──────────────────────────────────────────────────────────────── */}
+      {layer.visualVariant === "warroom" ? headerWarRoom : headerDossier}
 
       {/* Phase 3.3 provenance count strip. Only renders when Phase 2 produced
           at least one claim, the default Meridian Industrial tenant has

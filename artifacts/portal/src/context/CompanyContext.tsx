@@ -393,6 +393,11 @@ function projectLayer(
     heroPanel,
     peerBenchmark,
     supplementBlocks,
+    // Visual variant comes from the canonical LAYER_SCHEMA so the
+    // alternation rule is defined exactly once (in data/layers.ts).
+    // Unknown keys (shouldn't happen — projectNarrative filters) fall
+    // back to dossier so we never crash on a missing variant.
+    visualVariant: schema?.visualVariant ?? "dossier",
   };
 }
 

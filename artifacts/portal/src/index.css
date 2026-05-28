@@ -204,3 +204,197 @@ body {
   font-size: 11px !important;
   color: var(--slate) !important;
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   Layer visual variants
+   We alternate two header chromes across the 14 layers so consecutive
+   pages don't read as the same template. Both variants share the brand
+   palette; what differs is the framing: dossier = monospaced status bar
+   + dense eyebrow over a flat title; warroom = command bar with right-
+   side instrument cluster. Body-section styling (cards, tables) is left
+   alone — the variants modulate the *page chrome*, not the content.
+   ────────────────────────────────────────────────────────────────────── */
+
+/* — Dossier variant —————————————————————————————————————————————— */
+.layer-header-dossier {
+  position: relative;
+  padding: 14px 18px 18px;
+  background: var(--cream-light);
+  border: 1px solid var(--cream-dark);
+  border-left: 3px solid var(--navy);
+  background-image:
+    linear-gradient(rgba(27,42,78,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(27,42,78,0.025) 1px, transparent 1px);
+  background-size: 24px 24px, 24px 24px;
+  background-position: -1px -1px, -1px -1px;
+}
+.dossier-statusbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--slate);
+  border-bottom: 1px dashed var(--cream-dark);
+  padding-bottom: 8px;
+}
+.dossier-statusbar-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.6);
+}
+.dossier-statusbar-spacer { flex: 1; }
+.dossier-eyebrow {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--coral);
+}
+.dossier-h1 {
+  font-family: 'Source Serif Pro', 'Source Serif 4', Georgia, serif;
+  font-size: 40px;
+  line-height: 1.05;
+  color: var(--navy);
+  font-weight: 600;
+}
+.dossier-question {
+  font-family: 'Source Serif Pro', 'Source Serif 4', Georgia, serif;
+  font-style: italic;
+  font-size: 19px;
+  color: var(--slate-light);
+}
+.dossier-meta {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* — War Room variant ————————————————————————————————————————————— */
+.layer-header-warroom {
+  position: relative;
+  padding: 0;
+  background: linear-gradient(180deg, var(--navy-deep) 0%, var(--navy) 88px, transparent 88px);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.warroom-commandbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 18px;
+  background: var(--navy-deep);
+  color: var(--cream-light);
+  font-family: 'Inter', sans-serif;
+}
+.warroom-commandbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.warroom-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.10);
+  animation: warroomPulse 2s ease-in-out infinite;
+}
+@keyframes warroomPulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(255,255,255,0.10); }
+  50%      { box-shadow: 0 0 0 5px rgba(255,255,255,0.04); }
+}
+.warroom-tenant {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  font-weight: 600;
+}
+.warroom-commandbar-meta {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 11.5px;
+  color: rgba(244,241,234,0.78);
+}
+.warroom-meta-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.warroom-meta-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(244,241,234,0.45);
+}
+.warroom-meta-alert .warroom-meta-label { color: var(--gold-light); }
+.warroom-eyebrow {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  font-weight: 600;
+  padding: 18px 18px 0;
+}
+.warroom-h1 {
+  font-family: 'Source Serif Pro', 'Source Serif 4', Georgia, serif;
+  font-size: 42px;
+  line-height: 1.04;
+  color: var(--cream-light);
+  font-weight: 600;
+  padding: 0 18px;
+  letter-spacing: -0.01em;
+}
+.warroom-question {
+  font-family: 'Source Serif Pro', 'Source Serif 4', Georgia, serif;
+  font-style: italic;
+  font-size: 20px;
+  color: rgba(244,241,234,0.72);
+  padding: 0 18px;
+}
+.layer-header-warroom > .flex { padding-bottom: 18px; padding-right: 18px; }
+.warroom-instrument {
+  width: 180px;
+  padding: 14px 14px 12px;
+  margin: 12px 18px 0 0;
+  background: var(--cream-light);
+  border: 1px solid var(--cream-dark);
+  border-top: 3px solid var(--coral);
+  border-radius: 2px;
+}
+.warroom-confidence-block { text-align: center; }
+.warroom-confidence-num {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 38px;
+  line-height: 1;
+  color: var(--navy);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.warroom-confidence-pct {
+  font-size: 18px;
+  color: var(--slate-light);
+  margin-left: 2px;
+}
+.warroom-confidence-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--slate-light);
+  margin-top: 6px;
+}
+.warroom-confidence-band { margin-top: 8px; display: flex; justify-content: center; }
+
+/* The DemandLink button inside warroom should sit on the navy strip without
+   bleeding off it — give it a touch of contrast against the dark background. */
+.layer-variant-warroom .layer-header-warroom a {
+  color: var(--gold-light);
+}

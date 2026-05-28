@@ -150,12 +150,12 @@ Return STRICT JSON only — no prose, no code fences. Conform exactly to this Ty
     "year":  string,              // "1973" or "2019-Q3"
     "event": string               // 1 sentence — what happened, why it mattered
   }>,
-  "leaders": Array<{              // 4-6 named executives — real people if known, plausible roles if not.
-    "name":       string,
+  "leaders": Array<{              // 0-6 named executives. STRICT grounding required (see CRITICAL RULES). Prefer empty array over a guess.
+    "name":       string,         // FULL real name. NEVER use a leadership name from a peer or competitor company. If in doubt, OMIT this entry.
     "role":       string,         // e.g. "CEO", "CFO", "President, Music & Arts"
     "background": string          // 1-2 sentences: tenure, prior role, signal about their priorities
   }>,
-  "board": Array<{                // 3-6 board members beyond the executive team. May overlap if a leader holds a board seat.
+  "board": Array<{                // 0-6 board members beyond the executive team. STRICT grounding required (see CRITICAL RULES). Prefer empty array over a guess. May overlap a \`leaders\` entry if a leader also holds a board seat.
     "name":        string,
     "affiliation": string         // e.g. "Partner, KKR" or "Independent — fmr. CEO of REI"
   }>,
@@ -200,7 +200,8 @@ Return STRICT JSON only — no prose, no code fences. Conform exactly to this Ty
 }
 
 CRITICAL RULES:
-- Be specific. Name real people, real numbers, real competitors, real product lines. If you don't know, invent plausibly but mark uncertainty (e.g. "≈$2.1B", "estimated", "~").
+- LEADERSHIP NAMES — ZERO TOLERANCE FOR CROSS-COMPANY CONTAMINATION. The most common failure mode is emitting executives from a peer or competitor (e.g. naming Waste Management's CEO when asked about Republic Services). For the \`leaders\` array: only include a person if you can name them with high confidence as a CURRENT executive of THIS EXACT company. If the GROUND TRUTH snippet mentions a named executive, that's the strongest signal. If you have any doubt — including "I know a CEO in this industry" — emit \`[]\`. A short, correct leaders list (or even an empty one) is ALWAYS preferable to a plausible-sounding wrong one. The same standard applies to the \`board\` array.
+- Be specific elsewhere. Name real numbers, real competitors, real product lines. If you don't know, invent plausibly but mark uncertainty (e.g. "≈$2.1B", "estimated", "~"). This latitude does NOT extend to leadership names.
 - Business-function use cases must be BESPOKE AGENTIC APPLICATIONS for THIS company — not generic AI solutions. "Use AI for personalization" is unacceptable. "An agent that ingests our Klaviyo + Shopify + Returnly data, ranks top-quartile customers nightly, and writes a 1:1 winback offer into Klaviyo with a 14-day expiry — operated by the CRM lead, audited weekly" is acceptable.
 - Each use case MUST quantify business impact (margin pts, hours saved, ARPU lift, attach rate, cycle-time reduction). Unquantified impact is a fail.
 - Numbers should be plausible for the company's scale.
@@ -386,8 +387,66 @@ router.post("/intelligence/brief", briefRateLimit, async (req, res) => {
       return;
     }
 
+    // Post-filter leaders & board against the homepage ground truth. The
+    // prompt is strict about cross-company contamination, but Haiku still
+    // occasionally substitutes a peer-company exec as a "plausible" answer.
+    // When we have a homepage snippet, anchor each person's name to it.
+    //
+    // Matching rules (in order):
+    //   1. No ground truth → keep (grounding badge already signals memory-based).
+    //   2. Full normalised name appears as a phrase → keep.
+    //   3. At least one name token (length >= 3) that is NOT a company-brand
+    //      token appears as a whole word in the snippet → keep.
+    //   4. Otherwise → drop.
+    //
+    // We tokenise with word boundaries (not substring) to avoid false
+    // positives like "john" matching inside "johnson". Company-brand
+    // tokens (derived from the company name itself) are excluded from the
+    // single-token anchor because the brand is guaranteed to appear in
+    // the snippet — a competitor exec named, say, "John Republic" must
+    // not earn grounding from the word "Republic" alone when seeded
+    // against Republic Services. Short names (e.g. "Li Wu") fall under
+    // rule 2 since their full phrase is the only honest anchor.
+    const STOPWORDS = new Set([
+      "the","and","of","inc","corp","ltd","llc","co","company","group",
+      "holdings","plc","sa","ag","services","service","international","global",
+    ]);
+    const tokenise = (s: string): string[] =>
+      s.toLowerCase().replace(/[^a-z0-9\s]+/g, " ").split(/\s+/).filter(Boolean);
+
+    let groundedMatch: ((n: string) => boolean) | null = null;
+    if (ground?.ok) {
+      const snippetWords = new Set(tokenise(ground.snippet));
+      const snippetNormalised = " " + tokenise(ground.snippet).join(" ") + " ";
+      const brandTokens = new Set(
+        tokenise(name).filter(t => t.length >= 3 && !STOPWORDS.has(t))
+      );
+      groundedMatch = (personName: string) => {
+        const tokens = tokenise(personName);
+        if (tokens.length === 0) return false;
+        const phrase = " " + tokens.join(" ") + " ";
+        if (snippetNormalised.includes(phrase)) return true;
+        return tokens.some(
+          t => t.length >= 3 && !brandTokens.has(t) && snippetWords.has(t)
+        );
+      };
+    }
+    const nameAppears = (personName: string): boolean =>
+      groundedMatch ? groundedMatch(personName) : true;
+    const filteredLeaders = normalised.value.leaders.filter(l => nameAppears(l.name));
+    const filteredBoard   = normalised.value.board.filter(b => nameAppears(b.name));
+    if (groundedMatch && (filteredLeaders.length !== normalised.value.leaders.length || filteredBoard.length !== normalised.value.board.length)) {
+      req.log.warn({
+        droppedLeaders: normalised.value.leaders.length - filteredLeaders.length,
+        droppedBoard:   normalised.value.board.length - filteredBoard.length,
+        company:        name,
+      }, "Dropped ungrounded leaders/board entries");
+    }
+
     const payloadOut = {
       ...normalised.value,
+      leaders: filteredLeaders,
+      board:   filteredBoard,
       generatedAt: new Date().toISOString(),
       // Stamp the grounding receipt on the brief so the UI can show "fetched
       // 2.4KB from humanco.com" — the same proof we surface on the seed splash.
@@ -733,17 +792,21 @@ function normaliseBrief(raw: unknown): NormResult<NormalisedBrief> {
         .slice(0, 12)
     : [];
 
-  // leaders
-  if (!Array.isArray(raw.leaders)) return { ok: false, reason: "leaders missing" };
-  const leaders = raw.leaders
-    .map(l => isRecord(l) ? {
-      name:       asStr(l.name, 80),
-      role:       asStr(l.role, 120),
-      background: asStr(l.background, 600),
-    } : null)
-    .filter((l): l is NonNullable<typeof l> => !!l && l.name.length > 0 && l.role.length > 0)
-    .slice(0, 10);
-  if (leaders.length === 0) return { ok: false, reason: "no valid leaders" };
+  // leaders — empty array is acceptable. The model is instructed to omit
+  // leaders rather than fabricate them when grounding is weak, so an empty
+  // list is a SUCCESSFUL outcome (the UI hides the section). Hard-failing
+  // here was forcing the model to invent names, which produced cross-company
+  // contamination (e.g. Republic Services returning Waste Management execs).
+  const leaders = Array.isArray(raw.leaders)
+    ? raw.leaders
+        .map(l => isRecord(l) ? {
+          name:       asStr(l.name, 80),
+          role:       asStr(l.role, 120),
+          background: asStr(l.background, 600),
+        } : null)
+        .filter((l): l is NonNullable<typeof l> => !!l && l.name.length > 0 && l.role.length > 0)
+        .slice(0, 10)
+    : [];
 
   // board
   const board = Array.isArray(raw.board)

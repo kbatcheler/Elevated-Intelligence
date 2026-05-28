@@ -593,32 +593,41 @@ export default function IntelligenceBrief({ onClose }: { onClose: () => void }) 
                 </Section>
               )}
 
-              {/* Section: Leaders */}
-              <Section icon={Users2} title="Leadership" accent="var(--gold)" confidence={verify?.confidence.leaders}>
-                <SubHeader>Executive team</SubHeader>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-5 mt-2">
-                  {brief.leaders.map((l, i) => (
-                    <div key={i} className="border-l-2 border-[var(--cream-dark)] pl-4">
-                      <div className="font-serif font-semibold text-[16px] text-[var(--navy)] leading-tight">{l.name}</div>
-                      <div className="font-sans text-[12px] text-[var(--coral)] uppercase tracking-wide font-bold mt-0.5">{l.role}</div>
-                      <div className="font-sans text-[13px] text-[var(--ink)] mt-1.5 leading-snug">{l.background}</div>
-                    </div>
-                  ))}
-                </div>
-                {brief.board.length > 0 && (
-                  <>
-                    <SubHeader>Board</SubHeader>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 mt-2">
-                      {brief.board.map((b, i) => (
-                        <div key={i} className="font-sans text-[13px] text-[var(--ink)]">
-                          <span className="font-semibold text-[var(--navy)]">{b.name}</span>
-                          <span className="text-[var(--slate)]">, {b.affiliation}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </Section>
+              {/* Section: Leaders — hidden entirely when neither executive
+                  nor board entries survived grounding. We prefer omission
+                  over a "Not publicly disclosed" placeholder here because
+                  the section header itself implies a list we can't deliver. */}
+              {(brief.leaders.length > 0 || brief.board.length > 0) && (
+                <Section icon={Users2} title="Leadership" accent="var(--gold)" confidence={verify?.confidence.leaders}>
+                  {brief.leaders.length > 0 && (
+                    <>
+                      <SubHeader>Executive team</SubHeader>
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-5 mt-2">
+                        {brief.leaders.map((l, i) => (
+                          <div key={i} className="border-l-2 border-[var(--cream-dark)] pl-4">
+                            <div className="font-serif font-semibold text-[16px] text-[var(--navy)] leading-tight">{l.name}</div>
+                            <div className="font-sans text-[12px] text-[var(--coral)] uppercase tracking-wide font-bold mt-0.5">{l.role}</div>
+                            <div className="font-sans text-[13px] text-[var(--ink)] mt-1.5 leading-snug">{l.background}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {brief.board.length > 0 && (
+                    <>
+                      <SubHeader>Board</SubHeader>
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-2 mt-2">
+                        {brief.board.map((b, i) => (
+                          <div key={i} className="font-sans text-[13px] text-[var(--ink)]">
+                            <span className="font-semibold text-[var(--navy)]">{b.name}</span>
+                            <span className="text-[var(--slate)]">, {b.affiliation}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </Section>
+              )}
 
               {/* Section: Financials */}
               <Section icon={LineChart} title="Financials" accent="var(--teal)" confidence={verify?.confidence.financials}>
