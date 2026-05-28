@@ -25,10 +25,10 @@ const OBJECTIONS: { tag: string; q: string; a: string; icon: typeof ShieldAlert 
     icon: Layers,
   },
   {
-    tag: "Pricing",
-    q: "What does this cost?",
-    a: "Engagements scope at 80k to 320k per quarter depending on layer count and data maturity. Diagnosis-first, then a 30/60/90 plan if it earns it.",
-    icon: ShieldAlert,
+    tag: "Palantir comparison",
+    q: "How is this different from Palantir Foundry?",
+    a: "Same reasoning depth, same evidence chains, none of the multi-quarter ontology project. Foundry pays off at year three. We ship a defended diagnosis in week one off your existing exports, then deepen the substrate from there.",
+    icon: Layers,
   },
   {
     tag: "Roi proof",

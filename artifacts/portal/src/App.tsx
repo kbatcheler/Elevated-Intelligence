@@ -5,7 +5,7 @@ import {
   Truck, Tag, GitBranch, Target, UserCog, Cpu, ChevronDown, Briefcase,
   Banknote, Receipt, UserPlus, Network, Newspaper, CheckSquare, Lock,
   Sliders, Award, FileText, Sparkles, HelpCircle, FileSignature,
-  Presentation, BookOpen,
+  Presentation, BookOpen, Database,
 } from "lucide-react";
 import { useNarrative } from "./context/CompanyContext";
 import CoachmarkTour from "./components/CoachmarkTour";
@@ -32,6 +32,7 @@ import CompanyPicker from "./components/CompanyPicker";
 import CompanyBootSplash from "./components/CompanyBootSplash";
 import PresenterStrip from "./components/PresenterStrip";
 import SalesPlaybook from "./components/SalesPlaybook";
+import DataSubstrate from "./system/DataSubstrate";
 import MobileSplash, { useShouldShowMobileSplash } from "./components/MobileSplash";
 import { signOut } from "./components/LoginGate";
 import { useApp } from "./context/AppContext";
@@ -58,6 +59,7 @@ const NAV: NavItem[] = [
   { key: "talent-hr",                label: "Talent and HR",            group: "Operational",    icon: UserPlus,   status: "bad"  },
   { key: "sales-playbook",           label: "Sales playbook",           group: "System",         icon: BookOpen,   status: "good" },
   { key: "intelligence-architecture",label: "Intelligence architecture",group: "System",         icon: Cpu,        status: "good" },
+  { key: "data-substrate",           label: "Data substrate",           group: "System",         icon: Database,   status: "good" },
   { key: "engagement-pipeline",      label: "Engagement pipeline",      group: "System",         icon: Briefcase,  status: "warn" },
   { key: "dependency-graph",         label: "Cross-layer map",          group: "System",         icon: Network,    status: "good" },
   { key: "scenario-warroom",         label: "Scenario war-room",        group: "System",         icon: Sliders,    status: "good" },
@@ -396,6 +398,7 @@ export default function App() {
           <div className="px-8 py-8 max-w-[1200px] mx-auto">
             {active === "sales-playbook"             ? <SalesPlaybook onNavigate={handleNavigate} />
               : active === "intelligence-architecture" ? <Architecture />
+              : active === "data-substrate"          ? <DataSubstrate onNavigate={handleNavigate} />
               : active === "engagement-pipeline"     ? <EngagementPipeline onNavigate={handleNavigate} />
               : active === "dependency-graph"        ? <DependencyGraph onNavigate={handleNavigate} />
               : active === "committed-actions"       ? <CommittedTray onNavigate={handleNavigate} />
