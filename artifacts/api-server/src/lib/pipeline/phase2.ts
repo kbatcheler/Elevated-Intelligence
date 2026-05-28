@@ -592,7 +592,11 @@ export async function generateBriefOverrides(
     system: BRIEFS_SYSTEM_PROMPT,
     user: buildBriefsUserPrompt(profile, layerContents),
     schema: briefOverridesSchema,
-    maxTokens: 4096,
+    // Brief output is rich (executiveRead + 13 topFindings + 3 rootCauses +
+    // 3 recoveryLevers, each with multi-sentence bodies up to 900 chars).
+    // Observed responses run ~15-16k chars; 4096 tokens truncates the JSON
+    // mid-array. 8192 leaves comfortable headroom.
+    maxTokens: 8192,
     model: SCORE_MODEL,
     log,
     context: `phase2/briefs`,

@@ -8,6 +8,17 @@
 import { z } from "zod/v4";
 import { layerContentSchema } from "./schemas";
 
+// Defensive string preprocessor: clamps any input string to `max` characters
+// BEFORE validation. Lets us keep tight UI-driven length budgets without the
+// LLM's occasional overshoot blowing up an entire panel into null. The `min`
+// guard still applies to the truncated string, so genuinely empty model
+// output still fails fast.
+const clampedStr = (max: number, min = 0) =>
+  z.preprocess(
+    (v) => (typeof v === "string" ? v.slice(0, max) : v),
+    min > 0 ? z.string().min(min) : z.string(),
+  );
+
 // ─── Shared atoms ──────────────────────────────────────────────────────────
 
 export const evidenceTypeEnum = z.enum(["grounded", "inferred"]);
@@ -262,11 +273,11 @@ export type ScoreOutput = z.infer<typeof scoreOutputSchema>;
 const heroToneSchema = z.enum(["good", "warn", "bad", "neutral"]);
 
 export const heroPanelSchema = z.object({
-  eyebrow: z.string().min(1).max(60),
-  headline: z.string().min(2).max(200),
-  subhead: z.string().max(400).optional().default(""),
+  eyebrow: clampedStr(60, 1),
+  headline: clampedStr(200, 2),
+  subhead: clampedStr(400).optional().default(""),
   highlight_pills: z
-    .array(z.object({ label: z.string().min(1).max(60), tone: heroToneSchema }))
+    .array(z.object({ label: clampedStr(60, 1), tone: heroToneSchema }))
     .max(3)
     .optional()
     .default([]),
@@ -274,9 +285,9 @@ export const heroPanelSchema = z.object({
     .array(
       z.object({
         kind: z.enum(["competitor", "region", "segment", "supplier", "product", "channel", "metric"]),
-        name: z.string().min(1).max(120),
-        value: z.string().max(60).optional(),
-        note: z.string().max(240).optional(),
+        name: clampedStr(120, 1),
+        value: clampedStr(60).optional(),
+        note: clampedStr(240).optional(),
         tone: heroToneSchema.optional(),
       }),
     )
@@ -298,20 +309,20 @@ export type HeroOutput = z.infer<typeof heroOutputSchema>;
 const peerToneSchema = z.enum(["ahead", "median", "behind"]);
 
 export const peerBenchmarkSchema = z.object({
-  peer_set: z.string().min(2).max(160),
-  as_of: z.string().min(1).max(40),
+  peer_set: clampedStr(160, 2),
+  as_of: clampedStr(40, 1),
   metrics: z
     .array(
       z.object({
-        metric: z.string().min(1).max(120),
-        tenant_value: z.string().min(1).max(40),
-        median: z.string().min(1).max(40),
-        best: z.string().min(1).max(40),
-        best_label: z.string().min(1).max(80),
-        unit: z.string().max(20).optional().default(""),
+        metric: clampedStr(120, 1),
+        tenant_value: clampedStr(40, 1),
+        median: clampedStr(40, 1),
+        best: clampedStr(40, 1),
+        best_label: clampedStr(80, 1),
+        unit: clampedStr(20).optional().default(""),
         position: z.number().min(0).max(100),
         tone: peerToneSchema,
-        comment: z.string().min(1).max(400),
+        comment: clampedStr(400, 1),
       }),
     )
     .min(2)
@@ -331,14 +342,14 @@ const supplementToneSchema = z.enum(["good", "warn", "bad", "neutral"]);
 
 const leaderboardBlockSchema = z.object({
   kind: z.literal("leaderboard"),
-  title: z.string().min(2).max(80),
-  eyebrow: z.string().max(40).optional().default(""),
+  title: clampedStr(80, 2),
+  eyebrow: clampedStr(40).optional().default(""),
   rows: z
     .array(
       z.object({
-        label: z.string().min(1).max(80),
-        value: z.string().min(1).max(40),
-        sub: z.string().max(80).optional().default(""),
+        label: clampedStr(80, 1),
+        value: clampedStr(40, 1),
+        sub: clampedStr(80).optional().default(""),
         tone: supplementToneSchema.optional(),
       }),
     )
@@ -348,14 +359,14 @@ const leaderboardBlockSchema = z.object({
 
 const matrixBlockSchema = z.object({
   kind: z.literal("matrix"),
-  title: z.string().min(2).max(80),
-  eyebrow: z.string().max(40).optional().default(""),
-  columns: z.array(z.string().min(1).max(40)).min(2).max(5),
+  title: clampedStr(80, 2),
+  eyebrow: clampedStr(40).optional().default(""),
+  columns: z.array(clampedStr(40, 1)).min(2).max(5),
   rows: z
     .array(
       z.object({
-        label: z.string().min(1).max(80),
-        cells: z.array(z.string().max(40)).min(2).max(5),
+        label: clampedStr(80, 1),
+        cells: z.array(clampedStr(40)).min(2).max(5),
         tone: supplementToneSchema.optional(),
       }),
     )
@@ -365,14 +376,14 @@ const matrixBlockSchema = z.object({
 
 const timelineBlockSchema = z.object({
   kind: z.literal("timeline"),
-  title: z.string().min(2).max(80),
-  eyebrow: z.string().max(40).optional().default(""),
+  title: clampedStr(80, 2),
+  eyebrow: clampedStr(40).optional().default(""),
   items: z
     .array(
       z.object({
-        when: z.string().min(1).max(40),
-        headline: z.string().min(2).max(160),
-        detail: z.string().max(280).optional().default(""),
+        when: clampedStr(40, 1),
+        headline: clampedStr(160, 2),
+        detail: clampedStr(280).optional().default(""),
         tone: supplementToneSchema.optional(),
       }),
     )
@@ -382,11 +393,11 @@ const timelineBlockSchema = z.object({
 
 const calloutBlockSchema = z.object({
   kind: z.literal("callout"),
-  title: z.string().min(2).max(80),
-  eyebrow: z.string().max(40).optional().default(""),
-  body: z.string().min(4).max(600),
+  title: clampedStr(80, 2),
+  eyebrow: clampedStr(40).optional().default(""),
+  body: clampedStr(600, 4),
   tone: supplementToneSchema.optional(),
-  bullets: z.array(z.string().min(1).max(160)).max(5).optional().default([]),
+  bullets: z.array(clampedStr(160, 1)).max(5).optional().default([]),
 });
 
 export const supplementBlockSchema = z.discriminatedUnion("kind", [
@@ -425,17 +436,17 @@ const layerKeyEnum = z.enum([
 ]);
 
 export const briefOverridesSchema = z.object({
-  executiveRead: z.string().min(40).max(2000),
-  pullQuote: z.string().min(20).max(600),
-  combinedRecovery: z.string().min(2).max(80),
-  recoveryConfidence: z.string().min(20).max(400),
+  executiveRead: clampedStr(2000, 40),
+  pullQuote: clampedStr(600, 20),
+  combinedRecovery: clampedStr(80, 2),
+  recoveryConfidence: clampedStr(400, 20),
   topFindings: z
     .array(
       z.object({
         layerKey: layerKeyEnum,
-        finding: z.string().min(20).max(800),
-        impact: z.string().min(2).max(160),
-        lever: z.string().max(400).optional(),
+        finding: clampedStr(800, 20),
+        impact: clampedStr(160, 2),
+        lever: clampedStr(400).optional(),
       }),
     )
     .min(6)
@@ -443,20 +454,20 @@ export const briefOverridesSchema = z.object({
   rootCauses: z
     .array(
       z.object({
-        title: z.string().min(2).max(160),
-        impact: z.string().min(1).max(40),
-        body: z.string().min(40).max(900),
+        title: clampedStr(160, 2),
+        impact: clampedStr(40, 1),
+        body: clampedStr(900, 40),
       }),
     )
     .length(3),
   recoveryLevers: z
     .array(
       z.object({
-        title: z.string().min(2).max(200),
-        horizon: z.string().min(2).max(60),
-        recovery: z.string().min(1).max(60),
-        owner: z.string().min(2).max(80),
-        body: z.string().min(40).max(900),
+        title: clampedStr(200, 2),
+        horizon: clampedStr(60, 2),
+        recovery: clampedStr(60, 1),
+        owner: clampedStr(80, 2),
+        body: clampedStr(900, 40),
       }),
     )
     .length(3),
