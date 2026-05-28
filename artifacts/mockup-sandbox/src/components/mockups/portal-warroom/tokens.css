@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+.warroom-theme {
+  --cream: #F5EFE3;
+  --cream-light: #FAF6EC;
+  --cream-dark: #E8DFC9;
+  --navy: #0F1A33;
+  --navy-deep: #08101F;
+  --ink: #1A2238;
+  --slate: #4A5570;
+  --slate-light: #7A8499;
+  --gold: #C8A24A;
+  --gold-light: #D4B466;
+  --coral: #D85A30;
+  --coral-faint: #FCE9DF;
+  --teal: #1D9E75;
+  --teal-deep: #166B51;
+  --amber: #D69A2D;
+  --red: #B23A2A;
+  --paper: #FFFEFA;
+}
+
+.scanlines {
+  background-image: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+  background-size: 100% 4px;
+}
+
+.gold-glow {
+  box-shadow: -2px 0 12px var(--gold);
+}
+
+.glass-panel {
+  background: rgba(15, 26, 51, 0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Custom scrollbar for Kanban rail */
+.rail-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+.rail-scroll::-webkit-scrollbar-track {
+  background: var(--cream-dark);
+  border-radius: 4px;
+}
+.rail-scroll::-webkit-scrollbar-thumb {
+  background: var(--slate-light);
+  border-radius: 4px;
+}
