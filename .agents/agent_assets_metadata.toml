@@ -12,3 +12,9 @@ id = "PxloL8DqR6cQ5DLMjXHdG"
 uri = "file://docs/build-report.md"
 type = "text"
 title = "Build Report"
+
+[[outputs]]
+id = "XmunC9GNS3QMPbY9B_Wkl"
+uri = "file://docs/functional-verification-2026-05-29.md"
+type = "text"
+title = "Functional verification report (2026-05-29)"
