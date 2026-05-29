@@ -41,6 +41,7 @@ _Describe the high-level user-facing capabilities of this app once they exist._
 - The portal renders the canonical Meridian Industrial diagnosis for every tenant; non-default profiles get a "Preview mode" banner in `App.tsx` (`PreviewModeBanner`). Do not silently hide hero/extras/track-record panels per tenant, name the preview state instead.
 - `data/layers.ts` invariant: for each layer, the **pill** `actionsRecoveryUsd` summarises the `actions[]` impacts (recovery), NOT the `causes[]` impacts (gap size). Audits that diff pill vs causes will look wrong; that is by design.
 - Every layer header reads `sources: FEEDS[layer.key].length` (DK-3). When you author a new feed for a layer, bump the count in `data/layers.ts`.
+- Generation prompts (`api-server/src/lib/pipeline/prompts.ts`, `phase2-prompts.ts`) must NOT contain specific example figures (a literal bps value, margin %, etc.). The model copies/anchors to them, so every seeded tenant ends up with near-identical numbers (this caused a recurring "380bps" across all reports). Use format-only placeholders (`-NNNbps`, `-N%`) plus a compute-from-other-fields instruction instead.
 
 ## Pointers
 

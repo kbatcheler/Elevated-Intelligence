@@ -54,7 +54,7 @@ export const PRESENTER_TRACKS: Record<string, PresenterTrack> = {
   "business-performance": {
     routeKey: "business-performance",
     frame: "Four-metric scoreboard, the executive's first view",
-    say: "Eight percent behind plan, 380bps margin gap, cash plus 3.8 million, the system already knows why.",
+    say: "Behind plan, margin gap widening, cash position holding, the system already knows why.",
     pushback: {
       q: "Our BI tool shows the same four numbers.",
       a: "Yours stops at the number. Click any tile, ours opens the full reasoning chain underneath it.",

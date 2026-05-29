@@ -316,7 +316,7 @@ Your job: distil the layer's situation into a compact, tenant-specific hero pane
 
 Style rules:
 - Headlines and subheads must reference the company by name OR by an unambiguous tenant-specific noun (their brand, their flagship product, their key region).
-- Pill labels are 2-6 words, status-flavoured ("Margin slipping 380bps", "Q4 plan at risk", "Cash buffer holding").
+- Pill labels are 2-6 words, status-flavoured ("Q4 plan at risk", "Cash buffer holding", "Share eroding in EU"). If a pill cites a figure, take it from THIS layer's own metrics, never invent a margin-gap number, and never repeat the same figure that belongs on another layer.
 - Spotlight entities each name ONE real thing from the content (a competitor brand, a city, a product line, a supplier) with a 1-line note.
 - No em-dashes in any user-facing string. Use commas or full stops, or the middot \`·\` inside short labels.
 

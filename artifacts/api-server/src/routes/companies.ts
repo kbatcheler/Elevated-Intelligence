@@ -66,11 +66,11 @@ Return STRICT JSON only — no prose, no code fences. Conform exactly to this Ty
   "headlines": {
     "revenueActual": string,           // e.g. "$498M" — scaled to their revenue band (a Q3 estimate)
     "revenuePlan": string,             // higher than actual
-    "revenueVarPct": "−8%",            // keep this for narrative consistency
+    "revenueVarPct": string,           // revenue miss vs plan as a %, sized to THIS company (format like "−N%")
     "revenueVarDollars": string,       // the dollar gap implied
-    "marginActual": string,            // e.g. "8.4%"
-    "marginTarget": string,            // 350-400bps higher
-    "marginVarBps": "−380bps",
+    "marginActual": string,            // realistic margin % for THIS company's sector
+    "marginTarget": string,            // the company's own margin goal, modestly above actual
+    "marginVarBps": string,            // marginActual minus marginTarget in basis points, leading minus, computed from the two values above
     "cashActual": string,              // estimate of cash position
     "cashVar": string,                 // e.g. "+11% vs plan" or "−6% vs plan"
     "cashTone": "good" | "warn" | "bad",
@@ -331,7 +331,7 @@ function normaliseProfile(raw: Record<string, unknown>, inputName: string, autho
     revenueVarDollars:asString(h.revenueVarDollars,24, "—") ?? "—",
     marginActual:     asString(h.marginActual,     16, "—") ?? "—",
     marginTarget:     asString(h.marginTarget,     16, "—") ?? "—",
-    marginVarBps:     asString(h.marginVarBps,     16, "−380bps") ?? "−380bps",
+    marginVarBps:     asString(h.marginVarBps,     16, "—") ?? "—",
     cashActual:       asString(h.cashActual,       24, "—") ?? "—",
     cashVar:          asString(h.cashVar,          32, "—") ?? "—",
     cashTone,

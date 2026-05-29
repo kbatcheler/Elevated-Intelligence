@@ -55,11 +55,11 @@ Return STRICT JSON only — no prose, no code fences. Conform exactly to this Ty
   "headlines": {
     "revenueActual":     string,   // current-quarter revenue, scaled to the company's actual size
     "revenuePlan":       string,   // higher than actual
-    "revenueVarPct":     string,   // e.g. "-8%"
+    "revenueVarPct":     string,   // revenue miss vs plan as a %, sized to THIS company (format like "-N%")
     "revenueVarDollars": string,   // dollar gap implied
-    "marginActual":      string,   // e.g. "8.4%"
-    "marginTarget":      string,   // 200-400bps higher
-    "marginVarBps":      string,   // e.g. "-380bps"
+    "marginActual":      string,   // realistic gross/operating margin % for THIS company's sector (software ~70-80%, payments ~25-40% operating, apparel ~50-55% gross, telecom ~50-60% gross)
+    "marginTarget":      string,   // the company's own margin goal, modestly above actual
+    "marginVarBps":      string,   // marginActual minus marginTarget in basis points, leading minus, computed from the two values above (format like "-NNNbps")
     "cashActual":        string,
     "cashVar":           string,   // e.g. "+11% vs plan"
     "cashTone":          "good" | "warn" | "bad",
@@ -78,6 +78,8 @@ Sizing guide for revenue numbers (Q3 quarterly figure):
   ~$10B annual    → quarterly ~$2.2-2.8B
   ~$100B annual   → quarterly ~$22-28B
 Format compactly: "$95B", "$2.4B", "$340M", "$23M". All revenue/cash fields use the same units/magnitude. marginActual is a percentage regardless of size.
+
+Every headline figure must reflect THIS company's real economics. The format hints above are placeholders, never reuse them as values. Margins, revenue variance, and the basis-point margin gap differ widely by industry, so distinct companies should not all land on the same margin or the same margin gap.
 
 Tone: editorial, precise. No marketing fluff. Specific over generic. Output JSON ONLY. No code fences. No commentary.`;
 
