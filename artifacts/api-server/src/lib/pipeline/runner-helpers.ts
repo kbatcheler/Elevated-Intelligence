@@ -7,7 +7,36 @@ import {
   tenantsTable,
   tenantPipelineRunsTable,
   type PipelineStage,
+  type LayerStageEntry,
+  type PipelineSubStage,
 } from "@workspace/db";
+
+// When a run dies (failRun, or the boot reconciler), any stage still marked
+// "running" is a lie: nothing is in flight any more. Without sealing it, the
+// boot splash keeps showing e.g. "Layers · in flight · 0/14" next to the
+// failure controls, which reads as a frozen overlay. This rewrites every
+// non-terminal stage so the UI reflects the dead run: "running" stages (and
+// their in-flight layer/sub-stage rows) become "failed"; "pending" stages are
+// left as-is because they legitimately never started.
+export function sealRunningStages(
+  stages: PipelineStage[],
+  errorText: string,
+): PipelineStage[] {
+  const note = errorText.slice(0, 800);
+  const sealSub = (sub: PipelineSubStage): PipelineSubStage =>
+    sub.status === "running" ? { ...sub, status: "failed", error: sub.error ?? note } : sub;
+  const sealLayer = (ls: LayerStageEntry): LayerStageEntry =>
+    ls.status === "running"
+      ? { ...ls, status: "failed", error: ls.error ?? note, subStages: ls.subStages.map(sealSub) }
+      : { ...ls, subStages: ls.subStages.map(sealSub) };
+  return stages.map((s) => {
+    const layerStages = s.layerStages ? s.layerStages.map(sealLayer) : s.layerStages;
+    if (s.status === "running") {
+      return { ...s, status: "failed", error: s.error ?? note, layerStages };
+    }
+    return layerStages === s.layerStages ? s : { ...s, layerStages };
+  });
+}
 
 // Per-run write-serialization queue. The `stages` jsonb column is updated via
 // read-modify-write from up to LAYER_CONCURRENCY parallel layer workers (plus
@@ -41,11 +70,15 @@ export async function updateStage(
 ): Promise<void> {
   await serializeRunWrite(runId, async () => {
     const rows = await db
-      .select({ stages: tenantPipelineRunsTable.stages })
+      .select({ stages: tenantPipelineRunsTable.stages, status: tenantPipelineRunsTable.status })
       .from(tenantPipelineRunsTable)
       .where(eq(tenantPipelineRunsTable.id, runId))
       .limit(1);
-    const current = rows[0]?.stages ?? [];
+    // Once a run has left "running" (e.g. sealed by failRun or the boot
+    // reconciler), a straggling worker must not mutate stages back to a
+    // non-terminal state and resurrect the stale "in flight" splash.
+    if (!rows[0] || rows[0].status !== "running") return;
+    const current = rows[0].stages ?? [];
     const next: PipelineStage[] = current.map((s) =>
       s.name === name ? { ...s, ...patch } : s,
     );
@@ -94,10 +127,20 @@ export async function markFailed(
 
 export async function failRun(runId: string, tenantId: string, errorText: string): Promise<void> {
   const now = new Date();
-  await db
-    .update(tenantPipelineRunsTable)
-    .set({ status: "failed", completedAt: now, errorText: errorText.slice(0, 2000) })
-    .where(eq(tenantPipelineRunsTable.id, runId));
+  // Seal the stages in the same serialized write queue so we don't race a
+  // concurrent layer-worker sub-stage flush back to "running".
+  await serializeRunWrite(runId, async () => {
+    const rows = await db
+      .select({ stages: tenantPipelineRunsTable.stages })
+      .from(tenantPipelineRunsTable)
+      .where(eq(tenantPipelineRunsTable.id, runId))
+      .limit(1);
+    const sealed = sealRunningStages(rows[0]?.stages ?? [], errorText);
+    await db
+      .update(tenantPipelineRunsTable)
+      .set({ status: "failed", completedAt: now, errorText: errorText.slice(0, 2000), stages: sealed })
+      .where(eq(tenantPipelineRunsTable.id, runId));
+  });
   await db
     .update(tenantsTable)
     .set({ status: "failed" })

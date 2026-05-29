@@ -70,8 +70,12 @@ export default function CompanyBootSplash() {
     const runStatus = status?.run?.status ?? "pending";
     const failed = tenantStatus === "failed" || runStatus === "failed";
     const layersStage = findStage(stages, "layers");
-    const layersTotal = layersStage?.progress?.total ?? 14;
+    const layersTotal = layersStage?.progress?.total ?? 0;
     const layersCurrent = layersStage?.progress?.current ?? 0;
+    // Progress is counted in sub-stages now (~112 per run), so the bar moves
+    // continuously. Show it as a percentage; the absolute counts read oddly
+    // next to "14 intelligence frames".
+    const layersPct = layersTotal > 0 ? Math.round((layersCurrent / layersTotal) * 100) : 0;
     return (
       <div role="status" aria-live="polite"
            className="fixed inset-0 z-[70] flex items-center justify-center px-6 py-8 overflow-y-auto"
@@ -96,7 +100,7 @@ export default function CompanyBootSplash() {
                 : stage?.status === "failed"  ? "failed"
                 : "pending";
               const label = name === "layers"
-                ? `${PIPELINE_STAGE_LABEL[name]} · ${layersCurrent}/${layersTotal}`
+                ? `${PIPELINE_STAGE_LABEL[name]} · ${layersPct}%`
                 : PIPELINE_STAGE_LABEL[name] ?? name;
               return (
                 <StepRow key={name} step={{

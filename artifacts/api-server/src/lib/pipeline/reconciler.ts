@@ -10,18 +10,33 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db, tenantsTable, tenantPipelineRunsTable } from "@workspace/db";
 import { logger } from "../logger";
+import { sealRunningStages } from "./runner-helpers";
+
+const ORPHAN_REASON = "Run orphaned across server restart; marked failed by boot reconciler.";
 
 export async function reconcileStaleRuns(): Promise<void> {
   try {
-    const orphaned = await db
-      .update(tenantPipelineRunsTable)
-      .set({
-        status: "failed",
-        completedAt: new Date(),
-        errorText: "Run orphaned across server restart; marked failed by boot reconciler.",
-      })
-      .where(eq(tenantPipelineRunsTable.status, "running"))
-      .returning({ id: tenantPipelineRunsTable.id, tenantId: tenantPipelineRunsTable.tenantId });
+    // Select first so we can seal each run's in-flight stages (so the splash
+    // doesn't show "Layers · in flight" on a run that died at restart), then
+    // mark each failed individually with its sealed stages.
+    const running = await db
+      .select({ id: tenantPipelineRunsTable.id, tenantId: tenantPipelineRunsTable.tenantId, stages: tenantPipelineRunsTable.stages })
+      .from(tenantPipelineRunsTable)
+      .where(eq(tenantPipelineRunsTable.status, "running"));
+
+    const completedAt = new Date();
+    for (const run of running) {
+      await db
+        .update(tenantPipelineRunsTable)
+        .set({
+          status: "failed",
+          completedAt,
+          errorText: ORPHAN_REASON,
+          stages: sealRunningStages(run.stages ?? [], ORPHAN_REASON),
+        })
+        .where(eq(tenantPipelineRunsTable.id, run.id));
+    }
+    const orphaned = running;
 
     if (orphaned.length > 0) {
       const tenantIds = Array.from(new Set(orphaned.map((r) => r.tenantId)));

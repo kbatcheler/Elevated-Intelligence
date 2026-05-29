@@ -94,7 +94,7 @@ import {
   type SupplementBlocks,
   type VerifiedClaim,
 } from "./phase2-schemas";
-import { failRun, markComplete, markFailed, markRunning, serializeRunWrite, updateStage } from "./runner-helpers";
+import { failRun, markComplete, markFailed, markRunning, serializeRunWrite } from "./runner-helpers";
 
 const STAGE_GROUND = "ground";
 const STAGE_PROFILE = "profile";
@@ -110,6 +110,24 @@ const STAGE_COMMIT = "commit";
 // step; raise to 5 if 4 stays clean across multiple tenant re-seeds.
 const LAYER_CONCURRENCY = 4;
 
+// The eight sub-stages every layer runs, in order. Single source of truth so
+// the splash progress counter can be driven off completed sub-stages (it moves
+// ~112 times across a run instead of ~14, so the bar visibly advances during
+// the long, rate-limited Layers stage) rather than only ticking when a whole
+// layer finishes.
+const SUB_STAGE_NAMES = [
+  "perceive",
+  "hypothesise",
+  "challenge",
+  "narrate",
+  "score",
+  "hero",
+  "peers",
+  "supplements",
+] as const;
+const SUB_STAGE_COUNT = SUB_STAGE_NAMES.length;
+const TOTAL_SUB_STEPS = LAYER_KEYS.length * SUB_STAGE_COUNT;
+
 export function initialPhase2Stages(): PipelineStage[] {
   return [
     { name: STAGE_GROUND, status: "pending" },
@@ -117,12 +135,12 @@ export function initialPhase2Stages(): PipelineStage[] {
     {
       name: STAGE_LAYERS,
       status: "pending",
-      progress: { current: 0, total: LAYER_KEYS.length },
+      progress: { current: 0, total: TOTAL_SUB_STEPS },
       pipelinePhase: "phase2",
       layerStages: LAYER_KEYS.map<LayerStageEntry>((layerKey) => ({
         layerKey,
         status: "pending",
-        subStages: (["perceive", "hypothesise", "challenge", "narrate", "score", "hero", "peers", "supplements"] as const).map(
+        subStages: SUB_STAGE_NAMES.map(
           (name): PipelineSubStage => ({ name, status: "pending" }),
         ),
       })),
@@ -152,7 +170,7 @@ function buildLayerEntry(rt: LayerStageRuntime, status: PipelineStageStatus, err
     startedAt: new Date(rt.startedAt).toISOString(),
     completedAt: status === "running" || status === "pending" ? undefined : new Date(now).toISOString(),
     durationMs: status === "running" || status === "pending" ? undefined : now - rt.startedAt,
-    subStages: (["perceive", "hypothesise", "challenge", "narrate", "score", "hero", "peers", "supplements"] as const).map((name) => {
+    subStages: SUB_STAGE_NAMES.map((name) => {
       const sub = rt.subs.get(name);
       return {
         name,
@@ -171,15 +189,26 @@ function buildLayerEntry(rt: LayerStageRuntime, status: PipelineStageStatus, err
 async function syncLayerEntry(runId: string, entry: LayerStageEntry): Promise<void> {
   await serializeRunWrite(runId, async () => {
     const rows = await db
-      .select({ stages: tenantPipelineRunsTable.stages })
+      .select({ stages: tenantPipelineRunsTable.stages, status: tenantPipelineRunsTable.status })
       .from(tenantPipelineRunsTable)
       .where(eq(tenantPipelineRunsTable.id, runId))
       .limit(1);
-    const stages = rows[0]?.stages ?? [];
+    // Skip late writes from layer workers that finish after the run was sealed
+    // (failed/reconciled); otherwise a straggler would flip stages back to a
+    // non-terminal state and the splash would show stale "in flight" rows.
+    if (!rows[0] || rows[0].status !== "running") return;
+    const stages = rows[0].stages ?? [];
     const next: PipelineStage[] = stages.map((s) => {
       if (s.name !== STAGE_LAYERS || !s.layerStages) return s;
       const updated = s.layerStages.map((ls) => (ls.layerKey === entry.layerKey ? entry : ls));
-      return { ...s, layerStages: updated };
+      // Recompute the moving progress counter off completed sub-stages so the
+      // splash advances continuously through the long Layers stage instead of
+      // sitting at 0 until a whole layer resolves.
+      const done = updated.reduce(
+        (acc, ls) => acc + ls.subStages.filter((sub) => sub.status === "complete").length,
+        0,
+      );
+      return { ...s, layerStages: updated, progress: { current: done, total: TOTAL_SUB_STEPS } };
     });
     await db.update(tenantPipelineRunsTable).set({ stages: next }).where(eq(tenantPipelineRunsTable.id, runId));
   });
@@ -685,18 +714,12 @@ async function runPhase2PipelineInner(
   // ─── Stage 3: layers (5-stage per layer, concurrency 5) ──────────────────
   const layersStart = await markRunning(runId, STAGE_LAYERS);
   const layerResults: LayerResult[] = [];
-  let completedCount = 0;
+  // Progress is advanced per completed sub-stage inside syncLayerEntry, so the
+  // orchestrator no longer needs to bump a per-layer counter here.
   for (let i = 0; i < LAYER_KEYS.length; i += LAYER_CONCURRENCY) {
     const batch = LAYER_KEYS.slice(i, i + LAYER_CONCURRENCY);
     const batchResults = await Promise.all(
-      batch.map(async (layerKey) => {
-        const result = await runLayerStages(runId, profile, layerKey, log);
-        completedCount += 1;
-        updateStage(runId, STAGE_LAYERS, {
-          progress: { current: completedCount, total: LAYER_KEYS.length },
-        }).catch(() => undefined);
-        return result;
-      }),
+      batch.map((layerKey) => runLayerStages(runId, profile, layerKey, log)),
     );
     layerResults.push(...batchResults);
   }
@@ -708,7 +731,7 @@ async function runPhase2PipelineInner(
     return;
   }
   await markComplete(runId, STAGE_LAYERS, layersStart, {
-    progress: { current: LAYER_KEYS.length, total: LAYER_KEYS.length },
+    progress: { current: TOTAL_SUB_STEPS, total: TOTAL_SUB_STEPS },
     ...(partialLayers.length > 0 || failedLayers.length > 0
       ? { error: `${partialLayers.length} partial, ${failedLayers.length} failed: ${[...partialLayers, ...failedLayers].map((r) => r.layerKey).join(", ")}` }
       : {}),
