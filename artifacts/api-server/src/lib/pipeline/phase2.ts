@@ -438,9 +438,18 @@ async function runLayerStages(
     // Patch confidence onto narrate.content.
     narrate.content.confidence = Math.min(95, s.confidence);
     narrate.content.confidence_gap = s.confidence_gap;
-    // Merge score gaps into content.gaps (preserving any existing gaps).
+    // Merge score gaps into content.gaps. The Score-stage gaps carry the
+    // grounded per-gap confidence lift (confidence_lift_pp), so they take
+    // precedence and must not be truncated away; any pre-score gaps backfill
+    // the remaining slots (they have no lift signal, so default to 0).
     const existing = narrate.content.gaps ?? [];
-    const merged = [...existing, ...s.gaps.map((g) => ({ kind: g.kind, description: g.description, closes: g.closes ?? "" }))].slice(0, 8);
+    const scored = s.gaps.map((g) => ({
+      kind: g.kind,
+      description: g.description,
+      closes: g.closes ?? "",
+      confidence_lift_pp: g.confidence_lift_pp,
+    }));
+    const merged = [...scored, ...existing].slice(0, 8);
     narrate.content.gaps = merged;
     await endSub(runId, rt, "score", "complete");
   } else {

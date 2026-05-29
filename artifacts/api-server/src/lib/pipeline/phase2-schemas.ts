@@ -148,6 +148,10 @@ export const hypothesisedLayerSchema = z.object({
         kind: gapKindSchema,
         description: z.string().max(600),
         closes: z.string().max(400).optional(),
+        // Grounded per-gap confidence lift (percentage points) produced by the
+        // Score stage. Optional so pre-score gaps (which have no lift signal)
+        // still validate; defaults to 0 in that case.
+        confidence_lift_pp: z.number().min(0).max(50).optional().default(0),
       }),
     )
     .max(8)

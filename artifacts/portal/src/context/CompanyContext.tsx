@@ -60,7 +60,7 @@ export interface ServerLayerContent {
   actions: Array<{ title: string; detail: string; impact: string; timing?: string; owner?: string }>;
   hypotheses?: Array<{ title?: string; detail?: string; confidence?: number }>;
   proof?: { items?: Array<{ title?: string; source?: string; detail?: string }> };
-  gaps?: Array<{ kind?: string; description?: string; closes?: string; confidence_gap?: number }>;
+  gaps?: Array<{ kind?: string; description?: string; closes?: string; confidence_lift_pp?: number }>;
   metrics?: Array<{ label: string; value: string; sub?: string; tone: "good" | "warn" | "bad" | "neutral" }>;
   confidence?: number;
   confidence_gap?: number;
@@ -362,7 +362,7 @@ function projectLayer(
     category: normaliseGapCategory(g.kind),
     title: g.closes || g.description || "Gap",
     detail: g.description ?? "",
-    confidenceLiftPp: typeof g.confidence_gap === "number" ? Math.round(g.confidence_gap) : 0,
+    confidenceLiftPp: typeof g.confidence_lift_pp === "number" ? Math.round(g.confidence_lift_pp) : 0,
     solution: g.closes ?? "",
   }));
   const counterArgs = (content.hypotheses ?? []).map(h => ({
@@ -494,12 +494,19 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     try {
       const r = await apiGet<{ tenants: TenantSummary[] }>("/api/tenants");
       setTenants(r.tenants);
-      // Self-heal: if the persisted active id no longer exists in the
-      // library, snap to the first ready tenant or clear.
+      // Self-heal the active selection so the dashboard never blanks out
+      // behind a seeding/failed tenant while a ready one is available. Order
+      // of preference: keep the current selection if it exists AND is ready;
+      // otherwise snap to the first ready tenant; otherwise keep the current
+      // selection if it still exists (e.g. the only tenant is mid-seed and
+      // the boot splash covers it); otherwise the first tenant; else clear.
       setActiveId(curr => {
-        if (curr && r.tenants.some(t => t.id === curr)) return curr;
-        const first = r.tenants[0];
-        return first ? first.id : null;
+        const currentTenant = curr ? r.tenants.find(t => t.id === curr) : undefined;
+        if (currentTenant && currentTenant.status === "ready") return curr;
+        const firstReady = r.tenants.find(t => t.status === "ready");
+        if (firstReady) return firstReady.id;
+        if (currentTenant) return curr;
+        return r.tenants[0]?.id ?? null;
       });
     } catch (e) {
       setTenantsError(e instanceof Error ? e.message : String(e));
@@ -554,7 +561,10 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           void refreshLibrary();
         }
         if (s.tenant.status === "ready") {
-          // Auto-dismiss 1.5s after ready so the user can see the final tick.
+          // The freshly-seeded tenant is now ready: make it the active tenant
+          // so the dashboard lands on the new company, then auto-dismiss 1.5s
+          // later so the user can see the final tick.
+          setActiveId(pipeline.tenantId);
           window.setTimeout(() => {
             setBootSplash(prev => prev?.pipeline && prev.pipeline.tenantId === pipeline.tenantId
               ? null : prev);
@@ -593,7 +603,12 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       autoDismiss: false,
       pipeline: { tenantId, startedAt: Date.now(), status: null, error: null },
     });
-    setActiveId(tenantId);
+    // NB: we intentionally do NOT switch the active tenant to the freshly
+    // seeding one here. The splash polls `pipeline.tenantId` independently, so
+    // the dashboard underneath keeps showing the previously selected ready
+    // tenant (the user can dismiss / run in background and still work). The
+    // active tenant is switched to the new one only once it reaches `ready`
+    // (see the pipeline poll effect).
     setPickerOpen(false);
   }, []);
 
