@@ -376,7 +376,11 @@ function projectLayer(
     title: schema?.name ?? layerKey,
     question: schema?.question ?? "",
     confidence: typeof content.confidence === "number" ? Math.round(content.confidence) : 0,
-    sources: content.proof?.items?.length ?? 0,
+    // DK-3 invariant: the per-layer "sources" count is the number of data
+    // feeds powering this layer (FEEDS[layerKey].length), NOT the proof-item
+    // count. Falls back to proof items only if no feed block is authored for
+    // the key, so a new layer without feeds still shows a sensible number.
+    sources: RAW_FEEDS[layerKey]?.length ?? content.proof?.items?.length ?? 0,
     diagnosedAt,
     analystTake: content.headline_finding ?? "",
     metrics,
