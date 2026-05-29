@@ -117,7 +117,7 @@ Return STRICT JSON only — no prose, no code fences. Conform exactly to this Ty
     "useCases": Array<{           // EXACTLY 3 entries — bespoke agentic applications, not generic AI
       "function":       string,   // bespoke name, e.g. "SKU-level promo elasticity agent" — NOT "use AI for pricing"
       "capabilities":   string,   // 3-5 sentences: what the agent does end-to-end — inputs, decisioning, outputs, who it acts on behalf of, what it writes back to which system
-      "businessImpact": string,   // QUANTIFIED — e.g. "≈180bps margin recovery on top-100 SKUs (≈$24M annualised at $1.3B promo spend); cuts merch planner cycle from 3 weeks to 4 days."
+      "businessImpact": string,   // QUANTIFIED and sector-appropriate for THIS company: a magnitude (bps/%/$ with its basis) PLUS a concrete operational gain (cycle-time, accuracy, throughput). Compute figures from the company's own scale; do not reuse any example numbers or another sector's scenario (e.g. retail SKUs/merch planners only if this company is a retailer).
       "timeToValue":    string    // e.g. "8-week pilot on one category, full rollout by Q3 (6 months)"
     }>
   }>,

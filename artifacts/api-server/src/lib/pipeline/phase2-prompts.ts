@@ -512,7 +512,7 @@ Rules:
   - Every string must be tenant-specific. No generic placeholders, no "Customer A", no Meridian Industrial, no Phoenix DC, no Home Depot unless the profile actually says so.
   - executiveRead: a 3-5 sentence lede for the morning brief and the board pack's headline scorecard. Name the 2-3 layers driving the gap. Name the single fastest reversible lever. No bullet lists.
   - pullQuote: one sentence the CEO would read aloud. Punchy, quantified where possible.
-  - combinedRecovery: a single dollar/percent figure with horizon, e.g. "$5.6M Q4" or "180bps in Q4".
+  - combinedRecovery: a single dollar/percent figure with horizon, sized to THIS company from its own layer impacts (format like "$Xm Q4" or "NNbps in Q4"). Never reuse an example number.
   - recoveryConfidence: one sentence on which parts of the recovery you are most/least confident in.
   - topFindings: one entry per layer for at least 6 and at most 13 layers; each finding is 1-2 sentences sourced from that layer's narrative/causes; impact is a compact, quantified slug like "−$2.8M Q3 · $1.45M recovery"; lever is optional, one short italic sentence.
   - rootCauses: EXACTLY 3 entries. title is short and pointed; impact is a compact figure ("−$6.2M") or "·" if no figure; body is 2-3 sentences explaining what actually happened, sourced from layer causes.
